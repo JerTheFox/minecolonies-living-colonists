@@ -31,6 +31,7 @@ import me.bytefox.livingcolonists.llm.ChatResult;
 import me.bytefox.livingcolonists.llm.LlmClient;
 import me.bytefox.livingcolonists.llm.LlmSettings;
 import me.bytefox.livingcolonists.llm.ModelRole;
+import me.bytefox.livingcolonists.perception.PerceptionService;
 import me.bytefox.livingcolonists.personality.PersonalityService;
 import me.bytefox.livingcolonists.prompt.PromptLibrary;
 import me.bytefox.livingcolonists.prompt.Templates;
@@ -66,12 +67,15 @@ public final class TalkService {
     private final LlmClient client;
     private final PromptLibrary prompts;
     private final PersonalityService personalities;
+    private final PerceptionService perception;
     private final SpeechOutput output = new ChatSpeechOutput();
     private final Random random = new Random();
-    public TalkService(LlmClient client, PromptLibrary prompts, PersonalityService personalities) {
+    public TalkService(LlmClient client, PromptLibrary prompts, PersonalityService personalities,
+                       PerceptionService perception) {
         this.client = client;
         this.prompts = prompts;
         this.personalities = personalities;
+        this.perception = perception;
     }
 
     /** The last reply prompt of each colonist, as {@link #key}, for {@code /lcdebug prompt}. Server thread only. */
@@ -217,7 +221,11 @@ public final class TalkService {
         values.put("job", speaker.job());
         values.put("colony", speaker.colony());
         values.put("time", Prompts.timeOfDay(colony.getWorld().getDayTime()));
-        values.put("player", player.getGameProfile().getName());
+        Map<String, List<String>> names = Config.playerNames();
+        values.put("player", PlayerNames.name(player.getGameProfile().getName(), names));
+        values.put("addressing", PlayerNames.addressing(player.getGameProfile().getName(), names, random));
+        values.put("initiative", Prompts.initiative(random));
+        values.put("situation", perception.situation(citizen));
         String prompt = Templates.render(prompts.get(audience == Audience.COLONY
                 ? PromptLibrary.REPLY_COLONY : PromptLibrary.REPLY_PRIVATE), values);
         lastPrompts.put(key, prompt);

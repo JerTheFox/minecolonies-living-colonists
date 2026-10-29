@@ -24,6 +24,18 @@ class PromptsTest {
     }
 
     @Test
+    void worriesComeUpUnaskedInAboutAQuarterOfReplies() {
+        java.util.Random random = new java.util.Random(3);
+        int allowed = 0;
+        for (int i = 0; i < 4000; i++) {
+            if (Prompts.initiative(random).contains("you may add")) {
+                allowed++;
+            }
+        }
+        assertTrue(allowed > 850 && allowed < 1150, String.valueOf(allowed));
+    }
+
+    @Test
     void cleansBackgrounds() {
         assertEquals("Grumbles a lot. Works hard.", Prompts.cleanBio("  §6Grumbles a lot.\n\nWorks   hard.  "));
         assertEquals(Prompts.MAX_BIO_LENGTH, Prompts.cleanBio("a".repeat(5000)).length());

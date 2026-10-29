@@ -1,6 +1,7 @@
 package me.bytefox.livingcolonists;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import com.google.gson.JsonParseException;
@@ -12,6 +13,7 @@ import me.bytefox.livingcolonists.behaviour.Profile;
 import me.bytefox.livingcolonists.llm.LlmEndpoint;
 import me.bytefox.livingcolonists.llm.LlmSettings;
 import me.bytefox.livingcolonists.llm.ModelRole;
+import me.bytefox.livingcolonists.talk.PlayerNames;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 /**
@@ -121,6 +123,11 @@ public final class Config {
             .comment("Shortest time between two messages of one player to colonists. 0 turns it off.")
             .defineInRange("cooldownSeconds", 3, 0, 60);
 
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> PLAYER_NAMES = BUILDER
+            .comment("What colonists call players instead of their nicknames: \"Nickname=Name,Other name,Rare name\",",
+                    "the most common form first. Example: [\"JerTheFox=Максим,Макс,Максик\"]")
+            .defineListAllowEmpty("playerNames", List.of(), () -> "Nickname=Name", value -> value instanceof String);
+
     public static final ModConfigSpec.BooleanValue MEMBERS_ONLY = BUILDER
             .comment("Only the colony's owner, officers and friends may talk to its colonists,",
                     "and only the owner and officers may give them orders. Off: anyone inside the colony may.")
@@ -141,6 +148,11 @@ public final class Config {
     /** A null check first: NeoForge validates missing values as null, which List.of().contains() rejects. */
     private static boolean isLevelOverride(Object value) {
         return value instanceof String text && List.of(Levels.overrideValues()).contains(text);
+    }
+
+    /** Nickname (lower case) to the names colonists use, most common first. */
+    public static Map<String, List<String>> playerNames() {
+        return PlayerNames.parse(PLAYER_NAMES.get());
     }
 
     /** The level a module runs at now: its override, or else the profile's. */

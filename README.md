@@ -81,6 +81,7 @@ The `[behaviour]` section sets how colonists behave:
 | `profile` | `DEFAULT` | `MINIMAL` (orders and answers only, cheapest), `LIGHT`, `DEFAULT` or `IMMERSIVE` (colonists remember much more) |
 | `personality`, `perception`, `memory` | `profile` | override one module: `off`, `low`, `default` or `high` |
 | `cooldownSeconds` | `3` | shortest time between one player's messages to colonists |
+| `playerNames` | empty | what colonists call players instead of nicknames, e.g. `["JerTheFox=Максим,Макс,Максик"]`, most common form first |
 | `membersOnly` | `true` | only the colony's owner, officers and friends may talk to its colonists; only owners and officers may give orders |
 
 ### Personalities and prompts
@@ -89,7 +90,9 @@ Every colonist gets an archetype (grumbler, chatterbox, quiet one, gossip, workh
 
 Archetypes live in `config/livingcolonists/archetypes/` as JSON files: `name`, `prompt` (how the colonist behaves), `weight` (how common), `talkativeness` (0 to 1) and `skills` (skill name to affinity, e.g. `{"Strength": 0.6, "Intelligence": -0.4}`). Add a file to add an archetype, delete one to remove it; delete the folder to get the defaults back.
 
-Prompt templates live in `config/livingcolonists/prompts/`: `reply-private.txt`, `reply-colony.txt`, `character.txt`, `background.txt`, `route-colony.txt`, `bio.txt`, `bio-child.txt`, `bio-grownup.txt`. Placeholders like `{name}`, `{job}` and `{character}` are filled in by the mod. Delete a file to restore its default. `/lcdebug reload` rereads both folders.
+Colonists also know their situation from MineColonies: their job and what work they can't do, home, hunger and food, health and sickness, happiness and its causes, what their workplace waits for, the weather, the colony, a raid, and how their family and coworkers are doing. The `perception` level sets how much of it they know.
+
+Prompt templates live in `config/livingcolonists/prompts/`: `reply-private.txt`, `reply-colony.txt`, `character.txt`, `background.txt`, `route-colony.txt`, `bio.txt`, `bio-child.txt`, `bio-grownup.txt`. Placeholders like `{name}`, `{job}`, `{character}` and `{situation}` are filled in by the mod. Files you haven't edited follow the mod's defaults when it updates; delete a file to restore its default. `/lcdebug reload` rereads both folders.
 
 ### Commands for operators
 
@@ -99,7 +102,7 @@ Prompt templates live in `config/livingcolonists/prompts/`: `reply-private.txt`,
 |---|---|
 | `/lcdebug stats` | requests and tokens per model, this run and in total |
 | `/lcdebug profile [name]` | show or change the profile |
-| `/lcdebug colonist [name]` | archetype, background and skills of the colonist you look at, or the named one |
+| `/lcdebug colonist [name]` | archetype, background, skills and what the colonist knows |
 | `/lcdebug archetype <id\|reroll> [name]` | set or re-pick an archetype |
 | `/lcdebug bio regenerate [name]` | write a new background |
 | `/lcdebug prompt [name]` | the last prompt sent for this colonist's reply |

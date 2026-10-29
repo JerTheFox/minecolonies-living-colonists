@@ -7,6 +7,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- `playerNames` in the config: what colonists call players instead of their nicknames, e.g. `"JerTheFox=Максим,Макс,Максик"` (most common first). Colonists use the name only now and then, not in every reply.
+- Builders know what they are building and which materials are still missing.
+- Every worker knows their workplace level and the orders it is making for others (crafters, the warehouse, couriers); farmers know their fields, miners their mine levels, couriers their queue, healers the patients, researchers the research in progress.
+- Colonists answer what they are asked instead of reciting their worries: only about a quarter of replies may mention one worry unasked, and only about a third may use the player's name (the mod decides per reply, since a model can't keep "now and then").
+- Colonists tell apart deliveries that are on the way from things nobody in the colony can provide and a player has to bring.
+- Perception: colonists know their job and which work they can't do (and which workplaces the colony has), their home, hunger and where to get food, health and sickness, happiness and its causes, what their workplace is waiting for, the weather, the colony and a raid, and how their family and coworkers are doing. How much they know follows the `perception` level. `/lcdebug colonist` shows it.
+- Prompt files the player never edited follow the mod's newer defaults after an update; edited ones are kept.
 - Personalities: every colonist gets an archetype, picked mostly from their MineColonies skills with a share of chance, and a short background written once by the character model. Children get a description of their temperament instead of a past, sometimes take after a parent, and get an adult background when they grow up.
 - Archetypes (`config/livingcolonists/archetypes/*.json`) and prompts (`config/livingcolonists/prompts/*.txt`) are plain files: edit, add or delete them. Eleven archetypes come with the mod.
 - `/lcdebug colonist`, `archetype <id|reroll>`, `bio regenerate`, `prompt` and `reload` for operators (and in single-player worlds with cheats on). Without a name they act on your conversation partner, or else on the colonist you look at.

@@ -1,9 +1,12 @@
 package me.bytefox.livingcolonists.talk;
 
 import java.util.Locale;
+import java.util.Random;
 
 /** Values for prompt templates and clean-up of model output, kept free of game classes for unit tests. */
 public final class Prompts {
+    /** Share of replies in which a colonist may bring up one of their own worries unasked. */
+    public static final double INITIATIVE_CHANCE = 0.25;
     /** Longest background kept, in characters. */
     public static final int MAX_BIO_LENGTH = 1200;
     /** Longest reply that goes to chat, in characters. */
@@ -62,6 +65,16 @@ public final class Prompts {
 
     private static boolean isQuotePair(char first, char last) {
         return (first == '"' && last == '"') || (first == '«' && last == '»') || (first == '“' && last == '”');
+    }
+
+    /**
+     * Whether this reply may bring up a worry of the colonist's own. Told "only sometimes", models do
+     * it every time, so the code decides per reply.
+     */
+    public static String initiative(Random random) {
+        return random.nextDouble() < INITIATIVE_CHANCE
+                ? "Answer what the player said. If it fits, you may add one thing that bothers you, in passing."
+                : "Answer only what the player said. Don't bring up your work, materials or needs unless the player asks about them.";
     }
 
     /** A background as one paragraph of plain text, without formatting codes, within a sane length. */

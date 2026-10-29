@@ -8,6 +8,7 @@ import me.bytefox.livingcolonists.debug.DebugCommand;
 import me.bytefox.livingcolonists.debug.UsageData;
 import me.bytefox.livingcolonists.llm.LlmClient;
 import me.bytefox.livingcolonists.llm.UsageStats;
+import me.bytefox.livingcolonists.perception.PerceptionService;
 import me.bytefox.livingcolonists.personality.ArchetypeLibrary;
 import me.bytefox.livingcolonists.personality.PersonalityData;
 import me.bytefox.livingcolonists.personality.PersonalityService;
@@ -51,7 +52,8 @@ public final class LivingColonists {
     private final PromptLibrary prompts = new PromptLibrary(FMLPaths.CONFIGDIR.get());
     private final PersonalityService personalities = new PersonalityService(prompts,
             new ArchetypeLibrary(FMLPaths.CONFIGDIR.get()), client);
-    private final TalkService talk = new TalkService(client, prompts, personalities);
+    private final PerceptionService perception = new PerceptionService();
+    private final TalkService talk = new TalkService(client, prompts, personalities, perception);
     private UsageData usageData;
     private final Conversations conversations = new Conversations(talk);
 
@@ -62,7 +64,7 @@ public final class LivingColonists {
 
         NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent event) -> {
             TalkCommand.register(event.getDispatcher(), talk, conversations);
-            DebugCommand.register(event.getDispatcher(), usage, personalities, prompts, talk, conversations);
+            DebugCommand.register(event.getDispatcher(), usage, personalities, prompts, talk, conversations, perception);
         });
         NeoForge.EVENT_BUS.addListener(this::onServerChat);
         NeoForge.EVENT_BUS.addListener((ServerTickEvent.Post event) -> {

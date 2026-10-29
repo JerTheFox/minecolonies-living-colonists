@@ -21,6 +21,7 @@ import me.bytefox.livingcolonists.Config;
 import me.bytefox.livingcolonists.behaviour.Module;
 import me.bytefox.livingcolonists.behaviour.Profile;
 import me.bytefox.livingcolonists.llm.UsageStats;
+import me.bytefox.livingcolonists.perception.PerceptionService;
 import me.bytefox.livingcolonists.personality.Archetype;
 import me.bytefox.livingcolonists.personality.Personality;
 import me.bytefox.livingcolonists.personality.PersonalityService;
@@ -46,14 +47,16 @@ public final class DebugCommand {
     private static final double LOOK_RANGE = 16.0;
 
     private static Conversations conversations;
+    private static PerceptionService perception;
 
     private DebugCommand() {
     }
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, UsageStats stats,
                                 PersonalityService personalities, PromptLibrary prompts, TalkService talk,
-                                Conversations conversations) {
+                                Conversations conversations, PerceptionService perception) {
         DebugCommand.conversations = conversations;
+        DebugCommand.perception = perception;
         dispatcher.register(Commands.literal("lcdebug")
                 .requires(source -> source.hasPermission(PERMISSION_LEVEL))
                 .then(Commands.literal("stats").executes(context -> showStats(context.getSource(), stats)))
@@ -134,6 +137,10 @@ public final class DebugCommand {
         source.sendSuccess(() -> Component.translatable("livingcolonists.debug.colonist.bio",
                 personality == null || personality.bio().isEmpty() ? "-" : personality.bio()), false);
         source.sendSuccess(() -> Component.translatable("livingcolonists.debug.colonist.skills", skills), false);
+        if (perception != null) {
+            String situation = perception.situation(citizen);
+            source.sendSuccess(() -> Component.literal(situation.isEmpty() ? "-" : situation), false);
+        }
         return 1;
     }
 

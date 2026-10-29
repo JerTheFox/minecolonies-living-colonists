@@ -36,15 +36,35 @@ public final class PromptLibrary {
         this.directory = configDirectory.resolve("livingcolonists").resolve("prompts");
     }
 
-    /** Reads every template, writing out the bundled default for any that is missing. */
+    /**
+     * Reads every template, writing out the bundled default for any that is missing. A file the
+     * player never edited follows the bundled default when the mod updates it: a copy of the
+     * default each file was written from is kept in {@code prompts/.defaults/}.
+     */
     public void reload() {
         Map<String, String> loaded = new HashMap<>();
+        Path originals = directory.resolve(".defaults");
         for (String name : ALL) {
             Path file = directory.resolve(name);
+            Path original = originals.resolve(name);
+            String bundled = bundled("prompts/" + name);
             try {
+                Files.createDirectories(originals);
                 if (!Files.exists(file)) {
-                    Files.createDirectories(directory);
-                    Files.writeString(file, bundled("prompts/" + name), StandardCharsets.UTF_8);
+                    Files.writeString(file, bundled, StandardCharsets.UTF_8);
+                    Files.writeString(original, bundled, StandardCharsets.UTF_8);
+                } else if (!Files.exists(original)) {
+                    if (bundled.equals(Files.readString(file, StandardCharsets.UTF_8))) {
+                        Files.writeString(original, bundled, StandardCharsets.UTF_8);
+                    }
+                } else if (Files.exists(original) && !bundled.equals(Files.readString(original, StandardCharsets.UTF_8))) {
+                    if (Files.readString(file, StandardCharsets.UTF_8).equals(Files.readString(original, StandardCharsets.UTF_8))) {
+                        Files.writeString(file, bundled, StandardCharsets.UTF_8);
+                        Files.writeString(original, bundled, StandardCharsets.UTF_8);
+                    } else {
+                        LivingColonists.LOGGER.warn("Prompt {} was edited, so the mod's newer default was not applied. "
+                                + "Delete the file to get the new default.", file);
+                    }
                 }
                 loaded.put(name, Files.readString(file, StandardCharsets.UTF_8));
             } catch (IOException e) {
