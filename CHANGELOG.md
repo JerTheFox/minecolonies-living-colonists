@@ -7,6 +7,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Colonists can look up colony data while answering, through function calling: facts about another colonist, who fits a profession best by its primary and secondary skill, and an overview of the colony. `useTools` turns it off for providers without tool support. `/lcdebug prompt` shows the calls.
+- Colonists describe skills, moods and amounts in words instead of quoting numbers, unless asked how many.
 - `playerNames` in the config: what colonists call players instead of their nicknames, e.g. `"JerTheFox=Максим,Макс,Максик"` (most common first). Colonists use the name only now and then, not in every reply.
 - Builders know what they are building and which materials are still missing.
 - Every worker knows their workplace level and the orders it is making for others (crafters, the warehouse, couriers); farmers know their fields, miners their mine levels, couriers their queue, healers the patients, researchers the research in progress.

@@ -1,5 +1,8 @@
 package me.bytefox.livingcolonists.llm;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -24,7 +27,13 @@ public final class ChatResponses {
                 return new ChatResult.Failure("response has no choices", false);
             }
             JsonObject choice = choices.get(0).getAsJsonObject();
-            JsonElement content = choice.getAsJsonObject("message").get("content");
+            JsonObject message = choice.getAsJsonObject("message");
+            JsonElement content = message.get("content");
+            List<ToolCall> calls = toolCalls(message.get("tool_calls"));
+            if (!calls.isEmpty()) {
+                return new ChatResult.Reply(content == null || content.isJsonNull() ? "" : content.getAsString().strip(),
+                        usage(root.getAsJsonObject("usage")), calls);
+            }
             if (content == null || content.isJsonNull() || content.getAsString().isBlank()) {
                 return new ChatResult.Failure("empty reply, finish_reason=" + string(choice.get("finish_reason")), false);
             }
@@ -32,6 +41,22 @@ public final class ChatResponses {
         } catch (JsonParseException | IllegalStateException | ClassCastException e) {
             return new ChatResult.Failure("malformed response: " + truncate(body), false);
         }
+    }
+
+    private static List<ToolCall> toolCalls(JsonElement element) {
+        if (element == null || !element.isJsonArray()) {
+            return List.of();
+        }
+        List<ToolCall> calls = new ArrayList<>();
+        for (JsonElement item : element.getAsJsonArray()) {
+            JsonObject call = item.getAsJsonObject();
+            JsonObject function = call.getAsJsonObject("function");
+            if (function != null) {
+                calls.add(new ToolCall(string(call.get("id")), string(function.get("name")),
+                        string(function.get("arguments"))));
+            }
+        }
+        return calls;
     }
 
     /**

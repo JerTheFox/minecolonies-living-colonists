@@ -14,6 +14,7 @@ import java.util.PriorityQueue;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
@@ -31,6 +32,9 @@ import me.bytefox.livingcolonists.llm.ChatResult;
 import me.bytefox.livingcolonists.llm.LlmClient;
 import me.bytefox.livingcolonists.llm.LlmSettings;
 import me.bytefox.livingcolonists.llm.ModelRole;
+import me.bytefox.livingcolonists.llm.ToolCall;
+import me.bytefox.livingcolonists.llm.ToolSpec;
+import me.bytefox.livingcolonists.perception.ColonyTools;
 import me.bytefox.livingcolonists.perception.PerceptionService;
 import me.bytefox.livingcolonists.personality.PersonalityService;
 import me.bytefox.livingcolonists.prompt.PromptLibrary;
@@ -59,6 +63,8 @@ public final class TalkService {
         COLONY
     }
 
+    /** Rounds of colony function calls per reply before the model has to answer. */
+    private static final int MAX_TOOL_ROUNDS = 2;
     /** How far away a colonist can be addressed with the command, in blocks. */
     private static final double TALK_RANGE = 8.0;
     /** How far from the line of sight a colonist still counts as looked at. */
@@ -68,6 +74,7 @@ public final class TalkService {
     private final PromptLibrary prompts;
     private final PersonalityService personalities;
     private final PerceptionService perception;
+    private final ColonyTools tools;
     private final SpeechOutput output = new ChatSpeechOutput();
     private final Random random = new Random();
     public TalkService(LlmClient client, PromptLibrary prompts, PersonalityService personalities,
@@ -76,6 +83,7 @@ public final class TalkService {
         this.prompts = prompts;
         this.personalities = personalities;
         this.perception = perception;
+        this.tools = new ColonyTools(perception);
     }
 
     /** The last reply prompt of each colonist, as {@link #key}, for {@code /lcdebug prompt}. Server thread only. */
@@ -233,9 +241,42 @@ public final class TalkService {
         UUID playerId = player.getUUID();
         ResourceKey<Level> dimension = colony.getDimension();
         long earliest = sentAt + LinePacing.gap(random);
-        client.complete(settings.get(), List.of(ChatMessage.system(prompt), ChatMessage.user(message)))
-                .thenAccept(result -> server.execute(
-                        () -> deliver(server, dimension, speaker, playerId, audience, earliest, result)));
+        List<ToolSpec> offered = Config.toolsEnabled() ? tools.specs() : List.of();
+        converse(settings.get(), List.of(ChatMessage.system(prompt), ChatMessage.user(message)), offered, 0, server,
+                dimension, speaker, new StringBuilder(), result -> deliver(server, dimension, speaker, playerId,
+                        audience, earliest, result));
+    }
+
+    /**
+     * One round with the model. When it asks for colony functions, they run on the server thread and
+     * the conversation goes back with their results, at most {@link #MAX_TOOL_ROUNDS} times; the last
+     * round offers no functions, so the model has to answer. {@code done} runs on the server thread.
+     */
+    private void converse(LlmSettings settings, List<ChatMessage> messages, List<ToolSpec> offered, int round,
+                          MinecraftServer server, ResourceKey<Level> dimension, Speaker speaker, StringBuilder trace,
+                          Consumer<ChatResult> done) {
+        List<ToolSpec> now = round < MAX_TOOL_ROUNDS ? offered : List.of();
+        client.complete(settings, messages, now).thenAccept(result -> server.execute(() -> {
+            if (!(result instanceof ChatResult.Reply reply) || !reply.wantsTools()) {
+                done.accept(result);
+                return;
+            }
+            ICitizenData citizen = resolve(dimension, speaker.colonyId(), speaker.citizenId());
+            if (citizen == null || now.isEmpty()) {
+                done.accept(new ChatResult.Failure("the model asked for functions it wasn't offered", false));
+                return;
+            }
+            List<ChatMessage> next = new ArrayList<>(messages);
+            next.add(ChatMessage.assistantCalling(reply.toolCalls()));
+            for (ToolCall call : reply.toolCalls()) {
+                String output = tools.run(call, citizen);
+                trace.append("\n[function] ").append(call.name()).append(call.arguments()).append(" -> ").append(output);
+                next.add(ChatMessage.toolResult(call.id(), output));
+            }
+            lastPrompts.computeIfPresent(key(speaker.colonyId(), speaker.citizenId()), (k, v) -> v + trace);
+            trace.setLength(0);
+            converse(settings, next, offered, round + 1, server, dimension, speaker, trace, done);
+        }));
     }
 
     /** @param earliest the reply waits at least until this tick, as if the colonist were typing */
@@ -250,6 +291,10 @@ public final class TalkService {
         switch (result) {
             case ChatResult.Reply reply -> {
                 String text = Prompts.cleanReply(reply.text(), speaker.name());
+                if (text.isEmpty()) {
+                    LivingColonists.LOGGER.warn("{} gave an empty reply", speaker.name());
+                    return;
+                }
                 long now = server.getTickCount();
                 long at;
                 if (audience == Audience.COLONY) {

@@ -59,6 +59,11 @@ public final class Config {
                     "waiting 1 s, then 3 s. Wrong keys and bad requests are not retried.")
             .defineInRange("retries", 2, 0, 5);
 
+    public static final ModConfigSpec.BooleanValue USE_TOOLS = BUILDER
+            .comment("Let colonists look up colony data (other colonists, who fits a job, a colony overview)",
+                    "through function calling. Turn off for providers without tool support.")
+            .define("useTools", true);
+
     public static final ModConfigSpec.IntValue MAX_TOKENS = BUILDER
             .comment("Upper limit on tokens per request. Reasoning models count their thinking here too,",
                     "so keep it well above the length of a chat line.")
@@ -153,6 +158,11 @@ public final class Config {
     /** Nickname (lower case) to the names colonists use, most common first. */
     public static Map<String, List<String>> playerNames() {
         return PlayerNames.parse(PLAYER_NAMES.get());
+    }
+
+    /** Colony functions are offered from the default perception level up, unless turned off. */
+    public static boolean toolsEnabled() {
+        return USE_TOOLS.get() && level(Module.PERCEPTION).compareTo(Level.DEFAULT) >= 0;
     }
 
     /** The level a module runs at now: its override, or else the profile's. */

@@ -68,6 +68,7 @@ Open `config/livingcolonists-common.toml` (it appears after the first launch), p
 | `apiKeyEnv` | `LIVINGCOLONISTS_API_KEY` | environment variable read when `apiKey` is empty |
 | `timeoutSeconds` | `30` | how long to wait for a reply |
 | `retries` | `2` | retries after timeouts, rate limits and server errors |
+| `useTools` | `true` | let colonists look up colony data through function calling; turn off if your provider doesn't support tools |
 | `maxTokens` | `2000` | token limit per request, including the model's thinking |
 | `temperature` | `1.0` | higher is more varied |
 | `extraParams` | `{}` | extra JSON merged into each request, e.g. `{"thinking":{"type":"disabled"}}` for DeepSeek |
@@ -90,7 +91,7 @@ Every colonist gets an archetype (grumbler, chatterbox, quiet one, gossip, workh
 
 Archetypes live in `config/livingcolonists/archetypes/` as JSON files: `name`, `prompt` (how the colonist behaves), `weight` (how common), `talkativeness` (0 to 1) and `skills` (skill name to affinity, e.g. `{"Strength": 0.6, "Intelligence": -0.4}`). Add a file to add an archetype, delete one to remove it; delete the folder to get the defaults back.
 
-Colonists also know their situation from MineColonies: their job and what work they can't do, home, hunger and food, health and sickness, happiness and its causes, what their workplace waits for, the weather, the colony, a raid, and how their family and coworkers are doing. The `perception` level sets how much of it they know.
+Colonists also know their situation from MineColonies: their job and what work they can't do, home, hunger and food, health and sickness, happiness and its causes, what their workplace waits for, the weather, the colony, a raid, and how their family and coworkers are doing. The `perception` level sets how much of it they know. From the `default` level on, colonists can also look things up while answering: facts about another colonist, who fits a profession best by its skills, and an overview of the colony. Ask "who would make a good builder?" and the answer comes from the real skills, not a guess.
 
 Prompt templates live in `config/livingcolonists/prompts/`: `reply-private.txt`, `reply-colony.txt`, `character.txt`, `background.txt`, `route-colony.txt`, `bio.txt`, `bio-child.txt`, `bio-grownup.txt`. Placeholders like `{name}`, `{job}`, `{character}` and `{situation}` are filled in by the mod. Files you haven't edited follow the mod's defaults when it updates; delete a file to restore its default. `/lcdebug reload` rereads both folders.
 

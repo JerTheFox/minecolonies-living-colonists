@@ -39,34 +39,40 @@ public final class LlmClient {
     }
 
     public CompletableFuture<ChatResult> complete(LlmSettings settings, List<ChatMessage> messages) {
-        return withRetries(settings.primary(), settings, messages, 0).thenCompose(result -> {
+        return complete(settings, messages, List.of());
+    }
+
+    /** The same, offering the model {@code tools}; a reply may then ask for calls instead of answering. */
+    public CompletableFuture<ChatResult> complete(LlmSettings settings, List<ChatMessage> messages, List<ToolSpec> tools) {
+        return withRetries(settings.primary(), settings, messages, tools, 0).thenCompose(result -> {
             if (result instanceof ChatResult.Failure && settings.fallback() != null) {
-                return withRetries(settings.fallback(), settings, messages, 0);
+                return withRetries(settings.fallback(), settings, messages, tools, 0);
             }
             return CompletableFuture.completedFuture(result);
         });
     }
 
     private CompletableFuture<ChatResult> withRetries(LlmEndpoint endpoint, LlmSettings settings, List<ChatMessage> messages,
-                                                      int attempt) {
-        return once(endpoint, settings, messages).thenCompose(result -> {
+                                                      List<ToolSpec> tools, int attempt) {
+        return once(endpoint, settings, messages, tools).thenCompose(result -> {
             if (result instanceof ChatResult.Failure failure && failure.retryable() && attempt < settings.retries()) {
                 Duration pause = backoff.get(Math.min(attempt, backoff.size() - 1));
                 return CompletableFuture.runAsync(() -> { },
                                 CompletableFuture.delayedExecutor(pause.toMillis(), TimeUnit.MILLISECONDS))
-                        .thenCompose(ignored -> withRetries(endpoint, settings, messages, attempt + 1));
+                        .thenCompose(ignored -> withRetries(endpoint, settings, messages, tools, attempt + 1));
             }
             return CompletableFuture.completedFuture(result);
         });
     }
 
-    private CompletableFuture<ChatResult> once(LlmEndpoint endpoint, LlmSettings settings, List<ChatMessage> messages) {
+    private CompletableFuture<ChatResult> once(LlmEndpoint endpoint, LlmSettings settings, List<ChatMessage> messages,
+                                               List<ToolSpec> tools) {
         HttpRequest request;
         try {
             HttpRequest.Builder builder = HttpRequest.newBuilder(uri(endpoint.baseUrl()))
                     .timeout(Duration.ofSeconds(settings.timeoutSeconds()))
                     .header("Content-Type", "application/json; charset=utf-8")
-                    .POST(HttpRequest.BodyPublishers.ofString(ChatRequests.toJson(endpoint, settings, messages),
+                    .POST(HttpRequest.BodyPublishers.ofString(ChatRequests.toJson(endpoint, settings, messages, tools),
                             StandardCharsets.UTF_8));
             if (!endpoint.apiKey().isEmpty()) {
                 builder.header("Authorization", "Bearer " + endpoint.apiKey());
