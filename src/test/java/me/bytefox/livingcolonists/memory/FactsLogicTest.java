@@ -86,6 +86,19 @@ class FactsLogicTest {
     }
 
     @Test
+    void onlyTheMostImportantFactsGoIntoThePromptInTheirOrder() {
+        List<Fact> facts = new java.util.ArrayList<>();
+        for (int i = 0; i < 30; i++) {
+            facts.add(new Fact("fact " + i, i % 5 == 0 ? 5 : 2, i, DAY, Fact.COLONY_CHAT, false));
+        }
+        List<Fact> shown = Digests.mostImportant(facts, 8);
+        assertEquals(8, shown.size());
+        assertEquals(List.of("fact 0", "fact 5", "fact 10", "fact 15", "fact 20", "fact 25", "fact 28", "fact 29"),
+                shown.stream().map(Fact::text).toList());
+        assertEquals(3, Digests.mostImportant(facts.subList(0, 3), 8).size());
+    }
+
+    @Test
     void gossipComesFromSomeoneElsesPrivateTalkAndIsToldOnce() {
         FactBook book = new FactBook();
         book.add(new Fact("Max is building a tower.", 3, 0, DAY, Fact.privateTalk("Max"), false));

@@ -5,6 +5,8 @@ import java.time.Duration;
 import java.util.function.Predicate;
 
 import com.minecolonies.api.IMinecoloniesAPI;
+import com.minecolonies.api.colony.ICitizenData;
+import com.minecolonies.api.colony.requestsystem.token.IToken;
 import com.minecolonies.api.eventbus.events.colony.ColonyDeletedModEvent;
 import com.mojang.logging.LogUtils;
 import me.bytefox.livingcolonists.debug.DebugCommand;
@@ -78,8 +80,17 @@ public final class LivingColonists {
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
         client.limitDailyTokens(() -> Config.SPEC.isLoaded() ? Config.TOKENS_PER_DAY.get() : 0);
         bonds.setReminder(talk::remindPromise);
-        RequestResponses.listen((citizen, request, button, player) ->
-                bonds.onRequestResponse(citizen, request, button, player, TalkService.playerName(player)));
+        RequestResponses.listen(new RequestResponses.Listener() {
+            @Override
+            public void onRequest(ICitizenData citizen, IToken<?> request, String button, ServerPlayer player) {
+                bonds.onRequestResponse(citizen, request, button, player, TalkService.playerName(player));
+            }
+
+            @Override
+            public void onDialog(ICitizenData citizen, String inquiry, String button, ServerPlayer player) {
+                bonds.onDialogResponse(citizen, inquiry, button, player, TalkService.playerName(player));
+            }
+        });
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::registerPayloads);
 

@@ -14,12 +14,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.IColonyManager;
+import com.minecolonies.api.colony.buildings.ModBuildings;
 import com.minecolonies.api.colony.requestsystem.request.IRequest;
 import com.minecolonies.api.colony.requestsystem.token.IToken;
 import com.minecolonies.api.colony.requestsystem.token.StandardToken;
@@ -55,6 +57,8 @@ public final class BondsService {
     private static final String BUTTON_OKAY = "com.minecolonies.coremod.gui.chat.okay";
     private static final String BUTTON_FULFILL = "com.minecolonies.coremod.gui.chat.fulfill";
     private static final String BUTTON_CANCEL = "com.minecolonies.coremod.gui.chat.cancel";
+    /** {@link Promise#requestId} of a promise made in a plain dialog: this prefix and the dialog's translation key. */
+    private static final String DIALOG = "dialog:";
     /** At most one promise reminder per player in this many server ticks (ten minutes). */
     private static final long REMINDER_GAP_TICKS = 12000;
     /** A nickname-like part of a colonist's name the character model may use instead of the full name. */
@@ -69,6 +73,17 @@ public final class BondsService {
     private final Map<UUID, Long> lastReminder = new HashMap<>();
     /** The last state seen of each promised colony request, by promise id, to tell delivered from cancelled. */
     private final Map<Long, String> requestStates = new HashMap<>();
+
+    /** The name colonists know a player by; set by the talk layer. */
+    private Function<ServerPlayer, String> naming = player -> player.getGameProfile().getName();
+
+    /** An open promise and the colonist it was made to. */
+    public record Owned(int citizenId, Promise promise) {
+    }
+
+    public void setPlayerNaming(Function<ServerPlayer, String> naming) {
+        this.naming = naming;
+    }
 
     /** Starts a colonist's private reminder; returns whether it went ahead. */
     public interface Reminder {
@@ -186,6 +201,170 @@ public final class BondsService {
         }
     }
 
+    /**
+     * "I will work on it!" in a plain dialog the colonist opens about a need becomes a promise:
+     * a hospital or a cure, an upgrade of their workplace, a warehouse, a guard tower near home or
+     * work, better food. Other dialogs (a full chest, the rain) are no promise. Building and health
+     * promises close by themselves when the building is finished or the colonist is cured.
+     */
+    public void onDialogResponse(ICitizenData citizen, String inquiry, String button, ServerPlayer player,
+                                 String playerName) {
+        if (data == null || !BUTTON_OKAY.equals(button)) {
+            return;
+        }
+        String name = citizen.getName();
+        String text;
+        Promise.About about;
+        int days;
+        switch (inquiry) {
+            case "com.minecolonies.coremod.ai.nohospital", "com.minecolonies.coremod.ai.waitingforcure" -> {
+                text = playerName + " promised to get " + name + " cured.";
+                about = Promise.About.HEALTH;
+                days = 2;
+            }
+            case "com.minecolonies.core.restaurant.poorrestaurant", "com.minecolonies.coremod.request.toolow" -> {
+                if (citizen.getWorkBuilding() == null) {
+                    return;
+                }
+                text = playerName + " promised to upgrade " + name + "'s "
+                        + Component.translatable(citizen.getWorkBuilding().getBuildingDisplayName()).getString() + ".";
+                about = Promise.About.BUILDING;
+                days = 3;
+            }
+            case "com.minecolonies.coremod.job.deliveryman.nowarehouse" -> {
+                text = playerName + " promised to build or upgrade the "
+                        + Component.translatable(ModBuildings.wareHouse.get().getTranslationKey()).getString() + ".";
+                about = Promise.About.BUILDING;
+                days = 3;
+            }
+            case "com.minecolonies.coremod.gui.chat.noguardnearhome", "com.minecolonies.coremod.gui.chat.noguardnearwork" -> {
+                text = playerName + " promised to build a "
+                        + Component.translatable(ModBuildings.guardTower.get().getTranslationKey()).getString() + " near "
+                        + name + (inquiry.endsWith("home") ? "'s home." : "'s workplace.");
+                about = Promise.About.BUILDING;
+                days = 3;
+            }
+            case "com.minecolonies.coremod.entity.citizen.no.fooddiversity",
+                 "com.minecolonies.coremod.entity.citizen.no.fooddiversity.urgent" -> {
+                text = playerName + " promised " + name + " more varied food in the dining hall.";
+                about = Promise.About.FOOD;
+                days = 0;
+            }
+            case "com.minecolonies.coremod.entity.citizen.no.foodquality",
+                 "com.minecolonies.coremod.entity.citizen.no.foodquality.urgent" -> {
+                text = playerName + " promised " + name + " better food in the dining hall.";
+                about = Promise.About.FOOD;
+                days = 0;
+            }
+            default -> {
+                return;
+            }
+        }
+        String id = DIALOG + inquiry;
+        List<Promise> list = data.promises.computeIfAbsent(key(citizen), k -> new ArrayList<>());
+        if (list.stream().anyMatch(p -> p.isOpen() && id.equals(p.requestId()))
+                || list.stream().filter(Promise::isOpen).count() >= MAX_OPEN) {
+            return;
+        }
+        long now = now(citizen.getColony());
+        list.add(new Promise(data.nextId++, player.getUUID(), playerName, text, about, now, days > 0 ? now + days * DAY : 0,
+                Promise.Status.OPEN, 0, needUnmet(citizen, about), false, id));
+        data.playerNames.put(player.getUUID(), playerName);
+        data.setDirty();
+        player.displayClientMessage(Component.translatable("livingcolonists.promise.made", name), true);
+        LivingColonists.LOGGER.info("{} wrote down a promise from a dialog: {}", name, text);
+    }
+
+    /** Every open promise players made to colonists of the colony, in the order the colony digest numbers them. */
+    public List<Owned> openInColony(IColony colony) {
+        List<Owned> open = new ArrayList<>();
+        if (data == null) {
+            return open;
+        }
+        String prefix = colony.getID() + ":";
+        data.promises.forEach((key, list) -> {
+            if (key.startsWith(prefix)) {
+                int citizenId = Integer.parseInt(key.substring(prefix.length()));
+                list.stream().filter(Promise::isOpen).forEach(p -> open.add(new Owned(citizenId, p)));
+            }
+        });
+        open.sort(java.util.Comparator.comparingLong(owned -> owned.promise().id()));
+        return open;
+    }
+
+    /** The open promises of the colony numbered for the character model, with whom each was made to. */
+    public static String numberedInColony(IColony colony, List<Owned> open, long now) {
+        if (open.isEmpty()) {
+            return "(none)";
+        }
+        List<String> lines = new ArrayList<>();
+        for (int i = 0; i < open.size(); i++) {
+            Promise promise = open.get(i).promise();
+            ICitizenData citizen = colony.getCitizenManager().getCivilian(open.get(i).citizenId());
+            String to = citizen == null ? "?" : citizen.getName();
+            String when = promise.due() == 0 ? "no deadline" : now > promise.due() ? "overdue" : "due later";
+            lines.add((i + 1) + ". " + promise.text() + " (to " + to + ", " + when + ")");
+        }
+        return String.join("\n", lines);
+    }
+
+    /**
+     * Applies what the character model wrote down about a colony conversation: promises players made
+     * to a named colonist, and open promises the chat says were kept, broken or let off.
+     */
+    public void applyColony(MinecraftServer server, IColony colony, Digests.Digest digest, List<Owned> numbered) {
+        if (data == null) {
+            return;
+        }
+        long now = now(colony);
+        for (Digests.Resolution resolution : digest.resolutions()) {
+            if (resolution.number() < 1 || resolution.number() > numbered.size()) {
+                continue;
+            }
+            Owned owned = numbered.get(resolution.number() - 1);
+            ICitizenData citizen = colony.getCitizenManager().getCivilian(owned.citizenId());
+            if (citizen != null) {
+                resolve(citizen, owned.promise().id(), switch (resolution.kind()) {
+                    case "kept" -> Promise.Status.KEPT;
+                    case "broken" -> Promise.Status.BROKEN;
+                    default -> Promise.Status.CANCELLED;
+                }, now);
+            }
+        }
+        List<ICitizenData> citizens = colony.getCitizenManager().getCitizens();
+        for (Digests.ColonyPromise made : digest.colonyPromises()) {
+            ICitizenData citizen = byName(citizens, made.colonist());
+            UUID player = playerByName(server, made.player());
+            if (citizen == null || player == null) {
+                continue;
+            }
+            List<Promise> list = data.promises.computeIfAbsent(key(citizen), k -> new ArrayList<>());
+            if (list.stream().filter(Promise::isOpen).count() >= MAX_OPEN) {
+                continue;
+            }
+            Promise.About about = Promise.About.of(made.about());
+            long due = made.days() > 0 ? now + Math.min(made.days(), MAX_DUE_DAYS) * DAY : 0;
+            String playerName = data.playerNames.getOrDefault(player, made.player());
+            list.add(new Promise(data.nextId++, player, playerName, Digests.cleanFact(made.text()), about, now, due,
+                    Promise.Status.OPEN, 0, needUnmet(citizen, about), false, ""));
+            LivingColonists.LOGGER.info("{} wrote down a promise from the colony chat: {}", citizen.getName(), made.text());
+        }
+        data.setDirty();
+    }
+
+    /** A player by the name colonists know them by (or their nickname): online first, then those seen before. */
+    private UUID playerByName(MinecraftServer server, String name) {
+        String wanted = name.strip();
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (naming.apply(player).equalsIgnoreCase(wanted) || player.getGameProfile().getName().equalsIgnoreCase(wanted)) {
+                data.playerNames.put(player.getUUID(), naming.apply(player));
+                return player.getUUID();
+            }
+        }
+        return data.playerNames.entrySet().stream().filter(e -> e.getValue().equalsIgnoreCase(wanted))
+                .map(Map.Entry::getKey).findFirst().orElse(null);
+    }
+
     /** Promises tied to colony requests close when the request is delivered or cancelled. */
     private void watchRequests(MinecraftServer server) {
         for (Map.Entry<String, List<Promise>> entry : List.copyOf(data.promises.entrySet())) {
@@ -196,7 +375,7 @@ public final class BondsService {
                 continue;
             }
             for (Promise promise : List.copyOf(entry.getValue())) {
-                if (!promise.isOpen() || promise.requestId().isEmpty()) {
+                if (!promise.isOpen() || promise.requestId().isEmpty() || promise.requestId().startsWith(DIALOG)) {
                     continue;
                 }
                 IRequest<?> request = request(colony, new StandardToken(UUID.fromString(promise.requestId())));
@@ -390,7 +569,7 @@ public final class BondsService {
         LivingColonists.LOGGER.info("{} noticed a promise came true ({}): {}", citizen.getName(), how, promise.text());
         ServerPlayer maker = server.getPlayerList().getPlayer(promise.maker());
         if (maker != null) {
-            maker.sendSystemMessage(Component.translatable("livingcolonists.promise.kept", citizen.getName()));
+            maker.displayClientMessage(Component.translatable("livingcolonists.promise.kept", citizen.getName()), true);
         }
     }
 
@@ -399,7 +578,7 @@ public final class BondsService {
         LivingColonists.LOGGER.info("A promise to {} lapsed as {}: {}", citizen.getName(), status, promise.text());
         ServerPlayer maker = server.getPlayerList().getPlayer(promise.maker());
         if (maker != null && status == Promise.Status.BROKEN) {
-            maker.sendSystemMessage(Component.translatable("livingcolonists.promise.broken", citizen.getName()));
+            maker.displayClientMessage(Component.translatable("livingcolonists.promise.broken", citizen.getName()), true);
         }
     }
 

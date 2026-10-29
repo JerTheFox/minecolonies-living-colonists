@@ -18,8 +18,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Notes which button a player pressed in a colonist's request dialog, so "I will work on it!" can
- * become a promise. Only reads; MineColonies handles the answer as before. MineColonies has no
+ * Notes which button a player pressed in a colonist's dialog (a request for an item, or a plain one
+ * like "please build a hospital"), so "I will work on it!" can become a promise. Only reads; MineColonies handles the answer as before. MineColonies has no
  * event for this, and the answer can't be told from the outside afterwards.
  */
 @Mixin(value = CitizenData.class, remap = false)
@@ -31,7 +31,7 @@ public abstract class CitizenDataMixin {
     @Inject(method = "onResponseTriggered", at = @At("HEAD"), remap = false)
     private void livingcolonists$noteResponse(Component key, int responseId, Player player, CallbackInfo ci) {
         IInteractionResponseHandler handler = citizenChatOptions.get(key);
-        if (!(handler instanceof RequestInteractionAccessor request)) {
+        if (handler == null) {
             return;
         }
         List<Component> responses = handler.getPossibleResponses();
@@ -39,6 +39,11 @@ public abstract class CitizenDataMixin {
                 || !(responses.get(responseId).getContents() instanceof TranslatableContents button)) {
             return;
         }
-        RequestResponses.fire((ICitizenData) (Object) this, request.livingcolonists$token(), button.getKey(), player);
+        ICitizenData citizen = (ICitizenData) (Object) this;
+        if (handler instanceof RequestInteractionAccessor request) {
+            RequestResponses.fire(citizen, request.livingcolonists$token(), button.getKey(), player);
+        } else if (handler.getInquiry() != null && handler.getInquiry().getContents() instanceof TranslatableContents inquiry) {
+            RequestResponses.fireDialog(citizen, inquiry.getKey(), button.getKey(), player);
+        }
     }
 }

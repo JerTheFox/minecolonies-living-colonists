@@ -71,6 +71,8 @@ public final class MemoryService {
      * and sometimes ran out of the usual 2000, leaving an empty answer.
      */
     private static final int DIGEST_TOKENS = 8000;
+    /** Facts shown in a reply prompt at most: the most important ones. */
+    private static final int MEMORIES_SHOWN = 20;
     private static final int MAX_PRIVATE_FACTS = 5;
     private static final int MAX_COLONY_FACTS = 4;
 
@@ -137,7 +139,7 @@ public final class MemoryService {
 
     /** The colonist's facts as a prompt block; empty when they remember nothing or memory is off. */
     public String memories(ICitizenData citizen) {
-        return Digests.memories(facts(citizen), now(citizen.getColony()));
+        return Digests.memories(Digests.mostImportant(facts(citizen), MEMORIES_SHOWN), now(citizen.getColony()));
     }
 
     /** Facts the colonist still remembers, oldest first. */
@@ -310,12 +312,17 @@ public final class MemoryService {
         values.put("where", "the colony's group chat, where players and colonists talk. Most of it is chatter: write down "
                 + "only news, plans, decisions and promises, not who joked, teased or asked what");
         values.put("known", known(participants));
-        values.put("rules", prompts.get(PromptLibrary.MEMORY_COLONISTS));
+        List<BondsService.Owned> open = bonds.openInColony(colony);
+        values.put("rules", Templates.render(prompts.get(PromptLibrary.MEMORY_COLONISTS),
+                Map.of("promises", BondsService.numberedInColony(colony, open, now))));
         List<Integer> participantIds = participants.stream().map(ICitizenData::getId).toList();
         return request(server, key, transcript, values, lines, MAX_COLONY_FACTS, colony, participants, Fact.COLONY_CHAT,
-                (current, digest) -> bonds.noteColonists(current, participantIds.stream()
-                        .map(id -> current.getCitizenManager().getCivilian(id)).filter(Objects::nonNull).toList(),
-                        digest.colonists()));
+                (current, digest) -> {
+                    bonds.noteColonists(current, participantIds.stream()
+                            .map(id -> current.getCitizenManager().getCivilian(id)).filter(Objects::nonNull).toList(),
+                            digest.colonists());
+                    bonds.applyColony(server, current, digest, open);
+                });
     }
 
     /**

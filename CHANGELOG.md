@@ -7,6 +7,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Promises made in the colony chat to a named colonist ("Idris, I'll bring you diamonds in ten minutes") are written down too, and closed when the chat shows they were kept.
+- "I will work on it!" in a colonist's plain dialogs is a promise as well: a hospital or a cure, a workplace upgrade, a warehouse, a guard tower near home or work (closed by themselves when it happens), better or more varied food. Dialogs with nothing to promise, like a full chest or the rain, are skipped.
 - "I will work on it!" in a colonist's request dialog (a builder asking for a pickaxe) is a promise due in one Minecraft day: kept when the request is delivered, by anyone; dropped without blame if the colony cancels it; cancelling it yourself counts as breaking it only once it is overdue. A small read-only mixin into MineColonies' citizen data notes the button, since MineColonies sends no event for it.
 - Colonists talk like ordinary people rather than eager helpers: short lines, no forced cheer, praise or a question at the end of every line; each colonist has a mood for the day (calm, tired, irritable, distracted, bored, gloomy or in a good mood), worse moods more often when they are unhappy.
 - Newborns stay out of conversations for a day unless named, and children talk like children.
@@ -71,6 +73,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- "Kept your promise" and "waited in vain" notices show above the hotbar, like "will remember your promise", instead of in chat.
+- A reply prompt carries at most twenty of a colonist's facts, the most important ones, instead of all of them.
 - Colony conversations no longer circle one joke for the whole day: a new conversation sees only a couple of lines from before it, and after a few lines colonists change the subject more often.
 - Colony conversations leave fewer, more useful facts in memory: news, plans, decisions and promises, not banter.
 - A reply cut off by the token limit no longer ends mid-word in chat: only its finished sentences go out, and replies get more room for the model's reasoning.

@@ -17,6 +17,9 @@ public final class Digests {
     private static final Pattern SECRET_MARK = Pattern.compile("\\s*\\(secret\\)\\s*[.!]?\\s*$", Pattern.CASE_INSENSITIVE);
     private static final Pattern LINE = Pattern.compile("^\\s*[-*•]?\\s*(\\d{1,3})\\s*\\|\\s*(.+?)\\s*$");
 
+    private static final Pattern COLONY_PROMISE = Pattern.compile(
+            "^\\s*[-*•]?\\s*promise\\s*\\|\\s*([^|]+?)\\s*\\|\\s*([^|]+?)\\s*\\|\\s*(\\d{1,3})\\s*\\|\\s*([A-Za-z]+)\\s*\\|\\s*(.+?)\\s*$",
+            Pattern.CASE_INSENSITIVE);
     private static final Pattern PROMISE = Pattern.compile(
             "^\\s*[-*•]?\\s*promise\\s*\\|\\s*(\\d{1,3})\\s*\\|\\s*([A-Za-z]+)\\s*\\|\\s*(.+?)\\s*$", Pattern.CASE_INSENSITIVE);
     private static final Pattern RESOLUTION = Pattern.compile(
@@ -50,9 +53,13 @@ public final class Digests {
     public record ColonistBond(boolean friendly, String first, String second, String note) {
     }
 
+    /** A promise a player made to a named colonist in the colony chat. */
+    public record ColonyPromise(String player, String colonist, int days, String about, String text) {
+    }
+
     /** Everything the character model wrote down about a conversation. */
     public record Digest(List<Entry> facts, List<NewPromise> promises, List<Resolution> resolutions,
-                         List<Conduct> conduct, List<ColonistBond> colonists) {
+                         List<Conduct> conduct, List<ColonistBond> colonists, List<ColonyPromise> colonyPromises) {
     }
 
     private Digests() {
@@ -73,9 +80,15 @@ public final class Digests {
         List<Resolution> resolutions = new ArrayList<>();
         List<Conduct> conduct = new ArrayList<>();
         List<ColonistBond> colonists = new ArrayList<>();
+        List<ColonyPromise> colonyPromises = new ArrayList<>();
         for (String line : text.split("\\R")) {
             Matcher matcher;
-            if ((matcher = COLONISTS.matcher(line)).matches()) {
+            if ((matcher = COLONY_PROMISE.matcher(line)).matches()) {
+                if (colonyPromises.size() < MAX_PROMISES) {
+                    colonyPromises.add(new ColonyPromise(matcher.group(1), matcher.group(2),
+                            Integer.parseInt(matcher.group(3)), matcher.group(4), matcher.group(5)));
+                }
+            } else if ((matcher = COLONISTS.matcher(line)).matches()) {
                 if (colonists.size() < MAX_COLONIST_BONDS) {
                     colonists.add(new ColonistBond(matcher.group(1).equalsIgnoreCase("friendly"), matcher.group(2),
                             matcher.group(3), matcher.group(4)));
@@ -98,7 +111,22 @@ public final class Digests {
                 }
             }
         }
-        return new Digest(facts, promises, resolutions, conduct, colonists);
+        return new Digest(facts, promises, resolutions, conduct, colonists, colonyPromises);
+    }
+
+    /**
+     * At most {@code max} facts for the prompt: the most important, the newest of equals, kept in
+     * their order. A colonist may remember dozens; all of them in every reply cost tokens and pull
+     * the talk back to old trivia.
+     */
+    public static List<Fact> mostImportant(List<Fact> facts, int max) {
+        if (facts.size() <= max) {
+            return facts;
+        }
+        java.util.Set<Fact> keep = new java.util.HashSet<>(facts.stream()
+                .sorted(java.util.Comparator.comparingInt(Fact::importance).thenComparingLong(Fact::created).reversed())
+                .limit(max).toList());
+        return facts.stream().filter(keep::contains).toList();
     }
 
     /** The facts as a prompt block, oldest first, with when and where each was heard; empty without facts. */
