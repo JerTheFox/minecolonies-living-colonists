@@ -56,6 +56,8 @@ import net.minecraft.server.level.ServerPlayer;
 public final class ColonyThreads {
     /** Colony chat lines shown to the model. */
     private static final int TRANSCRIPT_LINES = 12;
+    /** Lines from before the conversation began, shown for context. */
+    private static final int EARLIER_LINES = 2;
     /** Colony threads go twice as slowly as a private reply, so players can read along. */
     private static final int THREAD_PACE = 2;
     /** A thread with no line for this long (one minute) is over. */
@@ -77,7 +79,10 @@ public final class ColonyThreads {
     private final Typing typing;
     private final BondsService bonds;
     private final Random random = new Random();
+    private long currentTick;
     private final Map<Integer, Thread> threads = new HashMap<>();
+    /** Colonists who don't join conversations unless named, until a server tick: newborns. Key as {@link TalkService#key}. */
+    private final Map<Long, Long> hushed = new HashMap<>();
     private final PriorityQueue<Scheduled> scheduled = new PriorityQueue<>(Comparator.comparingLong(Scheduled::tick));
 
     private record Scheduled(long tick, Runnable action) {
@@ -98,6 +103,8 @@ public final class ColonyThreads {
         /** The game locale an event thread is written in, from the players around. */
         String language;
         long lastEventTick = Long.MIN_VALUE / 2;
+        /** World game time the conversation began; earlier chat lines are only context. */
+        long startTime;
     }
 
     ColonyThreads(TalkService talk, PromptLibrary prompts, MemoryService memory, PersonalityService personalities,
@@ -113,11 +120,13 @@ public final class ColonyThreads {
 
     public void clear() {
         threads.clear();
+        hushed.clear();
         scheduled.clear();
     }
 
     public void tick(MinecraftServer server) {
         long now = server.getTickCount();
+        currentTick = now;
         while (!scheduled.isEmpty() && scheduled.peek().tick() <= now) {
             scheduled.poll().action().run();
         }
@@ -154,6 +163,12 @@ public final class ColonyThreads {
      *
      * @param what the event in English, like "Anna Becker has died."
      */
+    /** These colonists join conversations only when named, for {@code ticks}: a newborn doesn't chat. */
+    public void hush(IColony colony, List<Integer> citizenIds, long untilTick) {
+        citizenIds.forEach(id -> hushed.put(TalkService.key(colony.getID(), id), untilTick));
+        hushed.values().removeIf(until -> until < currentTick);
+    }
+
     public boolean startEvent(MinecraftServer server, IColony colony, String what, List<Integer> preferred) {
         Collection<ServerPlayer> audience = TalkService.colonyAudience(server, colony, null);
         if (Config.level(Module.CONVERSATION) == Level.OFF || audience.isEmpty()) {
@@ -167,6 +182,7 @@ public final class ColonyThreads {
         Thread thread = threads.computeIfAbsent(colony.getID(), id -> new Thread());
         thread.version++;
         typing.stopColony(server, colony.getID());
+        thread.startTime = colony.getWorld().getGameTime();
         thread.colonistTurns = 0;
         thread.addressed.clear();
         thread.participants.clear();
@@ -186,7 +202,11 @@ public final class ColonyThreads {
         MinecraftServer server = player.server;
         output.playerSaid(player, colony.getName(), message, TalkService.colonyAudience(server, colony, player));
         memory.rememberColony(colony, TalkService.playerName(player), message);
-        Thread thread = threads.computeIfAbsent(colony.getID(), id -> new Thread());
+        Thread thread = threads.computeIfAbsent(colony.getID(), id -> {
+            Thread fresh = new Thread();
+            fresh.startTime = colony.getWorld().getGameTime();
+            return fresh;
+        });
         thread.version++;
         typing.stopColony(server, colony.getID());
         thread.colonistTurns = 0;
@@ -261,7 +281,7 @@ public final class ColonyThreads {
         boolean answeringPlayer = thread.colonistTurns == 0 && opening == null;
         ServerPlayer player = thread.lastPlayer == null ? null : server.getPlayerList().getPlayer(thread.lastPlayer);
         Map<String, String> values = talk.promptValues(citizen, player);
-        values.put("transcript", transcriptText(colony));
+        values.put("transcript", transcriptText(colony, thread));
         String along = bonds.colonistBlock(citizen, chatPeople(colony, thread));
         if (!along.isEmpty()) {
             values.put("bonds", values.get("bonds").isEmpty() ? along : values.get("bonds") + "\n" + along);
@@ -271,7 +291,8 @@ public final class ColonyThreads {
                 : "Join the conversation: answer what was said last, or add something of your own. Don't repeat what "
                         + "others already said. People chat about more than their troubles: unless the talk is about the "
                         + "colony's problems, don't steer back to them; if you bring up something new, keep it light, like "
-                        + "work, a neighbour, the weather, a plan or a joke.");
+                        + "work, a neighbour, the weather, a plan or a joke. Don't come back to a joke or a topic that "
+                        + "has already come up several times: move on.");
         if (opening != null) {
             values.put("turn", "Something just happened in the colony: " + opening + " Bring it up in the colony chat "
                     + "in your own way, as someone who just heard of it. Write in the language of the game locale "
@@ -281,7 +302,7 @@ public final class ColonyThreads {
         if (!answeringPlayer && opening == null) {
             values.put("initiative", Prompts.chatInitiative(random));
             values.put("turn", values.get("turn") + " " + Prompts.stance(Bonds.contrarinessWith(contrariness(citizen),
-                    bonds.rapport(colony, citizen.getId(), thread.lastSpeaker)), random));
+                    bonds.rapport(colony, citizen.getId(), thread.lastSpeaker)), thread.colonistTurns, random));
             rumor = memory.rumor(citizen, null, random);
             rumor.ifPresent(fact -> values.put("initiative", values.get("initiative") + " " + Prompts.gossip(fact.text())));
         }
@@ -349,6 +370,10 @@ public final class ColonyThreads {
         for (int i = 0; i < citizens.size(); i++) {
             ICitizenData citizen = citizens.get(i);
             double weight = talkativeness(citizen) * Bonds.replyWeight(bonds.rapport(colony, citizen.getId(), thread.lastSpeaker));
+            if (hushed.getOrDefault(TalkService.key(colony.getID(), citizen.getId()), Long.MIN_VALUE) > currentTick
+                    && !(named.isPresent() && named.getAsInt() == i)) {
+                continue;
+            }
             if (named.isPresent() && named.getAsInt() == i) {
                 weight *= NAMED_BONUS;
             }
@@ -398,11 +423,24 @@ public final class ColonyThreads {
         return family;
     }
 
-    private String transcriptText(IColony colony) {
+    /**
+     * The lines of this conversation, with a couple of earlier ones for context: with the whole
+     * day's chat in view, a new conversation kept circling the topics of an old one.
+     */
+    private String transcriptText(IColony colony, Thread thread) {
         List<MemoryLine> lines = memory.colonyChat(colony);
-        return lines.stream().skip(Math.max(0, lines.size() - TRANSCRIPT_LINES))
-                .map(line -> "<" + line.speaker() + "> " + line.text())
-                .collect(Collectors.joining("\n"));
+        List<MemoryLine> current = lines.stream().filter(line -> line.gameTime() >= thread.startTime).toList();
+        List<MemoryLine> earlier = lines.stream().filter(line -> line.gameTime() < thread.startTime).toList();
+        StringBuilder text = new StringBuilder();
+        if (!earlier.isEmpty()) {
+            text.append("(earlier)\n");
+            earlier.stream().skip(Math.max(0, earlier.size() - EARLIER_LINES))
+                    .forEach(line -> text.append('<').append(line.speaker()).append("> ").append(line.text()).append('\n'));
+            text.append("(this conversation)\n");
+        }
+        current.stream().skip(Math.max(0, current.size() - TRANSCRIPT_LINES))
+                .forEach(line -> text.append('<').append(line.speaker()).append("> ").append(line.text()).append('\n'));
+        return text.toString().strip();
     }
 
     /**

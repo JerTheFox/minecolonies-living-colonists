@@ -287,9 +287,15 @@ public final class TalkService {
         MinecraftServer server = citizen.getColony().getWorld().getServer();
         Map<String, String> values = new HashMap<>(personalities.promptValues(citizen, server));
         values.put("name", speaker.name());
+        if (citizen.isChild()) {
+            values.put("character", (values.getOrDefault("character", "") + "\nYou are still a child: talk like one, "
+                    + "simply and in short sentences, about the things children care about.").strip());
+        }
         values.put("job", speaker.job());
         values.put("colony", speaker.colony());
         values.put("time", Prompts.timeOfDay(citizen.getColony().getWorld().getDayTime()));
+        values.put("mood", Prompts.mood(citizen.getId(), citizen.getColony().getWorld().getDayTime() / 24000,
+                happiness(citizen)));
         values.put("situation", perception.situation(citizen));
         values.put("memories", memory.memories(citizen));
         values.put("initiative", Prompts.initiative(random));
@@ -304,6 +310,15 @@ public final class TalkService {
             values.put("addressing", "");
         }
         return values;
+    }
+
+    /** MineColonies' happiness, 0 to 10; middling if it can't be read. */
+    private static double happiness(ICitizenData citizen) {
+        try {
+            return citizen.getCitizenHappinessHandler().getHappiness(citizen.getColony(), citizen);
+        } catch (RuntimeException e) {
+            return 6;
+        }
     }
 
     /** The name colonists know this player by. */

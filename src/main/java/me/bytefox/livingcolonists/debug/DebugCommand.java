@@ -96,6 +96,9 @@ public final class DebugCommand {
                                 (context, citizen) -> showBonds(context.getSource(), bonds, citizen)))
                         .then(withColonist(Commands.literal("clear"),
                                 (context, citizen) -> clearBonds(context.getSource(), bonds, citizen))))
+                .then(withColonist(Commands.literal("relations"),
+                        (context, citizen) -> showRelations(context.getSource(), bonds, citizen))
+                        .then(Commands.literal("all").executes(context -> showColonyRelations(context.getSource(), bonds))))
                 .then(Commands.literal("thread").executes(context -> showThread(context.getSource(), talk))
                         .then(Commands.literal("break").executes(context -> breakThread(context.getSource(), talk)))));
     }
@@ -273,6 +276,41 @@ public final class DebugCommand {
         source.sendSuccess(() -> Component.translatable("livingcolonists.debug.memory.cleared", citizen.getName(), dropped),
                 true);
         return dropped;
+    }
+
+    private static int showRelations(CommandSourceStack source, BondsService bonds, ICitizenData citizen) {
+        Map<String, Relation> relations = bonds.colonistRelations(citizen);
+        if (relations.isEmpty()) {
+            source.sendSuccess(() -> Component.translatable("livingcolonists.debug.relations.empty", citizen.getName()), false);
+            return 0;
+        }
+        source.sendSuccess(() -> Component.translatable("livingcolonists.debug.relations.title", citizen.getName()), false);
+        relations.forEach((other, relation) -> source.sendSuccess(() -> Component.literal(relationLine(other, relation)), false));
+        return relations.size();
+    }
+
+    private static int showColonyRelations(CommandSourceStack source, BondsService bonds) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        IColony colony = IColonyManager.getInstance().getColonyByPosFromWorld(player.level(), player.blockPosition());
+        if (colony == null) {
+            throw failure("livingcolonists.colony.outside");
+        }
+        Map<String, Relation> relations = bonds.colonyRelations(colony);
+        if (relations.isEmpty()) {
+            source.sendSuccess(() -> Component.translatable("livingcolonists.debug.relations.empty", colony.getName()), false);
+            return 0;
+        }
+        relations.forEach((pair, relation) -> source.sendSuccess(() -> Component.literal(relationLine(pair, relation)), false));
+        return relations.size();
+    }
+
+    /** "  Anna: rapport 14 + backed her up; - snapped at her". */
+    private static String relationLine(String who, Relation relation) {
+        StringBuilder line = new StringBuilder("  ").append(who).append(": rapport ").append(relation.rapport());
+        for (Relation.Note note : relation.notes()) {
+            line.append(note.kind() ? "\n    + " : "\n    - ").append(note.text());
+        }
+        return line.toString();
     }
 
     private static int showThread(CommandSourceStack source, TalkService talk) throws CommandSyntaxException {

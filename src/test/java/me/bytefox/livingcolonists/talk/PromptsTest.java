@@ -57,6 +57,39 @@ class PromptsTest {
     }
 
     @Test
+    void aLongerThreadMovesOnToAnotherTopicMoreOften() {
+        java.util.Random random = new java.util.Random(7);
+        int early = 0;
+        int late = 0;
+        for (int i = 0; i < 4000; i++) {
+            early += Prompts.stance(0.35, 1, random).contains("Change the subject") ? 1 : 0;
+            late += Prompts.stance(0.35, 4, random).contains("Change the subject") ? 1 : 0;
+        }
+        assertTrue(late > 2 * early, early + " vs " + late);
+    }
+
+    @Test
+    void aColonistKeepsOneMoodForTheWholeDay() {
+        assertEquals(Prompts.mood(5, 12, 6.0), Prompts.mood(5, 12, 6.0));
+        java.util.Set<String> moods = new java.util.HashSet<>();
+        for (int day = 0; day < 60; day++) {
+            moods.add(Prompts.mood(5, day, 6.0));
+        }
+        assertTrue(moods.size() >= 4, moods.toString());
+    }
+
+    @Test
+    void unhappyColonistsAreInABadMoodMoreOften() {
+        int unhappy = 0;
+        int happy = 0;
+        for (int citizen = 0; citizen < 2000; citizen++) {
+            unhappy += Prompts.mood(citizen, 3, 2.0).contains("irritable") || Prompts.mood(citizen, 3, 2.0).contains("gloomy") ? 1 : 0;
+            happy += Prompts.mood(citizen, 3, 9.5).contains("irritable") || Prompts.mood(citizen, 3, 9.5).contains("gloomy") ? 1 : 0;
+        }
+        assertTrue(unhappy > 2 * happy, unhappy + " vs " + happy);
+    }
+
+    @Test
     void cleansBackgrounds() {
         assertEquals("Grumbles a lot. Works hard.", Prompts.cleanBio("  §6Grumbles a lot.\n\nWorks   hard.  "));
         assertEquals(Prompts.MAX_BIO_LENGTH, Prompts.cleanBio("a".repeat(5000)).length());

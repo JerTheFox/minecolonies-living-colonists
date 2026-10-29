@@ -40,8 +40,18 @@ public final class ColonyEvents {
     private final Map<Integer, Set<IColonyEventDescription>> seen = new HashMap<>();
     private final Map<Integer, Boolean> raided = new HashMap<>();
 
-    /** What happened and who is likeliest to bring it up first. */
-    private record Event(String what, List<Integer> speakers) {
+    /** A newborn stays out of conversations, unless named, for this long (one Minecraft day). */
+    private static final long NEWBORN_QUIET_TICKS = 24000;
+
+    /**
+     * What happened and who is likeliest to bring it up first.
+     *
+     * @param newborns colonists just born, who don't chat yet
+     */
+    private record Event(String what, List<Integer> speakers, List<Integer> newborns) {
+        Event(String what, List<Integer> speakers) {
+            this(what, speakers, List.of());
+        }
     }
 
     public ColonyEvents(ColonyThreads threads) {
@@ -64,6 +74,11 @@ public final class ColonyEvents {
             try {
                 List<Event> events = newEvents(colony);
                 // One conversation at a time: the first event that gets one; the rest pass unremarked.
+                for (Event event : events) {
+                    if (!event.newborns().isEmpty()) {
+                        threads.hush(colony, event.newborns(), server.getTickCount() + NEWBORN_QUIET_TICKS);
+                    }
+                }
                 for (Event event : events) {
                     if (threads.startEvent(server, colony, event.what(), event.speakers())) {
                         break;
@@ -118,7 +133,7 @@ public final class ColonyEvents {
                 List<Integer> parents = parentsOf(colony, name);
                 String family = names(colony, parents);
                 return new Event("A baby, " + name + ", was just born in the colony" + (family.isEmpty() ? "" : " to " + family)
-                        + ".", parents);
+                        + ".", parents, named(colony, name));
             }
             if (type.contains("grown")) {
                 return new Event(name + " has just grown up and is an adult now.", named(colony, name));

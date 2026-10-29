@@ -7,6 +7,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Colonists talk like ordinary people rather than eager helpers: short lines, no forced cheer, praise or a question at the end of every line; each colonist has a mood for the day (calm, tired, irritable, distracted, bored, gloomy or in a good mood), worse moods more often when they are unhappy.
+- Newborns stay out of conversations for a day unless named, and children talk like children.
+- `/lcdebug relations [name|all]` shows how colonists get along with each other.
 - "Idris is typing..." while a colonist writes a line you will see, shown after a reading pause; the dots jump in a small wave now and then.
 - Colonists' names are shown in their colony's color; the arrow and addressee of private lines too.
 - Colony and private lines are written to the server log, like player chat.
@@ -67,6 +70,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- Colony conversations no longer circle one joke for the whole day: a new conversation sees only a couple of lines from before it, and after a few lines colonists change the subject more often.
+- Colony conversations leave fewer, more useful facts in memory: news, plans, decisions and promises, not banter.
 - A reply cut off by the token limit no longer ends mid-word in chat: only its finished sentences go out, and replies get more room for the model's reasoning.
 - A newcomer who got the id of a colonist who died or left no longer inherits their character, memories, promises and relations (MineColonies reuses ids); a deleted colony's data is dropped too.
 - An archetype file with a value of the wrong type is skipped with a warning instead of failing the server start.

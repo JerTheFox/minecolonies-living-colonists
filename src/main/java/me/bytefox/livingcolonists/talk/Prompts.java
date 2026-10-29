@@ -9,6 +9,12 @@ public final class Prompts {
     public static final double INITIATIVE_CHANCE = 0.25;
     /** The same while colonists chat among themselves, where worries would snowball. */
     public static final double CHAT_INITIATIVE_CHANCE = 0.1;
+    /** From this many colonist lines into a thread, the subject changes more often. */
+    public static final int TOPIC_FATIGUE_TURNS = 3;
+    /** How often a colonist changes the subject once a thread runs long. */
+    public static final double CHANGE_TOPIC_CHANCE = 0.4;
+    private static final String STEER = "Change the subject to something new that interests you and nobody has mentioned; "
+            + "don't refer to the last topic at all.";
     /** Longest background kept, in characters. */
     public static final int MAX_BIO_LENGTH = 1200;
     /** Longest reply that goes to chat, in characters. */
@@ -88,6 +94,43 @@ public final class Prompts {
                 + "keep vague who told you: " + fact;
     }
 
+    /** Moods a colonist may be in for a day, with how common each is for a colonist of middling happiness. */
+    private static final String[] MOODS = {
+            "in a good mood", "calm, nothing special", "tired and not very talkative",
+            "irritable: little things get on your nerves", "distracted, thinking about your own business",
+            "bored", "gloomy"};
+    private static final double[] MOOD_WEIGHTS = {15, 30, 15, 10, 15, 10, 5};
+
+    /**
+     * The colonist's mood for this Minecraft day. Models are cheerful and eager by default, so the
+     * code rolls a mood: the same all day for one colonist, worse moods more often when they are
+     * unhappy (happiness is MineColonies' 0 to 10).
+     */
+    public static String mood(int citizenId, long day, double happiness) {
+        double[] weights = MOOD_WEIGHTS.clone();
+        if (happiness < 5) {
+            weights[0] *= 0.4;
+            weights[3] *= 2.5;
+            weights[6] *= 3;
+        } else if (happiness > 8) {
+            weights[0] *= 2;
+            weights[3] *= 0.5;
+            weights[6] *= 0.3;
+        }
+        double total = 0;
+        for (double weight : weights) {
+            total += weight;
+        }
+        double roll = new Random(citizenId * 1_000_003L + day * 7_919L).nextDouble() * total;
+        for (int i = 0; i < weights.length; i++) {
+            roll -= weights[i];
+            if (roll < 0) {
+                return MOODS[i];
+            }
+        }
+        return MOODS[1];
+    }
+
     /** Whether a reply means the colonist chose to say nothing: "[silence]", or the same in other words. */
     public static boolean isSilence(String text) {
         String bare = text.replaceAll("[\\[\\]().*_\\s]", "").toLowerCase(Locale.ROOT);
@@ -107,6 +150,17 @@ public final class Prompts {
      * with a twist of one's own, change the subject, or ask someone a question.
      */
     public static String stance(double contrariness, Random random) {
+        return stance(contrariness, 0, random);
+    }
+
+    /**
+     * The same, {@code turns} colonist lines into a thread: from the third line on, models keep
+     * circling one joke or topic, so the subject changes much more often.
+     */
+    public static String stance(double contrariness, int turns, Random random) {
+        if (turns >= TOPIC_FATIGUE_TURNS && random.nextDouble() < CHANGE_TOPIC_CHANCE) {
+            return STEER;
+        }
         double roll = random.nextDouble();
         if (roll < contrariness) {
             return "This time you don't agree with what was said last: say why, in your own way, and stand by your view.";
@@ -116,7 +170,7 @@ public final class Prompts {
             return "You partly agree, but add your own angle or a doubt; don't just echo the others.";
         }
         if (rest < 0.75) {
-            return "Steer the talk somewhere else that interests you.";
+            return STEER;
         }
         return "Ask someone in the chat a question, by name.";
     }

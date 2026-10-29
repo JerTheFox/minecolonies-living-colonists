@@ -100,7 +100,7 @@ Colonists remember. Recent lines of each private talk and of the colony chat go 
 
 Promises count. Promise a colonist planks by tomorrow or a house within a week, and they remember the deadline, remind you when it has passed, thank you when you keep it and hold it against you when you don't. A promised home, job, treatment or building is noticed by itself once it happens. Colonists also remember whether you are kind or rude to them, and the colony talks: a player rude to several colonists gets a reputation.
 
-Colonists have their own life too. They remember who they get along with and who gets on their nerves, so the same pairs side with each other or argue. When something happens in the colony (a death, a birth, a child growing up, a newcomer, a finished building, a raid) and players are around, a colonist brings it up in the colony chat and others join in. A promise past its deadline gets you a private reminder from the colonist waiting for it.
+Colonists talk like ordinary people, not eager helpers: short lines, no forced cheer, and a mood for the day that the code rolls (calm, tired, irritable, distracted, bored, gloomy or in a good mood; unhappy colonists are in a bad mood more often). Colonists have their own life too. They remember who they get along with and who gets on their nerves, so the same pairs side with each other or argue. When something happens in the colony (a death, a birth, a child growing up, a newcomer, a finished building, a raid) and players are around, a colonist brings it up in the colony chat and others join in. A promise past its deadline gets you a private reminder from the colonist waiting for it.
 
 Prompt templates live in `config/livingcolonists/prompts/`: `reply-private.txt`, `reply-colony.txt`, `character.txt`, `background.txt`, `route-colony.txt`, `bio.txt`, `bio-child.txt`, `bio-grownup.txt`, `memory.txt`, `memory-player.txt`, `memory-colonists.txt`. Placeholders like `{name}`, `{job}`, `{character}` and `{situation}` are filled in by the mod. Files you haven't edited follow the mod's defaults when it updates; delete a file to restore its default. `/lcdebug reload` rereads both folders.
 
@@ -118,6 +118,7 @@ Prompt templates live in `config/livingcolonists/prompts/`: `reply-private.txt`,
 | `/lcdebug prompt [name]` | the last prompt sent for this colonist's reply |
 | `/lcdebug memory show\|clear [name]` | a colonist's facts and private talks, or make them forget |
 | `/lcdebug bonds show\|clear [name]` | a colonist's promises from players and how each player treats them, or forget them |
+| `/lcdebug relations [name\|all]` | how a colonist, or every pair in the colony you stand in, gets along |
 | `/lcdebug memory digest` | write down every conversation waiting to be noted, right away |
 | `/lcdebug thread [break]` | the colony chat thread and its recent lines; `break` stops it |
 | `/lcdebug reload` | reread archetypes and prompts |

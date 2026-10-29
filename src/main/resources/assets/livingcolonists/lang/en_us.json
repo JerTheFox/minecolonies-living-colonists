@@ -68,5 +68,7 @@
   "livingcolonists.typing.two": "%s and %s are typing",
   "livingcolonists.typing.many": "%s and %s more are typing",
   "livingcolonists.limit.daily": "The colonists have talked enough for today: the server's daily limit is reached.",
-  "livingcolonists.limit.hourly": "You've talked to the colonists a lot this hour. Try again in %s min."
+  "livingcolonists.limit.hourly": "You've talked to the colonists a lot this hour. Try again in %s min.",
+  "livingcolonists.debug.relations.empty": "%s has no history with other colonists yet.",
+  "livingcolonists.debug.relations.title": "How %s gets along with others:"
 }

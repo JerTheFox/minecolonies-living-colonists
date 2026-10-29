@@ -72,7 +72,7 @@ public final class MemoryService {
      */
     private static final int DIGEST_TOKENS = 8000;
     private static final int MAX_PRIVATE_FACTS = 5;
-    private static final int MAX_COLONY_FACTS = 8;
+    private static final int MAX_COLONY_FACTS = 4;
 
     private final LlmClient client;
     private final PromptLibrary prompts;
@@ -307,7 +307,8 @@ public final class MemoryService {
         Map<String, String> values = new HashMap<>();
         values.put("who", "the colonists who took part (" + participants.stream()
                 .map(citizen -> citizen.getName() + ", " + jobOf(citizen)).collect(Collectors.joining("; ")) + ")");
-        values.put("where", "the colony's group chat, where players and colonists talk");
+        values.put("where", "the colony's group chat, where players and colonists talk. Most of it is chatter: write down "
+                + "only news, plans, decisions and promises, not who joked, teased or asked what");
         values.put("known", known(participants));
         values.put("rules", prompts.get(PromptLibrary.MEMORY_COLONISTS));
         List<Integer> participantIds = participants.stream().map(ICitizenData::getId).toList();

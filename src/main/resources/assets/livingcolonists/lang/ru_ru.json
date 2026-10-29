@@ -68,5 +68,7 @@
   "livingcolonists.typing.two": "%s и %s печатают",
   "livingcolonists.typing.many": "%s и ещё %s печатают",
   "livingcolonists.limit.daily": "На сегодня колонисты наговорились: дневной лимит сервера исчерпан.",
-  "livingcolonists.limit.hourly": "Вы много говорили с колонистами за этот час. Попробуйте через %s мин."
+  "livingcolonists.limit.hourly": "Вы много говорили с колонистами за этот час. Попробуйте через %s мин.",
+  "livingcolonists.debug.relations.empty": "У %s пока нет истории с другими колонистами.",
+  "livingcolonists.debug.relations.title": "Как %s ладит с другими:"
 }

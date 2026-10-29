@@ -432,6 +432,50 @@ public final class BondsService {
         return lines.isEmpty() ? "" : "How you get along with people in this chat:\n" + String.join("\n", lines);
     }
 
+    /** How the colonist gets along with each colonist they have a history with, by name, for {@code /lcdebug}. */
+    public Map<String, Relation> colonistRelations(ICitizenData citizen) {
+        Map<String, Relation> out = new java.util.TreeMap<>();
+        if (data == null) {
+            return out;
+        }
+        IColony colony = citizen.getColony();
+        String prefix = colony.getID() + ":";
+        data.colonists.forEach((key, relation) -> {
+            String[] parts = key.split(":");
+            if (!key.startsWith(prefix)) {
+                return;
+            }
+            int first = Integer.parseInt(parts[1]);
+            int second = Integer.parseInt(parts[2]);
+            int other = first == citizen.getId() ? second : second == citizen.getId() ? first : -1;
+            ICitizenData data = other < 0 ? null : colony.getCitizenManager().getCivilian(other);
+            if (data != null) {
+                out.put(data.getName(), relation);
+            }
+        });
+        return out;
+    }
+
+    /** Every pair of colonists of the colony with a history, as "A + B", for {@code /lcdebug}. */
+    public Map<String, Relation> colonyRelations(IColony colony) {
+        Map<String, Relation> out = new java.util.TreeMap<>();
+        if (data == null) {
+            return out;
+        }
+        String prefix = colony.getID() + ":";
+        data.colonists.forEach((key, relation) -> {
+            String[] parts = key.split(":");
+            if (key.startsWith(prefix)) {
+                ICitizenData first = colony.getCitizenManager().getCivilian(Integer.parseInt(parts[1]));
+                ICitizenData second = colony.getCitizenManager().getCivilian(Integer.parseInt(parts[2]));
+                if (first != null && second != null) {
+                    out.put(first.getName() + " + " + second.getName(), relation);
+                }
+            }
+        });
+        return out;
+    }
+
     /** By full name, then by first name, ignoring case. */
     private static ICitizenData byName(List<ICitizenData> citizens, String name) {
         String wanted = name.strip();
