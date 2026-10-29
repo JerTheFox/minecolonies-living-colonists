@@ -14,4 +14,10 @@ public interface SpeechOutput {
 
     /** A colonist said something. */
     void colonistSaid(Speaker speaker, String text, Collection<ServerPlayer> recipients);
+
+    /** A player wrote to a colonist privately; only that player sees it. */
+    void playerWhispered(ServerPlayer player, Speaker colonist, String text);
+
+    /** A colonist answered a player privately; only that player sees it. */
+    void colonistWhispered(Speaker colonist, ServerPlayer player, String text);
 }

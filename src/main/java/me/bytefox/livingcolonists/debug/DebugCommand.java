@@ -21,6 +21,8 @@ import me.bytefox.livingcolonists.Config;
 import me.bytefox.livingcolonists.behaviour.Module;
 import me.bytefox.livingcolonists.behaviour.Profile;
 import me.bytefox.livingcolonists.llm.UsageStats;
+import me.bytefox.livingcolonists.memory.MemoryLine;
+import me.bytefox.livingcolonists.memory.MemoryService;
 import me.bytefox.livingcolonists.perception.PerceptionService;
 import me.bytefox.livingcolonists.personality.Archetype;
 import me.bytefox.livingcolonists.personality.Personality;
@@ -54,7 +56,7 @@ public final class DebugCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, UsageStats stats,
                                 PersonalityService personalities, PromptLibrary prompts, TalkService talk,
-                                Conversations conversations, PerceptionService perception) {
+                                Conversations conversations, PerceptionService perception, MemoryService memory) {
         DebugCommand.conversations = conversations;
         DebugCommand.perception = perception;
         dispatcher.register(Commands.literal("lcdebug")
@@ -77,7 +79,14 @@ public final class DebugCommand {
                         (context, citizen) -> regenerateBio(context.getSource(), personalities, citizen))))
                 .then(withColonist(Commands.literal("prompt"),
                         (context, citizen) -> showPrompt(context.getSource(), talk, citizen)))
-                .then(Commands.literal("reload").executes(context -> reload(context.getSource(), personalities, prompts))));
+                .then(Commands.literal("reload").executes(context -> reload(context.getSource(), personalities, prompts)))
+                .then(Commands.literal("memory")
+                        .then(withColonist(Commands.literal("show"),
+                                (context, citizen) -> showMemory(context.getSource(), memory, citizen)))
+                        .then(withColonist(Commands.literal("clear"),
+                                (context, citizen) -> clearMemory(context.getSource(), memory, citizen))))
+                .then(Commands.literal("thread").executes(context -> showThread(context.getSource(), talk))
+                        .then(Commands.literal("break").executes(context -> breakThread(context.getSource(), talk)))));
     }
 
     private interface ColonistAction {
@@ -183,6 +192,54 @@ public final class DebugCommand {
         }
         source.sendSuccess(() -> Component.literal(prompt.get()), false);
         return 1;
+    }
+
+    private static int showMemory(CommandSourceStack source, MemoryService memory, ICitizenData citizen) {
+        Map<String, List<MemoryLine>> talks = memory.privateTalks(citizen);
+        if (talks.isEmpty()) {
+            source.sendSuccess(() -> Component.translatable("livingcolonists.debug.memory.empty", citizen.getName()), false);
+            return 0;
+        }
+        talks.forEach((player, lines) -> {
+            source.sendSuccess(() -> Component.translatable("livingcolonists.debug.memory.talk", citizen.getName(),
+                    player, lines.size()), false);
+            for (MemoryLine line : lines) {
+                source.sendSuccess(() -> Component.literal("  <" + line.speaker() + "> " + line.text()), false);
+            }
+        });
+        return talks.size();
+    }
+
+    private static int clearMemory(CommandSourceStack source, MemoryService memory, ICitizenData citizen) {
+        int dropped = memory.forget(citizen);
+        source.sendSuccess(() -> Component.translatable("livingcolonists.debug.memory.cleared", citizen.getName(), dropped),
+                true);
+        return dropped;
+    }
+
+    private static int showThread(CommandSourceStack source, TalkService talk) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        IColony colony = IColonyManager.getInstance().getColonyByPosFromWorld(player.level(), player.blockPosition());
+        if (colony == null) {
+            throw failure("livingcolonists.colony.outside");
+        }
+        source.sendSuccess(() -> Component.literal(talk.threads().state(colony)), false);
+        for (MemoryLine line : talk.threads().transcript(colony)) {
+            source.sendSuccess(() -> Component.literal("  <" + line.speaker() + "> " + line.text()), false);
+        }
+        return 1;
+    }
+
+    private static int breakThread(CommandSourceStack source, TalkService talk) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        IColony colony = IColonyManager.getInstance().getColonyByPosFromWorld(player.level(), player.blockPosition());
+        if (colony == null) {
+            throw failure("livingcolonists.colony.outside");
+        }
+        boolean stopped = talk.threads().stop(colony);
+        source.sendSuccess(() -> Component.translatable(stopped ? "livingcolonists.debug.thread.stopped"
+                : "livingcolonists.debug.thread.none"), true);
+        return stopped ? 1 : 0;
     }
 
     private static int reload(CommandSourceStack source, PersonalityService personalities, PromptLibrary prompts) {

@@ -21,6 +21,11 @@ public record ChatMessage(String role, String content, List<ToolCall> toolCalls,
         return new ChatMessage("user", content, List.of(), null);
     }
 
+    /** An earlier line of the colonist, from memory. */
+    public static ChatMessage assistant(String content) {
+        return new ChatMessage("assistant", content, List.of(), null);
+    }
+
     /** The model's turn that asked for functions, sent back with their results. */
     public static ChatMessage assistantCalling(List<ToolCall> calls) {
         return new ChatMessage("assistant", "", calls, null);

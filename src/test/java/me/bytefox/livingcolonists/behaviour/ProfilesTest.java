@@ -17,6 +17,8 @@ class ProfilesTest {
         assertEquals(Level.LOW, Profile.MINIMAL.level(Module.PERCEPTION));
         assertEquals(Level.DEFAULT, Profile.DEFAULT.level(Module.MEMORY));
         assertEquals(Level.HIGH, Profile.IMMERSIVE.level(Module.MEMORY));
+        assertEquals(Level.OFF, Profile.MINIMAL.level(Module.CONVERSATION));
+        assertEquals(Level.HIGH, Profile.IMMERSIVE.level(Module.CONVERSATION));
         for (Profile profile : Profile.values()) {
             for (Module module : Module.values()) {
                 profile.level(module);

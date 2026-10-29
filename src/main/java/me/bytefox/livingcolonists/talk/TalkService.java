@@ -9,7 +9,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.OptionalInt;
 import java.util.PriorityQueue;
 import java.util.Random;
 import java.util.Set;
@@ -20,13 +19,13 @@ import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.colony.jobs.IJob;
-import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
 import com.minecolonies.api.colony.permissions.IPermissions;
 import com.minecolonies.api.colony.permissions.Rank;
+import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
 import me.bytefox.livingcolonists.Config;
+import me.bytefox.livingcolonists.LivingColonists;
 import me.bytefox.livingcolonists.behaviour.ColonyAccess;
 import me.bytefox.livingcolonists.behaviour.Cooldown;
-import me.bytefox.livingcolonists.LivingColonists;
 import me.bytefox.livingcolonists.llm.ChatMessage;
 import me.bytefox.livingcolonists.llm.ChatResult;
 import me.bytefox.livingcolonists.llm.LlmClient;
@@ -34,6 +33,8 @@ import me.bytefox.livingcolonists.llm.LlmSettings;
 import me.bytefox.livingcolonists.llm.ModelRole;
 import me.bytefox.livingcolonists.llm.ToolCall;
 import me.bytefox.livingcolonists.llm.ToolSpec;
+import me.bytefox.livingcolonists.memory.MemoryLine;
+import me.bytefox.livingcolonists.memory.MemoryService;
 import me.bytefox.livingcolonists.perception.ColonyTools;
 import me.bytefox.livingcolonists.perception.PerceptionService;
 import me.bytefox.livingcolonists.personality.PersonalityService;
@@ -47,7 +48,9 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Players talk to colonists, privately or to the whole colony, and the language model answers.
+ * Private talks between a player and a colonist, and the shared machinery for any colonist line:
+ * prompt values, the request with colony functions, and helpers. Colony chat lives in
+ * {@link ColonyThreads}.
  *
  * <p>Threading: requests start on the server thread, which copies everything the prompt needs
  * into strings and ids. HTTP runs on the HTTP client's threads. Results come back to the server
@@ -56,13 +59,6 @@ import net.minecraft.world.phys.Vec3;
  * so they can answer even when their entity is in an unloaded chunk.</p>
  */
 public final class TalkService {
-    public enum Audience {
-        /** Only the player who wrote sees the conversation. */
-        PRIVATE,
-        /** Every player inside the colony's borders sees it. */
-        COLONY
-    }
-
     /** Rounds of colony function calls per reply before the model has to answer. */
     private static final int MAX_TOOL_ROUNDS = 2;
     /** How far away a colonist can be addressed with the command, in blocks. */
@@ -74,49 +70,56 @@ public final class TalkService {
     private final PromptLibrary prompts;
     private final PersonalityService personalities;
     private final PerceptionService perception;
+    private final MemoryService memory;
     private final ColonyTools tools;
+    private final ColonyThreads threads;
     private final SpeechOutput output = new ChatSpeechOutput();
     private final Random random = new Random();
-    public TalkService(LlmClient client, PromptLibrary prompts, PersonalityService personalities,
-                       PerceptionService perception) {
-        this.client = client;
-        this.prompts = prompts;
-        this.personalities = personalities;
-        this.perception = perception;
-        this.tools = new ColonyTools(perception);
-    }
 
     /** The last reply prompt of each colonist, as {@link #key}, for {@code /lcdebug prompt}. Server thread only. */
     private final Map<Long, String> lastPrompts = new HashMap<>();
     /** Pause between one player's messages to colonists. Server thread only. */
     private final Cooldown cooldown = new Cooldown();
-    /** Colonists waiting for a reply, as {@link #key}. Server thread only. */
+    /** Colonists waiting for a private reply, as {@link #key}. Server thread only. */
     private final Set<Long> thinking = new HashSet<>();
-    /** Colonists' lines waiting for their turn (see {@link LinePacing}). Server thread only. */
+    /** Private replies waiting for their typing pause (see {@link LinePacing}). Server thread only. */
     private final PriorityQueue<PendingLine> pending = new PriorityQueue<>(Comparator.comparingLong(PendingLine::tick));
-    /** Per colony id, the tick when the next colony-wide line may go out. Server thread only. */
-    private final Map<Integer, Long> colonyFreeAt = new HashMap<>();
 
-    private record PendingLine(long tick, ResourceKey<Level> dimension, Speaker speaker, UUID playerId, Audience audience,
-                               String text) {
+    private record PendingLine(long tick, ResourceKey<Level> dimension, Speaker speaker, UUID playerId, String text) {
     }
 
-    /** Sends lines whose turn has come. Server tick. */
+    public TalkService(LlmClient client, PromptLibrary prompts, PersonalityService personalities,
+                       PerceptionService perception, MemoryService memory) {
+        this.client = client;
+        this.prompts = prompts;
+        this.personalities = personalities;
+        this.perception = perception;
+        this.memory = memory;
+        this.tools = new ColonyTools(perception);
+        this.threads = new ColonyThreads(this, prompts, memory, personalities, output);
+    }
+
+    public ColonyThreads threads() {
+        return threads;
+    }
+
+    LlmClient client() {
+        return client;
+    }
+
+    /** Sends private replies whose turn has come and moves colony threads on. Server tick. */
     public void tick(MinecraftServer server) {
         long now = server.getTickCount();
         while (!pending.isEmpty() && pending.peek().tick() <= now) {
             PendingLine line = pending.poll();
             ICitizenData citizen = resolve(line.dimension(), line.speaker().colonyId(), line.speaker().citizenId());
-            ServerPlayer author = server.getPlayerList().getPlayer(line.playerId());
-            if (citizen == null) {
-                continue;
-            }
-            if (line.audience() == Audience.COLONY) {
-                output.colonistSaid(line.speaker(), line.text(), colonyAudience(server, citizen.getColony(), author));
-            } else if (author != null) {
-                output.colonistSaid(line.speaker(), line.text(), List.of(author));
+            ServerPlayer player = server.getPlayerList().getPlayer(line.playerId());
+            if (citizen != null && player != null) {
+                output.colonistWhispered(line.speaker(), player, line.text());
+                memory.rememberPrivate(citizen, player.getUUID(), line.speaker().name(), line.text());
             }
         }
+        threads.tick(server);
     }
 
     /** The last prompt sent for this colonist's reply, if any. */
@@ -129,7 +132,7 @@ public final class TalkService {
         cooldown.clear();
         thinking.clear();
         pending.clear();
-        colonyFreeAt.clear();
+        threads.clear();
     }
 
     /** {@code /lc talk}: a private word with the colonist under the crosshair or the nearest one. */
@@ -143,108 +146,122 @@ public final class TalkService {
         return 1;
     }
 
+    /** A player's private message to one colonist; the colonist remembers the talk. */
     public void sayPrivately(ServerPlayer player, ICitizenData citizen, String message) {
         if (!admit(player, citizen.getColony()) || settings(player).isEmpty()) {
             return;
         }
-        output.playerSaid(player, message, List.of(player));
-        ask(player, citizen, message, Audience.PRIVATE, player.server.getTickCount());
-    }
-
-    /**
-     * A message to the whole colony: a colonist named in it answers; otherwise a short request asks
-     * the model whom it addresses (a profession, several names), and with nobody in particular two
-     * or three random colonists answer.
-     */
-    public void sayToColony(ServerPlayer player, IColony colony, String message) {
-        if (!admit(player, colony)) {
-            return;
-        }
-        Optional<LlmSettings> settings = settings(player);
-        if (settings.isEmpty()) {
-            return;
-        }
-        long sentAt = player.server.getTickCount();
-        List<ICitizenData> citizens = List.copyOf(colony.getCitizenManager().getCitizens());
-        output.playerSaid(player, message, colonyAudience(player.server, colony, player));
-        if (citizens.isEmpty()) {
-            player.sendSystemMessage(Component.translatable("livingcolonists.talk.nobody"));
-            return;
-        }
-        OptionalInt named = Addressing.mentioned(message, citizens.stream().map(ICitizenData::getName).toList());
-        if (named.isPresent()) {
-            ask(player, citizens.get(named.getAsInt()), message, Audience.COLONY, sentAt);
-            return;
-        }
-
-        List<ColonyRouter.Member> roster = new ArrayList<>();
-        List<Integer> ids = new ArrayList<>();
-        for (ICitizenData citizen : citizens) {
-            Speaker speaker = speakerOf(citizen);
-            roster.add(new ColonyRouter.Member(speaker.name(), speaker.job()));
-            ids.add(citizen.getId());
-        }
-        MinecraftServer server = player.server;
-        UUID playerId = player.getUUID();
-        ResourceKey<Level> dimension = colony.getDimension();
-        int colonyId = colony.getID();
-        client.complete(settings.get(), ColonyRouter.prompt(prompts.get(PromptLibrary.ROUTE_COLONY), roster, message)).thenAccept(result -> server.execute(() -> {
-            List<Integer> addressed = List.of();
-            if (result instanceof ChatResult.Reply reply) {
-                addressed = ColonyRouter.parse(reply.text(), ids.size());
-            } else if (result instanceof ChatResult.Failure failure) {
-                LivingColonists.LOGGER.warn("Could not work out whom a colony message addresses: {}", failure.reason());
-            }
-            ServerPlayer author = server.getPlayerList().getPlayer(playerId);
-            for (int index : ColonyRouter.choose(addressed, ids.size(), random)) {
-                ICitizenData citizen = resolve(dimension, colonyId, ids.get(index));
-                if (citizen != null) {
-                    ask(author, citizen, message, Audience.COLONY, sentAt);
-                }
-            }
-        }));
-    }
-
-    /**
-     * One colonist answers one message. {@code player} may be null if they left meanwhile.
-     *
-     * @param sentAt server tick when the player sent the message
-     */
-    private void ask(ServerPlayer player, ICitizenData citizen, String message, Audience audience, long sentAt) {
-        Optional<LlmSettings> settings = Config.llmSettings(ModelRole.CHAT);
-        if (player == null || settings.isEmpty()) {
-            return;
-        }
         Speaker speaker = speakerOf(citizen);
         long key = key(speaker.colonyId(), speaker.citizenId());
-        if (!thinking.add(key)) {
-            if (audience == Audience.PRIVATE) {
-                player.sendSystemMessage(Component.translatable("livingcolonists.talk.busy", speaker.name()));
-            }
+        if (thinking.contains(key)) {
+            player.sendSystemMessage(Component.translatable("livingcolonists.talk.busy", speaker.name()));
             return;
         }
-        IColony colony = citizen.getColony();
-        Map<String, String> values = new HashMap<>(personalities.promptValues(citizen, player.server));
+        output.playerWhispered(player, speaker, message);
+        List<MemoryLine> history = memory.privateTalk(citizen, player.getUUID());
+        String playerName = playerName(player);
+        memory.rememberPrivate(citizen, player.getUUID(), playerName, message);
+
+        List<ChatMessage> messages = new ArrayList<>();
+        for (MemoryLine line : history) {
+            messages.add(line.speaker().equals(speaker.name()) ? ChatMessage.assistant(line.text()) : ChatMessage.user(line.text()));
+        }
+        messages.add(ChatMessage.user(message));
+        Map<String, String> values = promptValues(citizen, player);
+        String prompt = Templates.render(prompts.get(PromptLibrary.REPLY_PRIVATE), values);
+
+        thinking.add(key);
+        MinecraftServer server = player.server;
+        UUID playerId = player.getUUID();
+        ResourceKey<Level> dimension = citizen.getColony().getDimension();
+        long earliest = server.getTickCount() + LinePacing.gap(random);
+        generate(citizen, prompt, messages, true, server, result -> {
+            thinking.remove(key);
+            ServerPlayer author = server.getPlayerList().getPlayer(playerId);
+            Optional<String> text = lineOf(speaker, result);
+            if (text.isEmpty()) {
+                if (author != null && result instanceof ChatResult.Failure) {
+                    author.sendSystemMessage(Component.translatable("livingcolonists.talk.failed", speaker.name()));
+                }
+                return;
+            }
+            long at = LinePacing.slot(server.getTickCount(), earliest + LinePacing.typingTicks(text.get().length()), 0);
+            pending.add(new PendingLine(at, dimension, speaker, playerId, text.get()));
+        });
+    }
+
+    /** A message to the whole colony goes into its conversation thread. */
+    public void sayToColony(ServerPlayer player, IColony colony, String message) {
+        if (admit(player, colony) && settings(player).isPresent()) {
+            threads.onPlayerMessage(player, colony, message);
+        }
+    }
+
+    /**
+     * Values for reply templates: who the colonist is, what they know, and how to treat the player.
+     *
+     * @param player the player being answered; null when colonists talk among themselves
+     */
+    Map<String, String> promptValues(ICitizenData citizen, ServerPlayer player) {
+        Speaker speaker = speakerOf(citizen);
+        MinecraftServer server = citizen.getColony().getWorld().getServer();
+        Map<String, String> values = new HashMap<>(personalities.promptValues(citizen, server));
         values.put("name", speaker.name());
         values.put("job", speaker.job());
         values.put("colony", speaker.colony());
-        values.put("time", Prompts.timeOfDay(colony.getWorld().getDayTime()));
-        Map<String, List<String>> names = Config.playerNames();
-        values.put("player", PlayerNames.name(player.getGameProfile().getName(), names));
-        values.put("addressing", PlayerNames.addressing(player.getGameProfile().getName(), names, random));
-        values.put("initiative", Prompts.initiative(random));
+        values.put("time", Prompts.timeOfDay(citizen.getColony().getWorld().getDayTime()));
         values.put("situation", perception.situation(citizen));
-        String prompt = Templates.render(prompts.get(audience == Audience.COLONY
-                ? PromptLibrary.REPLY_COLONY : PromptLibrary.REPLY_PRIVATE), values);
-        lastPrompts.put(key, prompt);
-        MinecraftServer server = player.server;
-        UUID playerId = player.getUUID();
-        ResourceKey<Level> dimension = colony.getDimension();
-        long earliest = sentAt + LinePacing.gap(random);
-        List<ToolSpec> offered = Config.toolsEnabled() ? tools.specs() : List.of();
-        converse(settings.get(), List.of(ChatMessage.system(prompt), ChatMessage.user(message)), offered, 0, server,
-                dimension, speaker, new StringBuilder(), result -> deliver(server, dimension, speaker, playerId,
-                        audience, earliest, result));
+        values.put("initiative", Prompts.initiative(random));
+        if (player != null) {
+            Map<String, List<String>> names = Config.playerNames();
+            values.put("player", PlayerNames.name(player.getGameProfile().getName(), names));
+            values.put("addressing", PlayerNames.addressing(player.getGameProfile().getName(), names, random));
+        } else {
+            values.put("player", "a player");
+            values.put("addressing", "");
+        }
+        return values;
+    }
+
+    /** The name colonists know this player by. */
+    static String playerName(ServerPlayer player) {
+        return PlayerNames.name(player.getGameProfile().getName(), Config.playerNames());
+    }
+
+    /**
+     * Asks the chat model for one colonist line. {@code done} gets the result on the server thread.
+     *
+     * @param withTools offer the colony functions, if they are enabled
+     */
+    void generate(ICitizenData citizen, String prompt, List<ChatMessage> conversation, boolean withTools,
+                  MinecraftServer server, Consumer<ChatResult> done) {
+        Optional<LlmSettings> settings = Config.llmSettings(ModelRole.CHAT);
+        if (settings.isEmpty()) {
+            done.accept(new ChatResult.Failure("no API key", false));
+            return;
+        }
+        Speaker speaker = speakerOf(citizen);
+        lastPrompts.put(key(speaker.colonyId(), speaker.citizenId()), prompt);
+        List<ChatMessage> messages = new ArrayList<>();
+        messages.add(ChatMessage.system(prompt));
+        messages.addAll(conversation);
+        List<ToolSpec> offered = withTools && Config.toolsEnabled() ? tools.specs() : List.of();
+        converse(settings.get(), messages, offered, 0, server, citizen.getColony().getDimension(), speaker,
+                new StringBuilder(), done);
+    }
+
+    /** The cleaned line of a successful reply; empty for failures, empty replies and silence. */
+    static Optional<String> lineOf(Speaker speaker, ChatResult result) {
+        return switch (result) {
+            case ChatResult.Reply reply -> {
+                String text = Prompts.cleanReply(reply.text(), speaker.name());
+                yield text.isEmpty() || Prompts.isSilence(text) ? Optional.empty() : Optional.of(text);
+            }
+            case ChatResult.Failure failure -> {
+                LivingColonists.LOGGER.warn("{} could not answer: {}", speaker.name(), failure.reason());
+                yield Optional.empty();
+            }
+        };
     }
 
     /**
@@ -277,41 +294,6 @@ public final class TalkService {
             trace.setLength(0);
             converse(settings, next, offered, round + 1, server, dimension, speaker, trace, done);
         }));
-    }
-
-    /** @param earliest the reply waits at least until this tick, as if the colonist were typing */
-    private void deliver(MinecraftServer server, ResourceKey<Level> dimension, Speaker speaker, UUID playerId,
-                         Audience audience, long earliest, ChatResult result) {
-        thinking.remove(key(speaker.colonyId(), speaker.citizenId()));
-        ServerPlayer player = server.getPlayerList().getPlayer(playerId);
-        ICitizenData citizen = resolve(dimension, speaker.colonyId(), speaker.citizenId());
-        if (citizen == null) {
-            return;
-        }
-        switch (result) {
-            case ChatResult.Reply reply -> {
-                String text = Prompts.cleanReply(reply.text(), speaker.name());
-                if (text.isEmpty()) {
-                    LivingColonists.LOGGER.warn("{} gave an empty reply", speaker.name());
-                    return;
-                }
-                long now = server.getTickCount();
-                long at;
-                if (audience == Audience.COLONY) {
-                    at = LinePacing.slot(now, earliest, colonyFreeAt.getOrDefault(speaker.colonyId(), 0L));
-                    colonyFreeAt.put(speaker.colonyId(), at + LinePacing.gap(random));
-                } else {
-                    at = LinePacing.slot(now, earliest, 0L);
-                }
-                pending.add(new PendingLine(at, dimension, speaker, playerId, audience, text));
-            }
-            case ChatResult.Failure failure -> {
-                LivingColonists.LOGGER.warn("{} could not answer: {}", speaker.name(), failure.reason());
-                if (player != null) {
-                    player.sendSystemMessage(Component.translatable("livingcolonists.talk.failed", speaker.name()));
-                }
-            }
-        }
     }
 
     /** Whether the player may talk to this colony's colonists right now; tells them if not. */
@@ -360,7 +342,7 @@ public final class TalkService {
     }
 
     /** Players inside the colony's borders, plus the author wherever they are. */
-    private static Collection<ServerPlayer> colonyAudience(MinecraftServer server, IColony colony, ServerPlayer author) {
+    static Collection<ServerPlayer> colonyAudience(MinecraftServer server, IColony colony, ServerPlayer author) {
         Set<ServerPlayer> players = new LinkedHashSet<>();
         if (author != null) {
             players.add(author);
@@ -412,7 +394,7 @@ public final class TalkService {
                 : ListenerPicker.pick(candidates, look.x, look.y, look.z, range, TARGET_RADIUS);
     }
 
-    private static long key(int colonyId, int citizenId) {
+    static long key(int colonyId, int citizenId) {
         return ((long) colonyId << 32) | (citizenId & 0xFFFFFFFFL);
     }
 }

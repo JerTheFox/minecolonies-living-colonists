@@ -7,6 +7,8 @@ import java.util.Random;
 public final class Prompts {
     /** Share of replies in which a colonist may bring up one of their own worries unasked. */
     public static final double INITIATIVE_CHANCE = 0.25;
+    /** The same while colonists chat among themselves, where worries would snowball. */
+    public static final double CHAT_INITIATIVE_CHANCE = 0.1;
     /** Longest background kept, in characters. */
     public static final int MAX_BIO_LENGTH = 1200;
     /** Longest reply that goes to chat, in characters. */
@@ -75,6 +77,39 @@ public final class Prompts {
         return random.nextDouble() < INITIATIVE_CHANCE
                 ? "Answer what the player said. If it fits, you may add one thing that bothers you, in passing."
                 : "Answer only what the player said. Don't bring up your work, materials or needs unless the player asks about them.";
+    }
+
+    /** Whether a reply means the colonist chose to say nothing: "[silence]", or the same in other words. */
+    public static boolean isSilence(String text) {
+        String bare = text.replaceAll("[\\[\\]().*_\\s]", "").toLowerCase(Locale.ROOT);
+        return bare.isEmpty() || bare.equals("silence") || bare.equals("молчание") || bare.equals("тишина") || bare.equals("…");
+    }
+
+    /** {@link #initiative} for colonists chatting among themselves: worries come up more rarely. */
+    public static String chatInitiative(Random random) {
+        return random.nextDouble() < CHAT_INITIATIVE_CHANCE
+                ? "If it fits, you may mention one thing that bothers you, in passing."
+                : "Don't bring up your own work, materials or needs unless the conversation is about them.";
+    }
+
+    /**
+     * How a colonist reacts in a colony conversation this time. Models drift into agreeing with
+     * everyone, so the code picks: disagree (as often as the archetype's contrariness), agree but
+     * with a twist of one's own, change the subject, or ask someone a question.
+     */
+    public static String stance(double contrariness, Random random) {
+        double roll = random.nextDouble();
+        if (roll < contrariness) {
+            return "This time you don't agree with what was said last: say why, in your own way, and stand by your view.";
+        }
+        double rest = (roll - contrariness) / (1 - contrariness);
+        if (rest < 0.45) {
+            return "You partly agree, but add your own angle or a doubt; don't just echo the others.";
+        }
+        if (rest < 0.75) {
+            return "Steer the talk somewhere else that interests you.";
+        }
+        return "Ask someone in the chat a question, by name.";
     }
 
     /** A background as one paragraph of plain text, without formatting codes, within a sane length. */

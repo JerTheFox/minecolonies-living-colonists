@@ -3,6 +3,7 @@
   "prompt": "Work comes first. You talk about the job, get impatient with idle chatter and respect people who pull their weight.",
   "weight": 10,
   "talkativeness": 0.4,
+  "contrariness": 0.35,
   "skills": {
     "Stamina": 0.6,
     "Strength": 0.4,

@@ -1,6 +1,7 @@
 {
   "key.categories.livingcolonists": "Living Colonists",
-  "key.livingcolonists.talk": "Говорить с колонистом",
+  "key.livingcolonists.colony": "Написать колонии",
+  "key.livingcolonists.talk": "Лично с колонистом",
   "key.livingcolonists.focus": "Фокус на колонисте (без чата)",
   "key.livingcolonists.mode": "Чат: игроки / колония",
 
@@ -49,5 +50,12 @@
   "livingcolonists.debug.bio.busy": "Сейчас нельзя написать биографию для %s: она уже пишется, нет API-ключа или модуль характера выключен.",
   "livingcolonists.debug.prompt.none": "%s ещё никому не отвечал с запуска сервера.",
   "livingcolonists.debug.reload": "Перечитано архетипов: %s, промптов: %s.",
-  "livingcolonists.debug.world_not_ready": "Мир не загружен."
+  "livingcolonists.debug.world_not_ready": "Мир не загружен.",
+  "livingcolonists.debug.memory.empty": "%s не помнит личных разговоров.",
+  "livingcolonists.debug.memory.talk": "%s и игрок %s, реплик: %s",
+  "livingcolonists.debug.memory.cleared": "%s забыл(а) личных разговоров: %s.",
+  "livingcolonists.debug.thread.stopped": "Обсуждение в чате колонии остановлено.",
+  "livingcolonists.debug.thread.none": "В чате колонии сейчас нет обсуждения.",
+  "livingcolonists.partner.look_to_talk": "Посмотрите на колониста (до 16 блоков), чтобы поговорить с ним лично.",
+  "livingcolonists.partner.look_to_focus": "Посмотрите на колониста (до 16 блоков), чтобы выбрать его собеседником."
 }

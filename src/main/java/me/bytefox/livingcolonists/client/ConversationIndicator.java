@@ -40,7 +40,7 @@ final class ConversationIndicator {
     }
 
     static void render(ScreenEvent.Render.Post event) {
-        if (!(event.getScreen() instanceof ChatScreen screen)) {
+        if (!(event.getScreen() instanceof ChatScreen screen) || !ClientConversation.state().member()) {
             return;
         }
         Font font = Minecraft.getInstance().font;
@@ -56,7 +56,8 @@ final class ConversationIndicator {
     }
 
     static void click(ScreenEvent.MouseButtonPressed.Pre event) {
-        if (!(event.getScreen() instanceof ChatScreen screen) || event.getButton() != 0) {
+        if (!(event.getScreen() instanceof ChatScreen screen) || event.getButton() != 0
+                || !ClientConversation.state().member()) {
             return;
         }
         Font font = Minecraft.getInstance().font;

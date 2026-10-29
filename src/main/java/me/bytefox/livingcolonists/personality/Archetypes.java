@@ -37,7 +37,8 @@ public final class Archetypes {
             }
         }
         return new Archetype(id, name.isBlank() ? id : name, prompt.strip(),
-                Math.max(0, number(root, "weight", 1)), Math.clamp(number(root, "talkativeness", 0.5), 0, 1), skills);
+                Math.max(0, number(root, "weight", 1)), Math.clamp(number(root, "talkativeness", 0.5), 0, 1),
+                Math.clamp(number(root, "contrariness", 0.35), 0, 1), skills);
     }
 
     private static String string(JsonObject root, String key) {

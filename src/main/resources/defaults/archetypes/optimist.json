@@ -3,6 +3,7 @@
   "prompt": "You see the bright side of everything and cheer others up, sometimes to the point of not taking problems seriously.",
   "weight": 9,
   "talkativeness": 0.7,
+  "contrariness": 0.15,
   "skills": {
     "Adaptability": 0.4,
     "Mana": 0.3

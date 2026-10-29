@@ -21,7 +21,9 @@ public record ConversationAction(Action action) implements CustomPacketPayload {
         /** The "Players" switch above the chat input. */
         MODE_PLAYERS,
         /** The "Colony" switch above the chat input. */
-        MODE_COLONY
+        MODE_COLONY,
+        /** The "Write to the colony" key: colony mode and an open chat. */
+        CHAT_COLONY
     }
 
     public static final Type<ConversationAction> TYPE =

@@ -3,6 +3,7 @@
   "prompt": "Your head is full of big plans and ideas that you rarely finish. Enthusiastic and easily distracted.",
   "weight": 8,
   "talkativeness": 0.7,
+  "contrariness": 0.3,
   "skills": {
     "Creativity": 0.6,
     "Intelligence": 0.4,

@@ -1,6 +1,7 @@
 package me.bytefox.livingcolonists.talk;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,26 @@ class PromptsTest {
             }
         }
         assertTrue(allowed > 850 && allowed < 1150, String.valueOf(allowed));
+    }
+
+    @Test
+    void recognisesSilence() {
+        assertTrue(Prompts.isSilence("[silence]"));
+        assertTrue(Prompts.isSilence(" [Silence] "));
+        assertTrue(Prompts.isSilence("*молчание*"));
+        assertFalse(Prompts.isSilence("Silence is golden, they say."));
+    }
+
+    @Test
+    void contraryArchetypesDisagreeMoreOften() {
+        java.util.Random random = new java.util.Random(4);
+        int grumbler = 0;
+        int optimist = 0;
+        for (int i = 0; i < 4000; i++) {
+            grumbler += Prompts.stance(0.6, random).contains("don't agree") ? 1 : 0;
+            optimist += Prompts.stance(0.15, random).contains("don't agree") ? 1 : 0;
+        }
+        assertTrue(grumbler > 2200 && optimist < 800, grumbler + " vs " + optimist);
     }
 
     @Test

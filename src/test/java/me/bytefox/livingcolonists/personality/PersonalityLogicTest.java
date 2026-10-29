@@ -13,9 +13,9 @@ import me.bytefox.livingcolonists.prompt.Templates;
 import org.junit.jupiter.api.Test;
 
 class PersonalityLogicTest {
-    private static final Archetype BRUTE = new Archetype("brute", "Brute", "You are strong.", 10, 0.5,
+    private static final Archetype BRUTE = new Archetype("brute", "Brute", "You are strong.", 10, 0.5, 0.35,
             Map.of("Strength", 1.0, "Intelligence", -1.0));
-    private static final Archetype THINKER = new Archetype("thinker", "Thinker", "You think.", 10, 0.5,
+    private static final Archetype THINKER = new Archetype("thinker", "Thinker", "You think.", 10, 0.5, 0.35,
             Map.of("Intelligence", 1.0, "Strength", -1.0));
     private static final List<Archetype> BOTH = List.of(BRUTE, THINKER);
 

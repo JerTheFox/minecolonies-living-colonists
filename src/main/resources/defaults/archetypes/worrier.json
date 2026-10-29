@@ -3,6 +3,7 @@
   "prompt": "You worry about everything that could go wrong: raids, food, the weather. Cautious and anxious, but caring.",
   "weight": 8,
   "talkativeness": 0.6,
+  "contrariness": 0.3,
   "skills": {
     "Knowledge": 0.3,
     "Athletics": -0.4,

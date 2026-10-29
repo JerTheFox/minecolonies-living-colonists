@@ -7,5 +7,7 @@ public enum Module {
     /** What colonists know about themselves and the colony: needs, work, storage, events. */
     PERCEPTION,
     /** What colonists remember of conversations and promises. */
-    MEMORY
+    MEMORY,
+    /** How long colony chat threads run: off answers the player once, high lets colonists talk on and on. */
+    CONVERSATION
 }

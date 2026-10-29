@@ -7,6 +7,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Colony chat is a living conversation: whoever a message addresses answers first, then other colonists may join in, reply to each other or let the talk die down; talkative archetypes speak up more often, quiet ones rarely. How long threads run without players follows the new `conversation` level (up to about 16 lines on `high`). This replaces the two or three random answers.
+- Short memory: colonists remember their recent private talks with each player (how much and how long follows the `memory` level), and the colony chat keeps its recent lines.
+- Lines come one after another with a reading pause and a typing time that grows with the length of the line.
+- `/lcdebug memory show|clear [name]`, `/lcdebug thread` and `/lcdebug thread break` (stops a colony conversation) for operators.
+- Private talks are marked in chat as `<Player> → <Colonist>` and back, the arrow and addressee in gold.
+- The *Players | Colony* switch above the chat input shows only for players who belong to a colony (owner, officer or friend).
+- The private talk and focus keys say what to do when nobody is in sight.
+- Keys: **T** chats with players (and leaves colony mode or a private talk), **Y** writes to the colony, **U** talks to the colonist you look at privately; the mode switch key is unbound by default.
+- In colony conversations the mod picks how each colonist reacts: disagree (more often for contrary archetypes, set by the new `contrariness` field), agree with a twist, change the subject or ask someone a question, so threads don't collapse into everyone agreeing.
+- Retries now also cover lost connections: 3 by default, 1, 3 and 8 seconds apart; the log names the full cause of a failure.
 - Colonists can look up colony data while answering, through function calling: facts about another colonist, who fits a profession best by its primary and secondary skill, and an overview of the colony. `useTools` turns it off for providers without tool support. `/lcdebug prompt` shows the calls.
 - Colonists describe skills, moods and amounts in words instead of quoting numbers, unless asked how many.
 - `playerNames` in the config: what colonists call players instead of their nicknames, e.g. `"JerTheFox=Максим,Макс,Максик"` (most common first). Colonists use the name only now and then, not in every reply.

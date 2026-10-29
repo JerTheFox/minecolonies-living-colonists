@@ -67,7 +67,7 @@ Open `config/livingcolonists-common.toml` (it appears after the first launch), p
 | `apiKey` | empty | your API key |
 | `apiKeyEnv` | `LIVINGCOLONISTS_API_KEY` | environment variable read when `apiKey` is empty |
 | `timeoutSeconds` | `30` | how long to wait for a reply |
-| `retries` | `2` | retries after timeouts, rate limits and server errors |
+| `retries` | `3` | retries after timeouts, lost connections, rate limits and server errors |
 | `useTools` | `true` | let colonists look up colony data through function calling; turn off if your provider doesn't support tools |
 | `maxTokens` | `2000` | token limit per request, including the model's thinking |
 | `temperature` | `1.0` | higher is more varied |
@@ -80,7 +80,7 @@ The `[behaviour]` section sets how colonists behave:
 | Option | Default | Meaning |
 |---|---|---|
 | `profile` | `DEFAULT` | `MINIMAL` (orders and answers only, cheapest), `LIGHT`, `DEFAULT` or `IMMERSIVE` (colonists remember much more) |
-| `personality`, `perception`, `memory` | `profile` | override one module: `off`, `low`, `default` or `high` |
+| `personality`, `perception`, `memory`, `conversation` | `profile` | override one module: `off`, `low`, `default` or `high`; `conversation` sets how long colony chats run on their own |
 | `cooldownSeconds` | `3` | shortest time between one player's messages to colonists |
 | `playerNames` | empty | what colonists call players instead of nicknames, e.g. `["JerTheFox=Максим,Макс,Максик"]`, most common form first |
 | `membersOnly` | `true` | only the colony's owner, officers and friends may talk to its colonists; only owners and officers may give orders |
@@ -89,7 +89,7 @@ The `[behaviour]` section sets how colonists behave:
 
 Every colonist gets an archetype (grumbler, chatterbox, quiet one, gossip, workhorse, idler, dreamer, optimist, worrier, joker, thinker), picked mostly from their MineColonies skills with a share of chance, and a short background the model writes once. Children get a description of their temperament, sometimes take after a parent, and get an adult background when they grow up.
 
-Archetypes live in `config/livingcolonists/archetypes/` as JSON files: `name`, `prompt` (how the colonist behaves), `weight` (how common), `talkativeness` (0 to 1) and `skills` (skill name to affinity, e.g. `{"Strength": 0.6, "Intelligence": -0.4}`). Add a file to add an archetype, delete one to remove it; delete the folder to get the defaults back.
+Archetypes live in `config/livingcolonists/archetypes/` as JSON files: `name`, `prompt` (how the colonist behaves), `weight` (how common), `talkativeness` (0 to 1) and `contrariness` (0 to 1, how often they disagree) and `skills` (skill name to affinity, e.g. `{"Strength": 0.6, "Intelligence": -0.4}`). Add a file to add an archetype, delete one to remove it; delete the folder to get the defaults back.
 
 Colonists also know their situation from MineColonies: their job and what work they can't do, home, hunger and food, health and sickness, happiness and its causes, what their workplace waits for, the weather, the colony, a raid, and how their family and coworkers are doing. The `perception` level sets how much of it they know. From the `default` level on, colonists can also look things up while answering: facts about another colonist, who fits a profession best by its skills, and an overview of the colony. Ask "who would make a good builder?" and the answer comes from the real skills, not a guess.
 
@@ -107,18 +107,26 @@ Prompt templates live in `config/livingcolonists/prompts/`: `reply-private.txt`,
 | `/lcdebug archetype <id\|reroll> [name]` | set or re-pick an archetype |
 | `/lcdebug bio regenerate [name]` | write a new background |
 | `/lcdebug prompt [name]` | the last prompt sent for this colonist's reply |
+| `/lcdebug memory show\|clear [name]` | what a colonist remembers of private talks, or make them forget |
+| `/lcdebug thread [break]` | the colony chat thread and its recent lines; `break` stops it |
 | `/lcdebug reload` | reread archetypes and prompts |
 
 ## Usage
 
 | Key | What it does |
 |---|---|
-Colonists listen while you are inside the colony's borders. There are two ways to talk to them:
+Colonists listen while you are inside the colony's borders. Three keys cover the chat:
 
-- **The whole colony.** Switch the chat to *Colony* with **H** or with the *Players | Colony* switch above the chat input, and write as usual. Name a colonist and they answer; name a profession ("builders, when will you finish?") and those colonists answer; otherwise two or three colonists answer. Players inside the colony see the conversation.
-- **One colonist, privately.** Look at a colonist and press **Y**: the chat opens, and whatever you type goes to that colonist only, like a direct message, wherever in the colony you are. They keep working while you talk. Clicking a colonist's name in chat does the same. Press **Y** while looking at nobody, or click ✕ above the chat input, to end it.
+| Key | What it does |
+|---|---|
+| **T** | the usual chat with players (it also leaves colony mode or a private talk) |
+| **Y** | write to the whole colony |
+| **U** | talk privately to the colonist you look at |
 
-Colonists take a couple of seconds to answer, as if typing, and several answers come one after another. A third key, *Focus on colonist*, is unbound by default: it picks the colonist you look at as your partner without opening the chat. All keys can be rebound in Controls. In *Players* mode the chat works as usual.
+- **The whole colony.** Name a colonist and they answer first; name a profession ("builders, when will you finish?") and those colonists answer. Then the conversation lives on its own: others may join in, argue, answer each other or let it die down, and it can drift to another topic. Players inside the colony see it.
+- **One colonist, privately.** Whatever you type goes to that colonist only, like a direct message, wherever in the colony you are; such lines are marked `<You> → <Colonist>` in chat. They keep working while you talk, and remember your recent talks. Clicking a colonist's name in chat does the same. Press **U** while looking at nobody, or click ✕ above the chat input, to end it.
+
+For colony members (owner, officers, friends), a *Players | Colony* switch above the chat input shows where your message goes and can be clicked. Unbound by default: a key to switch the mode, and *Focus on colonist*, which picks a private partner without opening the chat. All keys can be rebound in Controls. Colonists take a moment to answer, as if reading and typing.
 
 Commands do the same for clients without the mod: `/lc talk <message>`, `/lc lock`, `/lc mode [players|colony]`.
 

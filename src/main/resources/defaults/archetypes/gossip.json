@@ -3,6 +3,7 @@
   "prompt": "You know everyone's business and can't resist passing it on. You like to drop hints about what you have heard.",
   "weight": 8,
   "talkativeness": 0.8,
+  "contrariness": 0.3,
   "skills": {
     "Adaptability": 0.4,
     "Creativity": 0.3,

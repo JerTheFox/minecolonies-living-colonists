@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 /**
  * Asynchronous client for an OpenAI-compatible chat completions API.
@@ -26,16 +27,20 @@ import java.util.concurrent.TimeUnit;
  */
 public final class LlmClient {
     /** Pauses before the first, second and later retries. */
-    public static final List<Duration> DEFAULT_BACKOFF = List.of(Duration.ofSeconds(1), Duration.ofSeconds(3));
+    public static final List<Duration> DEFAULT_BACKOFF = List.of(Duration.ofSeconds(1), Duration.ofSeconds(3),
+            Duration.ofSeconds(8));
 
     private final HttpClient http;
     private final UsageStats stats;
     private final List<Duration> backoff;
+    private final Consumer<String> log;
 
-    public LlmClient(HttpClient http, UsageStats stats, List<Duration> backoff) {
+    /** @param log where notes about retries go (the mod's log in game) */
+    public LlmClient(HttpClient http, UsageStats stats, List<Duration> backoff, Consumer<String> log) {
         this.http = http;
         this.stats = stats;
         this.backoff = List.copyOf(backoff);
+        this.log = log;
     }
 
     public CompletableFuture<ChatResult> complete(LlmSettings settings, List<ChatMessage> messages) {
@@ -57,6 +62,8 @@ public final class LlmClient {
         return once(endpoint, settings, messages, tools).thenCompose(result -> {
             if (result instanceof ChatResult.Failure failure && failure.retryable() && attempt < settings.retries()) {
                 Duration pause = backoff.get(Math.min(attempt, backoff.size() - 1));
+                log.accept("Request to " + endpoint.model() + " failed (" + failure.reason() + "), retrying in "
+                        + pause.toSeconds() + " s");
                 return CompletableFuture.runAsync(() -> { },
                                 CompletableFuture.delayedExecutor(pause.toMillis(), TimeUnit.MILLISECONDS))
                         .thenCompose(ignored -> withRetries(endpoint, settings, messages, tools, attempt + 1));
@@ -108,7 +115,13 @@ public final class LlmClient {
         if (cause instanceof HttpTimeoutException) {
             return new ChatResult.Failure("timed out after " + timeoutSeconds + " s", true);
         }
-        String reason = cause.getClass().getSimpleName() + (cause.getMessage() == null ? "" : ": " + cause.getMessage());
-        return new ChatResult.Failure(reason, cause instanceof IOException);
+        StringBuilder reason = new StringBuilder();
+        for (Throwable t = cause; t != null && reason.length() < 300; t = t.getCause()) {
+            if (!reason.isEmpty()) {
+                reason.append(" <- ");
+            }
+            reason.append(t.getClass().getSimpleName()).append(t.getMessage() == null ? "" : ": " + t.getMessage());
+        }
+        return new ChatResult.Failure(reason.toString(), cause instanceof IOException);
     }
 }

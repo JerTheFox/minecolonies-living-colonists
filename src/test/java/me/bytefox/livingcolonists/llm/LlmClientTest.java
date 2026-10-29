@@ -73,7 +73,7 @@ class LlmClientTest {
     void start() throws IOException {
         primary = new FakeProvider();
         fallback = new FakeProvider();
-        client = new LlmClient(HttpClient.newHttpClient(), stats, List.of(Duration.ofMillis(10), Duration.ofMillis(20)));
+        client = new LlmClient(HttpClient.newHttpClient(), stats, List.of(Duration.ofMillis(10), Duration.ofMillis(20)), note -> { });
     }
 
     @AfterEach

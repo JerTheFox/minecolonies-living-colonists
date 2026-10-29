@@ -55,9 +55,9 @@ public final class Config {
             .defineInRange("timeoutSeconds", 30, 1, 300);
 
     public static final ModConfigSpec.IntValue RETRIES = BUILDER
-            .comment("How many times to retry after a temporary failure (timeout, rate limit, server error),",
-                    "waiting 1 s, then 3 s. Wrong keys and bad requests are not retried.")
-            .defineInRange("retries", 2, 0, 5);
+            .comment("How many times to retry after a temporary failure (timeout, rate limit, server error, no connection),",
+                    "waiting 1 s, 3 s, then 8 s. Wrong keys and bad requests are not retried.")
+            .defineInRange("retries", 3, 0, 5);
 
     public static final ModConfigSpec.BooleanValue USE_TOOLS = BUILDER
             .comment("Let colonists look up colony data (other colonists, who fits a job, a colony overview)",
@@ -124,6 +124,9 @@ public final class Config {
     public static final ModConfigSpec.ConfigValue<String> MEMORY = levelOverride("memory",
             "What colonists remember of conversations and promises");
 
+    public static final ModConfigSpec.ConfigValue<String> CONVERSATION = levelOverride("conversation",
+            "How long colony chat threads run: off answers a player once, high lets colonists talk on and on");
+
     public static final ModConfigSpec.IntValue COOLDOWN_SECONDS = BUILDER
             .comment("Shortest time between two messages of one player to colonists. 0 turns it off.")
             .defineInRange("cooldownSeconds", 3, 0, 60);
@@ -171,6 +174,7 @@ public final class Config {
             case PERSONALITY -> PERSONALITY.get();
             case PERCEPTION -> PERCEPTION.get();
             case MEMORY -> MEMORY.get();
+            case CONVERSATION -> CONVERSATION.get();
         };
         return Levels.resolve(PROFILE.get(), module, override);
     }

@@ -10,6 +10,7 @@ import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
+import me.bytefox.livingcolonists.behaviour.ColonyAccess;
 import me.bytefox.livingcolonists.network.ConversationAction;
 import me.bytefox.livingcolonists.network.ConversationState;
 import net.minecraft.network.chat.Component;
@@ -39,6 +40,8 @@ public final class Conversations {
     private static final class Entry {
         volatile ChatMode mode = ChatMode.PLAYERS;
         volatile Partner partner;
+        /** Last membership sent to the client, so it is only resent when it changes. */
+        volatile Boolean member;
     }
 
     private record Partner(ResourceKey<Level> dimension, int colonyId, int citizenId, String name, String jobKey) {
@@ -87,6 +90,7 @@ public final class Conversations {
             case RELEASE -> release(player, true);
             case MODE_PLAYERS -> setMode(player, ChatMode.PLAYERS);
             case MODE_COLONY -> setMode(player, ChatMode.COLONY);
+            case CHAT_COLONY -> chatToColony(player);
         }
     }
 
@@ -108,7 +112,8 @@ public final class Conversations {
         if (nearest.isPresent()) {
             lock(player, nearest.get().getCitizenData(), openChat);
         } else {
-            player.sendSystemMessage(Component.translatable("livingcolonists.talk.nobody"));
+            player.displayClientMessage(Component.translatable(openChat
+                    ? "livingcolonists.partner.look_to_talk" : "livingcolonists.partner.look_to_focus"), true);
         }
     }
 
@@ -153,6 +158,19 @@ public final class Conversations {
     }
 
     /** Choosing a mode also ends a private talk. */
+    /** The "Write to the colony" key: works inside a colony's borders, and opens the chat there. */
+    public void chatToColony(ServerPlayer player) {
+        IColony colony = IColonyManager.getInstance().getColonyByPosFromWorld(player.level(), player.blockPosition());
+        if (colony == null) {
+            player.displayClientMessage(Component.translatable("livingcolonists.colony.outside"), true);
+            return;
+        }
+        Entry entry = entry(player);
+        entry.partner = null;
+        entry.mode = ChatMode.COLONY;
+        sync(player, entry, true);
+    }
+
     public void setMode(ServerPlayer player, ChatMode mode) {
         Entry entry = entry(player);
         entry.partner = null;
@@ -161,10 +179,21 @@ public final class Conversations {
         sync(player, entry, false);
     }
 
-    /** Ends private talks whose player has left the colony or whose colonist is gone. */
+    /**
+     * Ends private talks whose player has left the colony or whose colonist is gone, and tells
+     * clients when their colony membership changes.
+     */
     public void tick(MinecraftServer server) {
         if (server.getTickCount() % CHECK_INTERVAL != 0) {
             return;
+        }
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            Entry entry = entry(player);
+            boolean member = isMember(player);
+            if (!Boolean.valueOf(member).equals(entry.member)) {
+                entry.member = member;
+                sync(player, entry, false);
+            }
         }
         for (Map.Entry<UUID, Entry> e : players.entrySet()) {
             Partner partner = e.getValue().partner;
@@ -199,11 +228,22 @@ public final class Conversations {
         return players.computeIfAbsent(player.getUUID(), id -> new Entry());
     }
 
+    /** Owner, officer or friend of any colony. */
+    private static boolean isMember(ServerPlayer player) {
+        for (IColony colony : IColonyManager.getInstance().getAllColonies()) {
+            if (TalkService.role(player, colony) != ColonyAccess.Role.OTHER) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static void sync(ServerPlayer player, Entry entry, boolean openChat) {
         if (player.connection.hasChannel(ConversationState.TYPE)) {
             Partner partner = entry.partner;
             PacketDistributor.sendToPlayer(player, new ConversationState(entry.mode,
-                    partner == null ? "" : partner.name(), partner == null ? "" : partner.jobKey(), openChat));
+                    partner == null ? "" : partner.name(), partner == null ? "" : partner.jobKey(), openChat,
+                    Boolean.TRUE.equals(entry.member)));
         }
     }
 }

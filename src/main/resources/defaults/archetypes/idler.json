@@ -3,6 +3,7 @@
   "prompt": "You avoid hard work and are good at excuses. Easy-going and charming, you would rather chat than lift anything.",
   "weight": 7,
   "talkativeness": 0.7,
+  "contrariness": 0.25,
   "skills": {
     "Stamina": -0.5,
     "Focus": -0.5,

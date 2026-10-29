@@ -1,12 +1,8 @@
 package me.bytefox.livingcolonists.talk;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
-import java.util.Set;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -16,14 +12,10 @@ import me.bytefox.livingcolonists.llm.ChatMessage;
 import me.bytefox.livingcolonists.prompt.Templates;
 
 /**
- * Decides which colonists answer a message to the whole colony. A short request asks the model
- * whom the message addresses (by name or by profession, in any language); with nobody in
- * particular, two or three random colonists answer.
+ * Works out whom a message to the whole colony addresses, by name or by profession, in any
+ * language, with a short request to the model. {@link ColonyThreads} lets them answer first.
  */
 public final class ColonyRouter {
-    /** At most this many colonists answer one message. */
-    public static final int MAX_RESPONDERS = 3;
-
     public record Member(String name, String job) {
     }
 
@@ -68,23 +60,5 @@ public final class ColonyRouter {
         } catch (JsonParseException | IllegalStateException | NumberFormatException | UnsupportedOperationException e) {
             return List.of();
         }
-    }
-
-    /**
-     * The colonists who actually answer: the addressed ones (at most {@link #MAX_RESPONDERS}), or
-     * two or three at random when nobody in particular was addressed.
-     */
-    public static List<Integer> choose(List<Integer> addressed, int rosterSize, Random random) {
-        if (!addressed.isEmpty()) {
-            Set<Integer> unique = new LinkedHashSet<>(addressed);
-            return unique.stream().limit(MAX_RESPONDERS).toList();
-        }
-        List<Integer> all = new ArrayList<>();
-        for (int i = 0; i < rosterSize; i++) {
-            all.add(i);
-        }
-        Collections.shuffle(all, random);
-        int count = Math.min(rosterSize, 2 + random.nextInt(2));
-        return List.copyOf(all.subList(0, count));
     }
 }

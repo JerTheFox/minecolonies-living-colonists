@@ -8,6 +8,8 @@ import me.bytefox.livingcolonists.debug.DebugCommand;
 import me.bytefox.livingcolonists.debug.UsageData;
 import me.bytefox.livingcolonists.llm.LlmClient;
 import me.bytefox.livingcolonists.llm.UsageStats;
+import me.bytefox.livingcolonists.memory.MemoryData;
+import me.bytefox.livingcolonists.memory.MemoryService;
 import me.bytefox.livingcolonists.perception.PerceptionService;
 import me.bytefox.livingcolonists.personality.ArchetypeLibrary;
 import me.bytefox.livingcolonists.personality.PersonalityData;
@@ -48,12 +50,14 @@ public final class LivingColonists {
 
     private final UsageStats usage = new UsageStats();
     private final LlmClient client = new LlmClient(
-            HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build(), usage, LlmClient.DEFAULT_BACKOFF);
+            HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).connectTimeout(Duration.ofSeconds(10)).build(),
+            usage, LlmClient.DEFAULT_BACKOFF, LOGGER::info);
     private final PromptLibrary prompts = new PromptLibrary(FMLPaths.CONFIGDIR.get());
     private final PersonalityService personalities = new PersonalityService(prompts,
             new ArchetypeLibrary(FMLPaths.CONFIGDIR.get()), client);
     private final PerceptionService perception = new PerceptionService();
-    private final TalkService talk = new TalkService(client, prompts, personalities, perception);
+    private final MemoryService memory = new MemoryService();
+    private final TalkService talk = new TalkService(client, prompts, personalities, perception, memory);
     private UsageData usageData;
     private final Conversations conversations = new Conversations(talk);
 
@@ -64,7 +68,8 @@ public final class LivingColonists {
 
         NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent event) -> {
             TalkCommand.register(event.getDispatcher(), talk, conversations);
-            DebugCommand.register(event.getDispatcher(), usage, personalities, prompts, talk, conversations, perception);
+            DebugCommand.register(event.getDispatcher(), usage, personalities, prompts, talk, conversations, perception,
+                    memory);
         });
         NeoForge.EVENT_BUS.addListener(this::onServerChat);
         NeoForge.EVENT_BUS.addListener((ServerTickEvent.Post event) -> {
@@ -81,6 +86,8 @@ public final class LivingColonists {
         NeoForge.EVENT_BUS.addListener((ServerStartedEvent event) -> {
             personalities.attach(event.getServer().overworld().getDataStorage()
                     .computeIfAbsent(PersonalityData.factory(), PersonalityData.NAME));
+            memory.attach(event.getServer().overworld().getDataStorage()
+                    .computeIfAbsent(MemoryData.factory(), MemoryData.NAME));
             usage.clearSession();
             usageData = event.getServer().overworld().getDataStorage()
                     .computeIfAbsent(UsageData.factory(usage), UsageData.NAME);
@@ -93,6 +100,7 @@ public final class LivingColonists {
             talk.clear();
             usageData = null;
             personalities.detach();
+            memory.detach();
         });
     }
 

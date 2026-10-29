@@ -11,7 +11,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 /** The client's copy of its conversation state, and the way to ask the server to change it. */
 public final class ClientConversation {
-    private static final ConversationState NONE = new ConversationState(ChatMode.PLAYERS, "", "", false);
+    private static final ConversationState NONE = new ConversationState(ChatMode.PLAYERS, "", "", false, false);
 
     private static volatile ConversationState state = NONE;
 
@@ -26,7 +26,7 @@ public final class ClientConversation {
     public static void apply(ConversationState update) {
         state = update;
         Minecraft minecraft = Minecraft.getInstance();
-        if (update.openChat() && update.hasPartner() && minecraft.screen == null) {
+        if (update.openChat() && minecraft.screen == null) {
             minecraft.setScreen(new ChatScreen(""));
         }
     }
