@@ -17,7 +17,7 @@ class BondsLogicTest {
     private static final UUID ANNA = UUID.fromString("00000000-0000-0000-0000-000000000002");
 
     private static Promise promise(long id, UUID maker, String name, String text, long made, long due) {
-        return new Promise(id, maker, name, text, Promise.About.GENERAL, made, due, Promise.Status.OPEN, 0, false, false, "");
+        return new Promise(id, maker, name, text, 0, Promise.About.GENERAL, made, due, Promise.Status.OPEN, 0, false, false, "");
     }
 
     @Test
@@ -34,8 +34,8 @@ class BondsLogicTest {
                 rude | Max called Anna lazy.
                 """, 5);
         assertEquals(1, digest.facts().size());
-        assertEquals(List.of(new Digests.NewPromise(1, "supply", "Max promised to bring 10 oak planks."),
-                new Digests.NewPromise(0, "housing", "Max promised to build Anna a house.")), digest.promises());
+        assertEquals(List.of(new Digests.NewPromise(1, "supply", 0, "Max promised to bring 10 oak planks."),
+                new Digests.NewPromise(0, "housing", 0, "Max promised to build Anna a house.")), digest.promises());
         assertEquals(List.of(new Digests.Resolution("kept", 2), new Digests.Resolution("broken", 1),
                 new Digests.Resolution("cancelled", 9)), digest.resolutions());
         assertEquals(List.of(new Digests.Conduct(true, "Max brought flowers."),
@@ -61,7 +61,7 @@ class BondsLogicTest {
                 promise | 1 | supply | A private-talk style line still counts as a promise without names.
                 kept | 1
                 """, 5);
-        assertEquals(List.of(new Digests.ColonyPromise("Максим", "Idris Y. Crawley", 0, "supply",
+        assertEquals(List.of(new Digests.ColonyPromise("Максим", "Idris Y. Crawley", 0, "supply", 0,
                 "Максим promised Idris a couple of diamonds.")), digest.colonyPromises());
         assertEquals(1, digest.promises().size());
         assertEquals(List.of(new Digests.Resolution("kept", 1)), digest.resolutions());
@@ -103,6 +103,43 @@ class BondsLogicTest {
         Promise due = promise(1, MAX, "Max", "a pickaxe", 0, DAY);
         assertEquals(Promise.Status.CANCELLED, Bonds.cancelledByMaker(due, DAY));
         assertEquals(Promise.Status.BROKEN, Bonds.cancelledByMaker(due, DAY + 1));
+    }
+
+    @Test
+    void aTrifleKeptIsWorthNothingAndSomethingPreciousALot() {
+        assertEquals(0, Bonds.keptDelta(1));
+        assertTrue(Bonds.keptDelta(5) > Bonds.keptDelta(3) && Bonds.keptDelta(3) > Bonds.keptDelta(2));
+        assertTrue(Bonds.brokenDelta(1) < 0 && Bonds.brokenDelta(5) < Bonds.brokenDelta(1));
+        assertEquals(Bonds.keptDelta(2), Bonds.keptDelta(0), "an unknown worth counts as ordinary");
+    }
+
+    @Test
+    void keptPromisesWarmAColonistAtMostOnceADay() {
+        assertTrue(Bonds.mayCredit(Long.MIN_VALUE, 0));
+        assertTrue(!Bonds.mayCredit(1000, 1000 + DAY - 1));
+        assertTrue(Bonds.mayCredit(1000, 1000 + DAY));
+    }
+
+    @Test
+    void theDigestReadsHowMuchAPromiseIsWorth() {
+        Digests.Digest digest = Digests.parseAll("""
+                promise | 1 | supply | 5 | Max promised Anna a stack of diamonds.
+                promise | 0 | general | Max promised Anna a stick.
+                promise | Max | Anna Becker | 1 | supply | 1 | Max promised Anna some dirt.
+                """, 5);
+        assertEquals(5, digest.promises().get(0).worth());
+        assertEquals("Max promised Anna a stack of diamonds.", digest.promises().get(0).text());
+        assertEquals(0, digest.promises().get(1).worth());
+        assertEquals(1, digest.colonyPromises().get(0).worth());
+        assertEquals("Max promised Anna some dirt.", digest.colonyPromises().get(0).text());
+    }
+
+    @Test
+    void aColonistTurnsANewPromiseDownWhileAnEarlierOneIsOpen() {
+        String line = Bonds.owesLine("Max", "Max promised Idris diamonds.", "Idris");
+        assertTrue(line.startsWith("Max still hasn't kept an earlier promise to Idris"), line);
+        assertTrue(line.contains("keep that one first"), line);
+        assertTrue(Bonds.owesLine("Max", "x", null).contains("promise to you"));
     }
 
     @Test
@@ -150,9 +187,9 @@ class BondsLogicTest {
         List<Promise> promises = List.of(
                 promise(1, MAX, "Max", "Max promised to bring bread.", 0, DAY),
                 promise(2, ANNA, "Anna", "Anna promised a new hoe.", 0, 0),
-                new Promise(3, MAX, "Max", "Max promised a house.", Promise.About.HOUSING, 0, 0, Promise.Status.KEPT,
+                new Promise(3, MAX, "Max", "Max promised a house.", 0, Promise.About.HOUSING, 0, 0, Promise.Status.KEPT,
                         2 * DAY, false, false, ""),
-                new Promise(4, MAX, "Max", "Max promised fish.", Promise.About.FOOD, 0, 0, Promise.Status.BROKEN,
+                new Promise(4, MAX, "Max", "Max promised fish.", 0, Promise.About.FOOD, 0, 0, Promise.Status.BROKEN,
                         0, false, false, ""));
         String block = Bonds.promisesBlock(promises, 2 * DAY + 10);
         assertEquals("""

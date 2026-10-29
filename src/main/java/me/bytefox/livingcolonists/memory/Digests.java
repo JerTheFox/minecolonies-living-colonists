@@ -18,10 +18,11 @@ public final class Digests {
     private static final Pattern LINE = Pattern.compile("^\\s*[-*•]?\\s*(\\d{1,3})\\s*\\|\\s*(.+?)\\s*$");
 
     private static final Pattern COLONY_PROMISE = Pattern.compile(
-            "^\\s*[-*•]?\\s*promise\\s*\\|\\s*([^|]+?)\\s*\\|\\s*([^|]+?)\\s*\\|\\s*(\\d{1,3})\\s*\\|\\s*([A-Za-z]+)\\s*\\|\\s*(.+?)\\s*$",
+            "^\\s*[-*•]?\\s*promise\\s*\\|\\s*([^|]+?)\\s*\\|\\s*([^|]+?)\\s*\\|\\s*(\\d{1,3})\\s*\\|\\s*([A-Za-z]+)\\s*\\|\\s*(?:([1-5])\\s*\\|\\s*)?(.+?)\\s*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern PROMISE = Pattern.compile(
-            "^\\s*[-*•]?\\s*promise\\s*\\|\\s*(\\d{1,3})\\s*\\|\\s*([A-Za-z]+)\\s*\\|\\s*(.+?)\\s*$", Pattern.CASE_INSENSITIVE);
+            "^\\s*[-*•]?\\s*promise\\s*\\|\\s*(\\d{1,3})\\s*\\|\\s*([A-Za-z]+)\\s*\\|\\s*(?:([1-5])\\s*\\|\\s*)?(.+?)\\s*$",
+            Pattern.CASE_INSENSITIVE);
     private static final Pattern RESOLUTION = Pattern.compile(
             "^\\s*[-*•]?\\s*(kept|broken|cancelled)\\s*\\|\\s*#?(\\d{1,2})\\s*$", Pattern.CASE_INSENSITIVE);
     private static final Pattern CONDUCT = Pattern.compile(
@@ -38,8 +39,11 @@ public final class Digests {
     public record Entry(int importance, String text) {
     }
 
-    /** @param days deadline in days from now, 0 without one */
-    public record NewPromise(int days, String about, String text) {
+    /**
+     * @param days  deadline in days from now, 0 without one
+     * @param worth 1 (a trifle) to 5 (something precious); 0 when the model didn't say
+     */
+    public record NewPromise(int days, String about, int worth, String text) {
     }
 
     /** @param kind "kept", "broken" or "cancelled"; @param number the open promise's number, from 1 */
@@ -54,7 +58,7 @@ public final class Digests {
     }
 
     /** A promise a player made to a named colonist in the colony chat. */
-    public record ColonyPromise(String player, String colonist, int days, String about, String text) {
+    public record ColonyPromise(String player, String colonist, int days, String about, int worth, String text) {
     }
 
     /** Everything the character model wrote down about a conversation. */
@@ -86,7 +90,7 @@ public final class Digests {
             if ((matcher = COLONY_PROMISE.matcher(line)).matches()) {
                 if (colonyPromises.size() < MAX_PROMISES) {
                     colonyPromises.add(new ColonyPromise(matcher.group(1), matcher.group(2),
-                            Integer.parseInt(matcher.group(3)), matcher.group(4), matcher.group(5)));
+                            Integer.parseInt(matcher.group(3)), matcher.group(4), worth(matcher.group(5)), matcher.group(6)));
                 }
             } else if ((matcher = COLONISTS.matcher(line)).matches()) {
                 if (colonists.size() < MAX_COLONIST_BONDS) {
@@ -100,7 +104,8 @@ public final class Digests {
                 }
             } else if ((matcher = PROMISE.matcher(line)).matches()) {
                 if (promises.size() < MAX_PROMISES) {
-                    promises.add(new NewPromise(Integer.parseInt(matcher.group(1)), matcher.group(2), matcher.group(3)));
+                    promises.add(new NewPromise(Integer.parseInt(matcher.group(1)), matcher.group(2), worth(matcher.group(3)),
+                            matcher.group(4)));
                 }
             } else if ((matcher = RESOLUTION.matcher(line)).matches()) {
                 resolutions.add(new Resolution(matcher.group(1).toLowerCase(Locale.ROOT),
@@ -127,6 +132,10 @@ public final class Digests {
                 .sorted(java.util.Comparator.comparingInt(Fact::importance).thenComparingLong(Fact::created).reversed())
                 .limit(max).toList());
         return facts.stream().filter(keep::contains).toList();
+    }
+
+    private static int worth(String digit) {
+        return digit == null ? 0 : Integer.parseInt(digit);
     }
 
     /** The facts as a prompt block, oldest first, with when and where each was heard; empty without facts. */

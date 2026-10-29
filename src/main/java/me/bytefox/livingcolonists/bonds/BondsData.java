@@ -25,6 +25,8 @@ public final class BondsData extends SavedData {
     final Map<String, Relation> relations = new HashMap<>();
     /** Key: {@code colonyId:smallerCitizenId:largerCitizenId}. */
     final Map<String, Relation> colonists = new HashMap<>();
+    /** When a kept promise last warmed each colonist toward a player; key as {@link #relations}. */
+    final Map<String, Long> credited = new HashMap<>();
     /** The name colonists last knew each player by, for what the colony says about them. */
     final Map<UUID, String> playerNames = new HashMap<>();
     long nextId = 1;
@@ -42,7 +44,7 @@ public final class BondsData extends SavedData {
             ListTag entries = promises.getList(key, Tag.TAG_COMPOUND);
             for (int i = 0; i < entries.size(); i++) {
                 CompoundTag p = entries.getCompound(i);
-                list.add(new Promise(p.getLong("id"), p.getUUID("maker"), p.getString("makerName"), p.getString("text"),
+                list.add(new Promise(p.getLong("id"), p.getUUID("maker"), p.getString("makerName"), p.getString("text"), p.getInt("worth"),
                         Promise.About.of(p.getString("about")), p.getLong("made"), p.getLong("due"),
                         status(p.getString("status")), p.getLong("resolved"), p.getBoolean("needSeen"),
                         p.getBoolean("reminded"), p.getString("request")));
@@ -51,6 +53,10 @@ public final class BondsData extends SavedData {
         }
         readRelations(tag.getCompound("relations"), data.relations);
         readRelations(tag.getCompound("colonists"), data.colonists);
+        CompoundTag credited = tag.getCompound("credited");
+        for (String key : credited.getAllKeys()) {
+            data.credited.put(key, credited.getLong(key));
+        }
         CompoundTag names = tag.getCompound("players");
         for (String key : names.getAllKeys()) {
             data.playerNames.put(UUID.fromString(key), names.getString(key));
@@ -94,6 +100,7 @@ public final class BondsData extends SavedData {
                 p.putUUID("maker", promise.maker());
                 p.putString("makerName", promise.makerName());
                 p.putString("text", promise.text());
+                p.putInt("worth", promise.worth());
                 p.putString("about", promise.about().name());
                 p.putLong("made", promise.made());
                 p.putLong("due", promise.due());
@@ -112,6 +119,9 @@ public final class BondsData extends SavedData {
         tag.put("relations", writeRelations(relations));
         tag.put("colonists", writeRelations(colonists));
         tag.put("players", names);
+        CompoundTag creditTag = new CompoundTag();
+        credited.forEach(creditTag::putLong);
+        tag.put("credited", creditTag);
         return tag;
     }
 

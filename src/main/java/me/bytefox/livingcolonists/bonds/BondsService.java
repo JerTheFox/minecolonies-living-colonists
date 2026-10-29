@@ -137,6 +137,11 @@ public final class BondsService {
         }
         List<Promise> list = data.promises.computeIfAbsent(key(citizen), k -> new ArrayList<>());
         for (Digests.NewPromise made : digest.promises()) {
+            if (owesInColony(citizen.getColony(), player).isPresent()) {
+                LivingColonists.LOGGER.info("{} didn't take a new promise: {} still owes an earlier one", citizen.getName(),
+                        playerName);
+                break;
+            }
             if (list.stream().filter(Promise::isOpen).count() >= MAX_OPEN) {
                 LivingColonists.LOGGER.info("{} already holds {} open promises, a new one was not written down",
                         citizen.getName(), MAX_OPEN);
@@ -144,7 +149,7 @@ public final class BondsService {
             }
             Promise.About about = Promise.About.of(made.about());
             long due = made.days() > 0 ? now + Math.min(made.days(), MAX_DUE_DAYS) * DAY : 0;
-            list.add(new Promise(data.nextId++, player, playerName, made.text(), about, now, due, Promise.Status.OPEN, 0,
+            list.add(new Promise(data.nextId++, player, playerName, made.text(), made.worth(), about, now, due, Promise.Status.OPEN, 0,
                     needUnmet(citizen, about), false, ""));
         }
         for (Digests.Conduct conduct : digest.conduct()) {
@@ -178,7 +183,7 @@ public final class BondsService {
                 IRequest<?> asked = request(citizen.getColony(), request);
                 String what = asked == null ? "what they asked for" : asked.getShortDisplayString().getString();
                 String text = playerName + " promised to bring " + citizen.getName() + " " + what + ".";
-                list.add(new Promise(data.nextId++, player.getUUID(), playerName, text, Promise.About.SUPPLY, now,
+                list.add(new Promise(data.nextId++, player.getUUID(), playerName, text, 2, Promise.About.SUPPLY, now,
                         now + REQUEST_PROMISE_TICKS, Promise.Status.OPEN, 0, false, false, requestId));
                 data.playerNames.put(player.getUUID(), playerName);
                 data.setDirty();
@@ -267,12 +272,24 @@ public final class BondsService {
             return;
         }
         long now = now(citizen.getColony());
-        list.add(new Promise(data.nextId++, player.getUUID(), playerName, text, about, now, days > 0 ? now + days * DAY : 0,
+        list.add(new Promise(data.nextId++, player.getUUID(), playerName, text, about == Promise.About.FOOD ? 2 : 3, about, now,
+                days > 0 ? now + days * DAY : 0,
                 Promise.Status.OPEN, 0, needUnmet(citizen, about), false, id));
         data.playerNames.put(player.getUUID(), playerName);
         data.setDirty();
         player.displayClientMessage(Component.translatable("livingcolonists.promise.made", name), true);
         LivingColonists.LOGGER.info("{} wrote down a promise from a dialog: {}", name, text);
+    }
+
+    /**
+     * The open promise this player made in talk (not in a colony dialog) to someone in the colony, if
+     * any. Until it is kept or dropped, colonists don't take a new one from them: promising a trifle
+     * every minute would otherwise buy any friendship.
+     */
+    public java.util.Optional<Owned> owesInColony(IColony colony, UUID player) {
+        return openInColony(colony).stream()
+                .filter(owned -> owned.promise().maker().equals(player) && owned.promise().requestId().isEmpty())
+                .findFirst();
     }
 
     /** Every open promise players made to colonists of the colony, in the order the colony digest numbers them. */
@@ -338,6 +355,11 @@ public final class BondsService {
             if (citizen == null || player == null) {
                 continue;
             }
+            if (owesInColony(colony, player).isPresent()) {
+                LivingColonists.LOGGER.info("{} didn't take a new promise: {} still owes an earlier one", citizen.getName(),
+                        made.player());
+                continue;
+            }
             List<Promise> list = data.promises.computeIfAbsent(key(citizen), k -> new ArrayList<>());
             if (list.stream().filter(Promise::isOpen).count() >= MAX_OPEN) {
                 continue;
@@ -345,7 +367,7 @@ public final class BondsService {
             Promise.About about = Promise.About.of(made.about());
             long due = made.days() > 0 ? now + Math.min(made.days(), MAX_DUE_DAYS) * DAY : 0;
             String playerName = data.playerNames.getOrDefault(player, made.player());
-            list.add(new Promise(data.nextId++, player, playerName, Digests.cleanFact(made.text()), about, now, due,
+            list.add(new Promise(data.nextId++, player, playerName, Digests.cleanFact(made.text()), made.worth(), about, now, due,
                     Promise.Status.OPEN, 0, needUnmet(citizen, about), false, ""));
             LivingColonists.LOGGER.info("{} wrote down a promise from the colony chat: {}", citizen.getName(), made.text());
         }
@@ -423,6 +445,11 @@ public final class BondsService {
             UUID id = player.getUUID();
             parts.add(Bonds.relationBlock(playerName, data.relations.getOrDefault(key(citizen, id), Relation.EMPTY), now));
             parts.add(reputation(citizen.getColony(), id, playerName));
+            owesInColony(citizen.getColony(), id).ifPresent(owned -> {
+                ICitizenData to = citizen.getColony().getCitizenManager().getCivilian(owned.citizenId());
+                parts.add(Bonds.owesLine(playerName, owned.promise().text(),
+                        to == null || to.getId() == citizen.getId() ? null : to.getName()));
+            });
         }
         return parts.stream().filter(part -> !part.isEmpty()).collect(Collectors.joining("\n"));
     }
@@ -590,13 +617,25 @@ public final class BondsService {
             }
             replace(citizen, promise.resolve(status, now));
             if (status == Promise.Status.KEPT) {
-                note(citizen, promise.maker(), Bonds.KEPT, "kept a promise to you: " + promise.text(), now);
+                credit(citizen, promise, now);
             } else if (status == Promise.Status.BROKEN) {
-                note(citizen, promise.maker(), Bonds.BROKEN, "broke a promise to you: " + promise.text(), now);
+                note(citizen, promise.maker(), Bonds.brokenDelta(promise.worth()), "broke a promise to you: " + promise.text(),
+                        now);
             }
             trimResolved(citizen);
             return;
         }
+    }
+
+    /** A kept promise warms the colonist, by its worth and at most once a day per player (see {@link Bonds#mayCredit}). */
+    private void credit(ICitizenData citizen, Promise promise, long now) {
+        int delta = Bonds.keptDelta(promise.worth());
+        String key = key(citizen, promise.maker());
+        if (delta <= 0 || !Bonds.mayCredit(data.credited.getOrDefault(key, Long.MIN_VALUE), now)) {
+            return;
+        }
+        data.credited.put(key, now);
+        note(citizen, promise.maker(), delta, "kept a promise to you: " + promise.text(), now);
     }
 
     private void note(ICitizenData citizen, UUID player, int delta, String text, long now) {
@@ -661,6 +700,7 @@ public final class BondsService {
         int before = data.promises.size() + data.relations.size() + data.colonists.size();
         data.promises.keySet().removeIf(key);
         data.relations.keySet().removeIf(key);
+        data.credited.keySet().removeIf(key);
         // A pair is dropped when either colonist matches.
         data.colonists.keySet().removeIf(pair -> {
             String[] parts = pair.split(":");

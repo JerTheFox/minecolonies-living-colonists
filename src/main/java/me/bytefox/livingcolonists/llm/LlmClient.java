@@ -67,6 +67,29 @@ public final class LlmClient {
         });
     }
 
+    /** The models {@code endpoint} offers ({@code GET /models}); never completes exceptionally. */
+    public CompletableFuture<ModelList> listModels(LlmEndpoint endpoint, int timeoutSeconds) {
+        HttpRequest request;
+        try {
+            HttpRequest.Builder builder = HttpRequest.newBuilder(modelsUri(endpoint.baseUrl()))
+                    .timeout(Duration.ofSeconds(timeoutSeconds)).GET();
+            if (!endpoint.apiKey().isEmpty()) {
+                builder.header("Authorization", "Bearer " + endpoint.apiKey());
+            }
+            request = builder.build();
+        } catch (IllegalArgumentException e) {
+            return CompletableFuture.completedFuture(ModelList.failed("invalid baseUrl: " + endpoint.baseUrl()));
+        }
+        return http.sendAsync(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8))
+                .thenApply(response -> ModelList.parse(response.statusCode(), response.body()))
+                .exceptionally(e -> ModelList.failed(describe(e, timeoutSeconds).reason()));
+    }
+
+    private static URI modelsUri(String baseUrl) {
+        URI chat = uri(baseUrl);
+        return URI.create(chat.toString().replaceAll("/chat/completions$", "/models"));
+    }
+
     /** Sets where the daily token limit comes from (the config); 0 means no limit. */
     public void limitDailyTokens(LongSupplier limit) {
         dailyTokenLimit = limit;

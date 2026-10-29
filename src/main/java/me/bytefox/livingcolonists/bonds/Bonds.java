@@ -191,6 +191,50 @@ public final class Bonds {
         return String.join(" ", parts);
     }
 
+    /**
+     * How much keeping a promise of this worth warms the colonist: nothing for a trifle (1), a lot for
+     * something precious (5). An unknown worth (0) counts as ordinary (2).
+     */
+    public static int keptDelta(int worth) {
+        return switch (worth) {
+            case 1 -> 0;
+            case 3 -> 8;
+            case 4 -> 12;
+            case 5 -> 16;
+            default -> 4;
+        };
+    }
+
+    /** How much breaking a promise of this worth hurts; even a trifle a little. */
+    public static int brokenDelta(int worth) {
+        return switch (worth) {
+            case 1 -> -3;
+            case 3 -> -10;
+            case 4 -> -14;
+            case 5 -> -18;
+            default -> -6;
+        };
+    }
+
+    /**
+     * Whether a kept promise may warm the colonist now: at most once a Minecraft day per colonist and
+     * player, or promising a trifle every minute would buy any friendship.
+     */
+    public static boolean mayCredit(long lastCredit, long now) {
+        return lastCredit == Long.MIN_VALUE || now - lastCredit >= DAY;
+    }
+
+    /**
+     * Tells the colonist the player still owes a promise, so they turn a new one down.
+     *
+     * @param to who it was made to; null when it was to this colonist
+     */
+    public static String owesLine(String player, String promise, String to) {
+        return player + " still hasn't kept an earlier promise" + (to == null ? " to you" : " to " + to) + ": \""
+                + promise + "\" If " + player + " promises you anything new now, don't take it: tell them, in your own "
+                + "words, to keep that one first.";
+    }
+
     /** Request states (MineColonies {@code RequestState}) that mean the colonist got what was asked for. */
     private static final Set<String> DELIVERED = Set.of("RESOLVED", "FOLLOWUP_IN_PROGRESS", "COMPLETED", "FINALIZING",
             "RECEIVED");

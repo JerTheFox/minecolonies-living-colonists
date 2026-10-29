@@ -8,12 +8,15 @@ import me.bytefox.livingcolonists.talk.ChatMode;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.KeyMapping;
 import net.neoforged.api.distmarker.Dist;
+import me.bytefox.livingcolonists.client.settings.SettingsScreen;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.client.settings.KeyConflictContext;
 import net.neoforged.neoforge.common.NeoForge;
 import org.lwjgl.glfw.GLFW;
@@ -36,12 +39,19 @@ public final class LivingColonistsClient {
     private static final KeyMapping MODE = new KeyMapping("key.livingcolonists.mode", KeyConflictContext.IN_GAME,
             InputConstants.UNKNOWN, CATEGORY);
 
-    public LivingColonistsClient(IEventBus modEventBus) {
+    /** Unbound by default: the mod's settings (also in the mod list). */
+    private static final KeyMapping SETTINGS = new KeyMapping("key.livingcolonists.settings", KeyConflictContext.IN_GAME,
+            InputConstants.UNKNOWN, CATEGORY);
+
+    public LivingColonistsClient(IEventBus modEventBus, ModContainer container) {
+        // The mod list's "Config" button (NeoForge, Catalogue and the like) opens our own screen.
+        container.registerExtensionPoint(IConfigScreenFactory.class, (mod, parent) -> new SettingsScreen(parent));
         modEventBus.addListener((RegisterKeyMappingsEvent event) -> {
             event.register(COLONY);
             event.register(TALK);
             event.register(FOCUS);
             event.register(MODE);
+            event.register(SETTINGS);
         });
         NeoForge.EVENT_BUS.addListener(LivingColonistsClient::onClientTick);
         NeoForge.EVENT_BUS.addListener(LivingColonistsClient::onKey);
@@ -78,6 +88,9 @@ public final class LivingColonistsClient {
         }
         while (FOCUS.consumeClick()) {
             ClientConversation.send(ConversationAction.Action.FOCUS);
+        }
+        while (SETTINGS.consumeClick()) {
+            Minecraft.getInstance().setScreen(new SettingsScreen(Minecraft.getInstance().screen));
         }
         while (MODE.consumeClick()) {
             ClientConversation.send(ConversationAction.Action.CYCLE_MODE);

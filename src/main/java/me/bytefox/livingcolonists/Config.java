@@ -25,151 +25,198 @@ public final class Config {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 
     static {
-        BUILDER.comment("Connection to an OpenAI-compatible chat completions API").push("llm");
+        BUILDER.comment("Connection to an OpenAI-compatible chat completions API").translation("livingcolonists.configuration.section.llm").push("llm");
     }
 
     public static final ModConfigSpec.ConfigValue<String> BASE_URL = BUILDER
-            .comment("Base URL of the API, without /chat/completions")
+            .translation("livingcolonists.configuration.baseUrl")
+            .comment("Address of an OpenAI-compatible API, without /chat/completions. Examples: https://api.deepseek.com,",
+                    "https://openrouter.ai/api/v1, http://127.0.0.1:11434/v1 for a local Ollama. Default:",
+                    "https://api.deepseek.com.")
             .define("baseUrl", "https://api.deepseek.com");
 
     public static final ModConfigSpec.ConfigValue<String> CHAT_MODEL = BUILDER
-            .comment("Model for replies and small talk, as the provider's /models endpoint lists it. Fast and cheap is best.")
+            .translation("livingcolonists.configuration.chatModel")
+            .comment("Model for colonists' replies, for working out whom a message is for, and for colony chatter: the",
+                    "most used one, so fast and cheap is best. The exact name from the provider's model list (see Load",
+                    "models). Default: deepseek-flash.")
             .define("chatModel", "deepseek-flash");
 
     public static final ModConfigSpec.ConfigValue<String> CHARACTER_MODEL = BUILDER
-            .comment("Optional model for writing colonists' backgrounds and summarising their memories. Used rarely,",
-                    "so a smarter, slower model is affordable, for example deepseek-v4-pro. Empty: use chatModel.")
+            .translation("livingcolonists.configuration.characterModel")
+            .comment("Model for rare, heavier work: writing colonists' backgrounds and writing conversations down into",
+                    "memory. Can be smarter and slower, for example deepseek-v4-pro. Empty: the chat model does it.")
             .define("characterModel", "");
 
     public static final ModConfigSpec.ConfigValue<String> API_KEY = BUILDER
-            .comment("API key of the provider. It is stored in this file as plain text: don't share the file.",
-                    "Leave empty to read the key from the environment variable named in apiKeyEnv instead.")
+            .translation("livingcolonists.configuration.apiKey")
+            .comment("The provider's API key. Kept in the config file as plain text, so don't share the file. Leave empty",
+                    "to read the key from the environment variable below instead. Never sent to players.")
             .define("apiKey", "");
 
     public static final ModConfigSpec.ConfigValue<String> API_KEY_ENV = BUILDER
-            .comment("Environment variable with the API key, used when apiKey is empty")
+            .translation("livingcolonists.configuration.apiKeyEnv")
+            .comment("Name of the environment variable that holds the API key; used when the key above is empty. Default:",
+                    "LIVINGCOLONISTS_API_KEY.")
             .define("apiKeyEnv", "LIVINGCOLONISTS_API_KEY");
 
     public static final ModConfigSpec.IntValue TIMEOUT_SECONDS = BUILDER
-            .comment("How long to wait for a reply before giving up")
+            .translation("livingcolonists.configuration.timeoutSeconds")
+            .comment("How long to wait for one answer before giving up and retrying, in seconds. From 1 to 300, default",
+                    "30. Reasoning models may need 30 to 60.")
             .defineInRange("timeoutSeconds", 30, 1, 300);
 
     public static final ModConfigSpec.IntValue RETRIES = BUILDER
-            .comment("How many times to retry after a temporary failure (timeout, rate limit, server error, no connection),",
-                    "waiting 1 s, 3 s, then 8 s. Wrong keys and bad requests are not retried.")
+            .translation("livingcolonists.configuration.retries")
+            .comment("How many times to retry after a temporary failure: a timeout, a rate limit (429), a server error",
+                    "(5xx) or a lost connection. Waits 1, 3, then 8 seconds. A wrong key or a bad request is not retried.",
+                    "From 0 to 5, default 3.")
             .defineInRange("retries", 3, 0, 5);
 
     public static final ModConfigSpec.BooleanValue USE_TOOLS = BUILDER
-            .comment("Let colonists look up colony data (other colonists, who fits a job, a colony overview)",
-                    "through function calling. Turn off for providers without tool support.")
+            .translation("livingcolonists.configuration.useTools")
+            .comment("On: colonists can look up colony data while answering (another colonist, who fits a job best, a",
+                    "colony overview) through function calling; needs the default perception level or higher. Turn off if",
+                    "your provider doesn't support tools. Default on.")
             .define("useTools", true);
 
     public static final ModConfigSpec.IntValue MAX_TOKENS = BUILDER
-            .comment("Upper limit on tokens per request. Reasoning models count their thinking here too,",
-                    "so keep it well above the length of a chat line.")
+            .translation("livingcolonists.configuration.maxTokens")
+            .comment("Upper limit of tokens for one answer. Reasoning models count their thinking here too, so keep it",
+                    "well above a chat line; the mod raises it by itself for heavy tasks. From 16 to 32768, default 2000.")
             .defineInRange("maxTokens", 2000, 16, 32768);
 
     public static final ModConfigSpec.DoubleValue TEMPERATURE = BUILDER
-            .comment("Sampling temperature: higher is more varied, lower is more predictable")
+            .translation("livingcolonists.configuration.temperature")
+            .comment("How varied the answers are: 0 is predictable, 1 is natural, 2 is wild. From 0 to 2, default 1.")
             .defineInRange("temperature", 1.0, 0.0, 2.0);
 
     public static final ModConfigSpec.ConfigValue<String> EXTRA_PARAMS = BUILDER
-            .comment("Extra JSON fields merged into every request, for provider-specific options.",
-                    "Example: {\"thinking\":{\"type\":\"disabled\"}} turns off DeepSeek's thinking mode",
-                    "for faster but less careful replies.")
+            .translation("livingcolonists.configuration.extraParams")
+            .comment("Extra fields added to every request, as a JSON object, for provider-specific options; {} for none.",
+                    "Example: {\"thinking\":{\"type\":\"disabled\"}} turns off DeepSeek's thinking for faster but less careful",
+                    "answers.")
             .define("extraParams", "{}", Config::isJsonObject);
 
     static {
         BUILDER.comment("A second API to use when the main one fails even after retries, for example a local model")
-                .push("fallback");
+                .translation("livingcolonists.configuration.section.fallback").push("fallback");
     }
 
     public static final ModConfigSpec.BooleanValue FALLBACK_ENABLED = BUILDER
+            .translation("livingcolonists.configuration.fallbackEnabled")
+            .comment("On: when the main API still fails after all retries, the request goes to a second API, for example a",
+                    "local model. Needs the fallback address and model. Default off.")
             .define("enabled", false);
 
     public static final ModConfigSpec.ConfigValue<String> FALLBACK_BASE_URL = BUILDER
-            .comment("Base URL of the fallback API, without /chat/completions")
+            .translation("livingcolonists.configuration.fallbackBaseUrl")
+            .comment("Address of the fallback API, without /chat/completions. Example for Ollama:",
+                    "http://127.0.0.1:11434/v1.")
             .define("baseUrl", "http://127.0.0.1:11434/v1");
 
     public static final ModConfigSpec.ConfigValue<String> FALLBACK_MODEL = BUILDER
-            .comment("Model of the fallback API, used for every kind of request")
+            .translation("livingcolonists.configuration.fallbackModel")
+            .comment("Model of the fallback API, used for every kind of request. Example: qwen2.5:14b. Empty: no fallback.")
             .define("model", "");
 
     public static final ModConfigSpec.ConfigValue<String> FALLBACK_API_KEY = BUILDER
-            .comment("API key of the fallback API, plain text. Empty for APIs that need none, such as a local model.")
+            .translation("livingcolonists.configuration.fallbackApiKey")
+            .comment("Key of the fallback API, plain text. Empty for APIs that need none, such as a local model.")
             .define("apiKey", "");
 
     public static final ModConfigSpec.ConfigValue<String> FALLBACK_API_KEY_ENV = BUILDER
-            .comment("Environment variable with the fallback API key, used when apiKey is empty")
+            .translation("livingcolonists.configuration.fallbackApiKeyEnv")
+            .comment("Environment variable with the fallback key, used when the key above is empty. Empty: none.")
             .define("apiKeyEnv", "");
 
     static {
         BUILDER.pop(2);
         BUILDER.comment("How deep colonists' personalities, knowledge and memory go, and who may talk to them")
-                .push("behaviour");
+                .translation("livingcolonists.configuration.section.behaviour").push("behaviour");
     }
 
     public static final ModConfigSpec.EnumValue<Profile> PROFILE = BUILDER
-            .comment("Preset for all modules below, from cheapest to most immersive (and most tokens):",
-                    "MINIMAL - orders and answers only, no character or memory; LIGHT; DEFAULT;",
-                    "IMMERSIVE - colonists remember much more and know their colony in detail.")
+            .translation("livingcolonists.configuration.profile")
+            .comment("How deep colonists go, and how many tokens they spend. MINIMAL: orders and answers only, no",
+                    "character or memory, cheapest. LIGHT: a short character and memory. DEFAULT: the balance. IMMERSIVE:",
+                    "detailed knowledge, long memory, long colony chats, the most tokens. Personality, perception, memory",
+                    "and conversation can override parts of it. Default: DEFAULT.")
             .defineEnum("profile", Profile.DEFAULT);
 
     public static final ModConfigSpec.ConfigValue<String> PERSONALITY = levelOverride("personality",
-            "Archetypes and backgrounds of colonists");
+            "Colonists' archetypes and backgrounds. profile: as the profile says. off: none. low: the archetype",
+            "only. default: the archetype and a short background. high: a longer background.");
 
     public static final ModConfigSpec.ConfigValue<String> PERCEPTION = levelOverride("perception",
-            "What colonists know about themselves and the colony: needs, work, storage, events");
+            "What colonists know about themselves and the colony. profile: as the profile says. off: nothing.",
+            "low: their work and needs. default: also home, food, health, mood, weather, family, coworkers and",
+            "colony look-ups. high: also siblings and more detail.");
 
     public static final ModConfigSpec.ConfigValue<String> MEMORY = levelOverride("memory",
-            "What colonists remember of conversations and promises");
+            "What colonists remember of talks, promises and gossip. profile: as the profile says. off: nothing.",
+            "low: 4 lines of a talk and 5 facts, for about 2 days. default: 10 lines and 15 facts, about a week.",
+            "high: 40 lines and 60 facts, about a month.");
 
     public static final ModConfigSpec.ConfigValue<String> CONVERSATION = levelOverride("conversation",
-            "How long colony chat threads run: off answers a player once, high lets colonists talk on and on");
+            "How colony chats run on their own. profile: as the profile says. off: one answer to a player. low:",
+            "up to 4 lines. default: up to 8. high: up to 16, colonists chat with each other a lot. Also turns",
+            "colonists' own colony talk about events and their promise reminders on or off.");
 
     public static final ModConfigSpec.IntValue COOLDOWN_SECONDS = BUILDER
-            .comment("Shortest time between two messages of one player to colonists. 0 turns it off.")
+            .translation("livingcolonists.configuration.cooldownSeconds")
+            .comment("Shortest time between two messages of one player to colonists, in seconds; guards against spam. 0",
+                    "turns it off. From 0 to 60, default 3.")
             .defineInRange("cooldownSeconds", 3, 0, 60);
 
     public static final ModConfigSpec.ConfigValue<List<? extends String>> PLAYER_NAMES = BUILDER
-            .comment("What colonists call players instead of their nicknames: \"Nickname=Name,Other name,Rare name\",",
-                    "the most common form first. Example: [\"JerTheFox=Максим,Макс,Максик\"]")
+            .translation("livingcolonists.configuration.playerNames")
+            .comment("What colonists call players instead of their nicknames. One entry per player:",
+                    "Nickname=Name,Other name,Rare name; the first name is used most. In this file it is a list, like",
+                    "[\"Steve=Стив,Стивен\", \"Alex=Алекс,Саша\"]; on the settings screen separate entries with ';', like",
+                    "Steve=Стив,Стивен; Alex=Алекс,Саша. Empty: nicknames.")
             .defineListAllowEmpty("playerNames", List.of(), () -> "Nickname=Name", value -> value instanceof String);
 
     public static final ModConfigSpec.BooleanValue COLONY_CHAT_ANYWHERE = BUILDER
-            .comment("Colony members (owner, officers, friends) read their colony's chat wherever they are, and can write",
-                    "to it from outside its borders. Off: only players inside the colony's borders take part.")
+            .translation("livingcolonists.configuration.colonyChatAnywhere")
+            .comment("On: colony members (owner, officers, friends) read their colony's chat and write to it from",
+                    "anywhere. Off: only players inside the colony's borders take part. Default off.")
             .define("colonyChatAnywhere", false);
 
     public static final ModConfigSpec.BooleanValue MEMBERS_ONLY = BUILDER
-            .comment("Only the colony's owner, officers and friends may talk to its colonists,",
-                    "and only the owner and officers may give them orders. Off: anyone inside the colony may.")
+            .translation("livingcolonists.configuration.membersOnly")
+            .comment("On: only the colony's owner, officers and friends may talk to its colonists, and only the owner and",
+                    "officers may give orders. Off: any player inside the colony may. Default on.")
             .define("membersOnly", true);
 
     static {
         BUILDER.pop();
         BUILDER.comment("Optional limits against chat spam and runaway costs on public servers; 0 turns a limit off")
-                .push("limits");
+                .translation("livingcolonists.configuration.section.limits").push("limits");
     }
 
     public static final ModConfigSpec.IntValue MESSAGES_PER_PLAYER_PER_HOUR = BUILDER
-            .comment("Messages one player may send to colonists in an hour of server time")
+            .translation("livingcolonists.configuration.messagesPerPlayerPerHour")
+            .comment("How many messages one player may send to colonists in an hour of server time; after that they wait.",
+                    "Against spam on public servers. 0: no limit (default).")
             .defineInRange("messagesPerPlayerPerHour", 0, 0, 100000);
 
     public static final ModConfigSpec.LongValue TOKENS_PER_DAY = BUILDER
-            .comment("Tokens the whole server may spend in a day (prompt and reply together, counted since the server",
-                    "started). When reached, colonists stop answering until midnight.")
+            .translation("livingcolonists.configuration.tokensPerDay")
+            .comment("How many tokens (prompt and answer together) the whole server may spend in a day; after that",
+                    "colonists rest until midnight. Counted since the server started. 0: no limit (default).")
             .defineInRange("tokensPerDay", 0L, 0L, Long.MAX_VALUE);
 
     static {
         BUILDER.pop();
     }
 
-    static final ModConfigSpec SPEC = BUILDER.build();
+    public static final ModConfigSpec SPEC = BUILDER.build();
 
-    private static ModConfigSpec.ConfigValue<String> levelOverride(String name, String what) {
+    private static ModConfigSpec.ConfigValue<String> levelOverride(String name, String... help) {
         return BUILDER
-                .comment(what + ".", "\"profile\" follows the profile above; off, low, default or high override it.")
+                .translation("livingcolonists.configuration." + name)
+                .comment(help)
                 .define(name, Levels.FROM_PROFILE, Config::isLevelOverride);
     }
 

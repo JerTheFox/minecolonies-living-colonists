@@ -55,9 +55,9 @@ No release yet. Once there is one, it goes into the `mods` folder of the server 
 
 ## Configuration
 
-The language model is set up on the server (in single-player, on your own machine):
+The language model is set up on the server (in single-player, on your own machine). The easiest way is the settings screen: the *Config* button next to the mod in the mod list, or the *Living Colonists settings* key (unbound by default, see Controls). It has every option below on four tabs (Connection, Behaviour, Limits, Usage), checks values before saving, can test the chat and character models and load the provider's model list. Changes apply at once, no restart. In a world it edits the server's settings: operators (and the owner of a single-player world) can change them, other players only look; from the main menu it edits the local file. API keys are never shown or sent to players: the screen only says whether one is set, and a newly typed key goes to the server once. Mods like Configured show the same options with names and tooltips.
 
-Open `config/livingcolonists-common.toml` (it appears after the first launch), put your provider's key into `apiKey` and adjust the rest of the `[llm]` section if needed. The key is stored there as plain text, so don't share the file. Server owners who prefer not to keep it in a file can leave `apiKey` empty and set the environment variable `LIVINGCOLONISTS_API_KEY` instead.
+Or edit the file by hand: open `config/livingcolonists-common.toml` (it appears after the first launch), put your provider's key into `apiKey` and adjust the rest of the `[llm]` section if needed. The key is stored there as plain text, so don't share the file. Server owners who prefer not to keep it in a file can leave `apiKey` empty and set the environment variable `LIVINGCOLONISTS_API_KEY` instead.
 
 | Option | Default | Meaning |
 |---|---|---|
@@ -161,8 +161,8 @@ The mod follows the game's language setting. English and Russian are included. T
 
 1. ✅ A command → a colonist → an AI reply in chat.
 2. ✅ Talking without commands: the whole colony or one colonist privately.
-3. Personalities, perception and memory: archetypes, backgrounds, memory profiles, `/lcdebug`.
-4. In-game settings screen.
+3. ✅ Personalities, perception and memory: archetypes, backgrounds, memory, promises and relations, `/lcdebug`.
+4. ✅ In-game settings screen.
 5. Errands through the colony's request system.
 6. Colonists speak first, with a line budget.
 7. Colonists talk to each other.

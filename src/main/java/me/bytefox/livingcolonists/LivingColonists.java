@@ -25,7 +25,11 @@ import me.bytefox.livingcolonists.personality.PersonalityService;
 import me.bytefox.livingcolonists.prompt.PromptLibrary;
 import me.bytefox.livingcolonists.network.ConversationAction;
 import me.bytefox.livingcolonists.network.ConversationState;
+import me.bytefox.livingcolonists.network.SettingsRequest;
+import me.bytefox.livingcolonists.network.SettingsState;
 import me.bytefox.livingcolonists.network.TypingState;
+import me.bytefox.livingcolonists.settings.SettingsHandler;
+import me.bytefox.livingcolonists.settings.SettingsService;
 import me.bytefox.livingcolonists.talk.Conversations;
 import me.bytefox.livingcolonists.talk.TalkCommand;
 import me.bytefox.livingcolonists.talk.TalkService;
@@ -75,6 +79,7 @@ public final class LivingColonists {
     private final TalkService talk = new TalkService(client, prompts, personalities, perception, memory, bonds);
     private UsageData usageData;
     private final Conversations conversations = new Conversations(talk);
+    private final SettingsHandler settings = new SettingsHandler(new SettingsService(client, usage));
 
     public LivingColonists(IEventBus modEventBus, ModContainer modContainer) {
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
@@ -176,6 +181,10 @@ public final class LivingColonists {
                 (payload, context) -> conversations.onAction((ServerPlayer) context.player(), payload.action()));
         registrar.playToClient(ConversationState.TYPE, ConversationState.STREAM_CODEC,
                 (payload, context) -> me.bytefox.livingcolonists.client.ClientConversation.apply(payload));
+        registrar.playToServer(SettingsRequest.TYPE, SettingsRequest.STREAM_CODEC,
+                (payload, context) -> settings.handle((ServerPlayer) context.player(), payload));
+        registrar.playToClient(SettingsState.TYPE, SettingsState.STREAM_CODEC,
+                (payload, context) -> me.bytefox.livingcolonists.client.settings.ClientSettings.apply(payload));
         registrar.playToClient(TypingState.TYPE, TypingState.STREAM_CODEC,
                 (payload, context) -> me.bytefox.livingcolonists.client.TypingIndicator.apply(payload));
     }
