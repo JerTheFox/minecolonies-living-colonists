@@ -8,7 +8,8 @@ import net.minecraft.commands.Commands;
 
 /**
  * Fallback commands for clients without the mod's keys:
- * {@code /lc talk <message>}, {@code /lc lock [colony citizen]}, {@code /lc mode [players|colony]}.
+ * {@code /lc talk <message>}, {@code /lc lock [colony citizen]}, {@code /lc mode [players|colony]};
+ * and the answers to a colonist's order question: {@code /lc yes}, {@code /lc no}, {@code /lc undo}.
  * Clicking a colonist's name in chat runs {@code /lc lock <colony> <citizen>}.
  */
 public final class TalkCommand {
@@ -35,6 +36,12 @@ public final class TalkCommand {
                                                     IntegerArgumentType.getInteger(context, "citizen"));
                                             return 1;
                                         }))))
+                .then(Commands.literal("yes").executes(context ->
+                        talk.errands().confirm(context.getSource().getPlayerOrException())))
+                .then(Commands.literal("no").executes(context ->
+                        talk.errands().cancel(context.getSource().getPlayerOrException())))
+                .then(Commands.literal("undo").executes(context ->
+                        talk.errands().undo(context.getSource().getPlayerOrException())))
                 .then(Commands.literal("mode")
                         .then(Commands.literal("players").executes(context -> {
                             conversations.setMode(context.getSource().getPlayerOrException(), ChatMode.PLAYERS);

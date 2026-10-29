@@ -121,6 +121,7 @@ Prompt templates live in `config/livingcolonists/prompts/`: `reply-private.txt`,
 | `/lcdebug relations [name\|all]` | how a colonist, or every pair in the colony you stand in, gets along |
 | `/lcdebug memory digest` | write down every conversation waiting to be noted, right away |
 | `/lcdebug thread [break]` | the colony chat thread and its recent lines; `break` stops it |
+| `/lcdebug orders` | the latest orders: asked, done, turned down, cancelled, taken back |
 | `/lcdebug reload` | reread archetypes and prompts |
 
 ## Usage
@@ -138,7 +139,9 @@ Colonists listen while you are inside the colony's borders. Three keys cover the
 
 For colony members (owner, officers, friends), a *Players | Colony* switch above the chat input shows where your message goes and can be clicked. Unbound by default: a key to switch the mode, and *Focus on colonist*, which picks a private partner without opening the chat. All keys can be rebound in Controls. Colonists take a moment to answer, as if reading and typing: after the reading pause, "Idris is typing..." shows above the hotbar (or next to the switch while the chat is open). Colonists' names are shown in their colony's color, and so are the arrow and addressee of private lines. Colony and private lines are written to the server log, like player chat.
 
-Commands do the same for clients without the mod: `/lc talk <message>`, `/lc lock`, `/lc mode [players|colony]`.
+Colonists can also look things up and take orders: ask "how much iron do we have?" or "Idris, upgrade the bakery". Look-ups answer at once. Orders come only from the colony's owner and officers (a friend gets turned down), only from your own words, and wait for your yes: a question with *Yes* and *No* buttons shows in chat, and a short "yes" or "no" in chat works too. `/lc undo` takes your last order back where it can be taken back.
+
+Commands do the same for clients without the mod: `/lc talk <message>`, `/lc lock`, `/lc mode [players|colony]`, `/lc yes`, `/lc no`, `/lc undo`.
 
 ## Building from source
 

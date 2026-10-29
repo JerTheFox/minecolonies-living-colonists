@@ -34,22 +34,27 @@ public final class Prompts {
         return registryPath.replace('_', ' ').toLowerCase(Locale.ROOT);
     }
 
-    /** Minecraft day time: 0 is 6 am, 6000 noon, 12000 6 pm, 18000 midnight. */
+    /**
+     * The time of day with the hour, like "midday, about 12 o'clock", so the model doesn't guess
+     * where the sun is. Minecraft day time: 0 is 6 am, 6000 noon, 12000 6 pm, 18000 midnight.
+     */
     public static String timeOfDay(long dayTime) {
-        long t = Math.floorMod(dayTime, 24000L);
-        if (t < 6000) {
-            return "morning";
+        int hour = (int) ((Math.floorMod(dayTime, 24000L) / 1000 + 6) % 24);
+        String part;
+        if (hour == 5) {
+            part = "dawn";
+        } else if (hour >= 6 && hour < 11) {
+            part = "morning";
+        } else if (hour >= 11 && hour < 14) {
+            part = "midday";
+        } else if (hour >= 14 && hour < 18) {
+            part = "afternoon";
+        } else if (hour >= 18 && hour < 21) {
+            part = "evening";
+        } else {
+            part = "night";
         }
-        if (t < 12000) {
-            return "afternoon";
-        }
-        if (t < 13000) {
-            return "evening";
-        }
-        if (t < 23000) {
-            return "night";
-        }
-        return "dawn";
+        return part + ", about " + hour + " o'clock";
     }
 
     /**

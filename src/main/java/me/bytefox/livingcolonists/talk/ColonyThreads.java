@@ -201,6 +201,9 @@ public final class ColonyThreads {
     }
 
     void onPlayerMessage(ServerPlayer player, IColony colony, String message) {
+        if (talk.errands().answer(player, message)) {
+            return;
+        }
         MinecraftServer server = player.server;
         output.playerSaid(player, colony.getName(), message, TalkService.colonyAudience(server, colony, player));
         memory.rememberColony(colony, TalkService.playerName(player), message);
@@ -331,7 +334,8 @@ public final class ColonyThreads {
         // The colonist first reads what was said, then types: others see "typing" from the end of the reading pause.
         long readingEnd = thread.lastLineTick + THREAD_PACE * LinePacing.gap(random);
         typing.start(server, speaker, TalkService.colonyAudience(server, colony, player), readingEnd);
-        talk.generate(citizen, prompt, List.of(ChatMessage.user(last)), answeringPlayer, server, result -> {
+        talk.generate(citizen, prompt, List.of(ChatMessage.user(last)), answeringPlayer ? thread.lastPlayer : null,
+                server, result -> {
             if (thread.version != version) {
                 return;
             }

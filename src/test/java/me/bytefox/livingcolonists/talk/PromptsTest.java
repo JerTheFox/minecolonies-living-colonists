@@ -16,12 +16,13 @@ class PromptsTest {
 
     @Test
     void timeOfDayFollowsMinecraftClock() {
-        assertEquals("morning", Prompts.timeOfDay(0));
-        assertEquals("afternoon", Prompts.timeOfDay(6000));
-        assertEquals("evening", Prompts.timeOfDay(12000));
-        assertEquals("night", Prompts.timeOfDay(18000));
-        assertEquals("dawn", Prompts.timeOfDay(23500));
-        assertEquals("morning", Prompts.timeOfDay(24000 * 5 + 100));
+        assertEquals("morning, about 6 o'clock", Prompts.timeOfDay(0));
+        assertEquals("midday, about 12 o'clock", Prompts.timeOfDay(6000));
+        assertEquals("afternoon, about 15 o'clock", Prompts.timeOfDay(9000));
+        assertEquals("evening, about 18 o'clock", Prompts.timeOfDay(12000));
+        assertEquals("night, about 0 o'clock", Prompts.timeOfDay(18000));
+        assertEquals("dawn, about 5 o'clock", Prompts.timeOfDay(23500));
+        assertEquals("morning, about 6 o'clock", Prompts.timeOfDay(24000 * 5 + 100));
     }
 
     @Test

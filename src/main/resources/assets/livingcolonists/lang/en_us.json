@@ -152,5 +152,20 @@
   "livingcolonists.configuration.section.fallback": "Fallback API",
   "livingcolonists.configuration.section.behaviour": "Behaviour",
   "livingcolonists.configuration.section.limits": "Limits",
-  "livingcolonists.settings.hint": "Hover over an option to see what it does and what you can enter."
+  "livingcolonists.settings.hint": "Hover over an option to see what it does and what you can enter.",
+  "livingcolonists.order.confirm": "%s: %s",
+  "livingcolonists.order.yes": "[Yes]",
+  "livingcolonists.order.no": "[No]",
+  "livingcolonists.order.yes.hint": "Do it. You can also answer \"yes\" in chat; /lc undo takes it back.",
+  "livingcolonists.order.no.hint": "Don't. You can also answer \"no\" in chat.",
+  "livingcolonists.order.nothing": "No order is waiting for your answer.",
+  "livingcolonists.order.failed": "it didn't work out.",
+  "livingcolonists.order.outcome": "%s: %s",
+  "livingcolonists.order.cancelled": "%s won't do it.",
+  "livingcolonists.order.nothing_to_undo": "There is no order to take back.",
+  "livingcolonists.order.undone": "%s's last order was taken back.",
+  "livingcolonists.debug.orders.none": "No orders yet.",
+  "livingcolonists.order.upgrade.ask": "build the %s up to level %s?",
+  "livingcolonists.order.upgrade.done": "the builders have the order: %s, level %s.",
+  "livingcolonists.order.upgrade.refused": "the builders didn't take the %s: see the colony's message."
 }

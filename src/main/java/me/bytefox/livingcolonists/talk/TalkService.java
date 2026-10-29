@@ -41,6 +41,8 @@ import me.bytefox.livingcolonists.llm.ToolSpec;
 import me.bytefox.livingcolonists.memory.Fact;
 import me.bytefox.livingcolonists.memory.MemoryLine;
 import me.bytefox.livingcolonists.memory.MemoryService;
+import me.bytefox.livingcolonists.errands.Errand;
+import me.bytefox.livingcolonists.errands.Errands;
 import me.bytefox.livingcolonists.perception.ColonyTools;
 import me.bytefox.livingcolonists.perception.PerceptionService;
 import me.bytefox.livingcolonists.personality.PersonalityService;
@@ -72,6 +74,8 @@ public final class TalkService {
      * usual 2000 and cut the line off mid-word.
      */
     private static final int REPLY_TOKENS = 4000;
+    /** How many of the player's latest lines an order is checked against. */
+    private static final int RECENT_PLAYER_LINES = 6;
     /** How far away a colonist can be addressed with the command, in blocks. */
     private static final double TALK_RANGE = 8.0;
     /** How far from the line of sight a colonist still counts as looked at. */
@@ -84,6 +88,7 @@ public final class TalkService {
     private final MemoryService memory;
     private final BondsService bonds;
     private final ColonyTools tools;
+    private final Errands errands = new Errands();
     private final ColonyThreads threads;
     private final ColonyEvents events;
     private final SpeechOutput output = new ChatSpeechOutput();
@@ -119,6 +124,10 @@ public final class TalkService {
 
     public ColonyThreads threads() {
         return threads;
+    }
+
+    public Errands errands() {
+        return errands;
     }
 
     LlmClient client() {
@@ -157,6 +166,7 @@ public final class TalkService {
         threads.clear();
         events.clear();
         typing.clear();
+        errands.clear();
     }
 
     /** {@code /lc talk}: a private word with the colonist under the crosshair or the nearest one. */
@@ -172,6 +182,9 @@ public final class TalkService {
 
     /** A player's private message to one colonist; the colonist remembers the talk. */
     public void sayPrivately(ServerPlayer player, ICitizenData citizen, String message) {
+        if (errands.answer(player, message)) {
+            return;
+        }
         if (!admit(player, citizen.getColony()) || settings(player).isEmpty()) {
             return;
         }
@@ -203,7 +216,7 @@ public final class TalkService {
         ResourceKey<Level> dimension = citizen.getColony().getDimension();
         long earliest = server.getTickCount() + LinePacing.gap(random);
         typing.start(server, speaker, List.of(player), earliest);
-        generate(citizen, prompt, messages, true, server, result -> {
+        generate(citizen, prompt, messages, playerId, server, result -> {
             thinking.remove(key);
             ServerPlayer author = server.getPlayerList().getPlayer(playerId);
             Optional<String> text = lineOf(speaker, result);
@@ -251,7 +264,7 @@ public final class TalkService {
         ResourceKey<Level> dimension = colony.getDimension();
         long earliest = server.getTickCount() + LinePacing.gap(random);
         typing.start(server, speaker, List.of(player), earliest);
-        generate(citizen, prompt, messages, false, server, result -> {
+        generate(citizen, prompt, messages, null, server, result -> {
             thinking.remove(key);
             Optional<String> text = lineOf(speaker, result);
             if (text.isEmpty()) {
@@ -333,7 +346,8 @@ public final class TalkService {
      *
      * @param withTools offer the colony functions, if they are enabled
      */
-    void generate(ICitizenData citizen, String prompt, List<ChatMessage> conversation, boolean withTools,
+    /** @param asker the player the colonist answers, who may get look-ups and orders; null for none */
+    void generate(ICitizenData citizen, String prompt, List<ChatMessage> conversation, UUID asker,
                   MinecraftServer server, Consumer<ChatResult> done) {
         Optional<LlmSettings> settings = Config.llmSettings(ModelRole.CHAT);
         if (settings.isEmpty()) {
@@ -345,9 +359,13 @@ public final class TalkService {
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(ChatMessage.system(prompt));
         messages.addAll(conversation);
-        List<ToolSpec> offered = withTools && Config.toolsEnabled() ? tools.specs() : List.of();
+        List<ToolSpec> offered = new ArrayList<>();
+        if (asker != null && Config.toolsEnabled()) {
+            offered.addAll(tools.specs());
+            offered.addAll(errands.specs());
+        }
         converse(settings.get().withMinTokens(REPLY_TOKENS), messages, offered, 0, server, citizen.getColony().getDimension(), speaker,
-                new StringBuilder(), done);
+                asker, new StringBuilder(), done);
     }
 
     /** The cleaned line of a successful reply; empty for failures, empty replies and silence. */
@@ -370,8 +388,8 @@ public final class TalkService {
      * round offers no functions, so the model has to answer. {@code done} runs on the server thread.
      */
     private void converse(LlmSettings settings, List<ChatMessage> messages, List<ToolSpec> offered, int round,
-                          MinecraftServer server, ResourceKey<Level> dimension, Speaker speaker, StringBuilder trace,
-                          Consumer<ChatResult> done) {
+                          MinecraftServer server, ResourceKey<Level> dimension, Speaker speaker, UUID asker,
+                          StringBuilder trace, Consumer<ChatResult> done) {
         List<ToolSpec> now = round < MAX_TOOL_ROUNDS ? offered : List.of();
         client.complete(settings, messages, now).thenAccept(result -> server.execute(() -> {
             if (!(result instanceof ChatResult.Reply reply) || !reply.wantsTools()) {
@@ -386,14 +404,31 @@ public final class TalkService {
             List<ChatMessage> next = new ArrayList<>(messages);
             next.add(ChatMessage.assistantCalling(reply.toolCalls()));
             for (ToolCall call : reply.toolCalls()) {
-                String output = tools.run(call, citizen);
+                String output = errands.handles(call.name())
+                        ? errands.run(call, errandContext(citizen, server.getPlayerList().getPlayer(asker)))
+                        : tools.run(call, citizen);
                 trace.append("\n[function] ").append(call.name()).append(call.arguments()).append(" -> ").append(output);
                 next.add(ChatMessage.toolResult(call.id(), output));
             }
             lastPrompts.computeIfPresent(key(speaker.colonyId(), speaker.citizenId()), (k, v) -> v + trace);
             trace.setLength(0);
-            converse(settings, next, offered, round + 1, server, dimension, speaker, trace, done);
+            converse(settings, next, offered, round + 1, server, dimension, speaker, asker, trace, done);
         }));
+    }
+
+    /** What an errand needs to know: the colonist, the player and what the player wrote lately. */
+    private Errand.Context errandContext(ICitizenData citizen, ServerPlayer player) {
+        List<String> lines = new ArrayList<>();
+        if (player != null) {
+            String colonist = citizen.getName();
+            String playerName = playerName(player);
+            memory.privateTalk(citizen, player.getUUID()).stream().filter(line -> !line.speaker().equals(colonist))
+                    .forEach(line -> lines.add(line.text()));
+            memory.colonyChat(citizen.getColony()).stream().filter(line -> line.speaker().equals(playerName))
+                    .forEach(line -> lines.add(line.text()));
+        }
+        return new Errand.Context(citizen, citizen.getColony(), player,
+                lines.subList(Math.max(0, lines.size() - RECENT_PLAYER_LINES), lines.size()));
     }
 
     /** Whether the player may talk to this colony's colonists right now; tells them if not. */

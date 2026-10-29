@@ -152,5 +152,20 @@
   "livingcolonists.configuration.section.fallback": "Запасной API",
   "livingcolonists.configuration.section.behaviour": "Поведение",
   "livingcolonists.configuration.section.limits": "Лимиты",
-  "livingcolonists.settings.hint": "Наведите на пункт, чтобы увидеть, за что он отвечает и что можно вводить."
+  "livingcolonists.settings.hint": "Наведите на пункт, чтобы увидеть, за что он отвечает и что можно вводить.",
+  "livingcolonists.order.confirm": "%s: %s",
+  "livingcolonists.order.yes": "[Да]",
+  "livingcolonists.order.no": "[Нет]",
+  "livingcolonists.order.yes.hint": "Выполнить. Можно и ответить «да» в чате; /lc undo отменит.",
+  "livingcolonists.order.no.hint": "Не надо. Можно и ответить «нет» в чате.",
+  "livingcolonists.order.nothing": "Нет поручений, ждущих ответа.",
+  "livingcolonists.order.failed": "не получилось.",
+  "livingcolonists.order.outcome": "%s: %s",
+  "livingcolonists.order.cancelled": "%s не станет этого делать.",
+  "livingcolonists.order.nothing_to_undo": "Нечего отменять.",
+  "livingcolonists.order.undone": "Последнее поручение для %s отменено.",
+  "livingcolonists.debug.orders.none": "Поручений пока не было.",
+  "livingcolonists.order.upgrade.ask": "строить %s до уровня %s?",
+  "livingcolonists.order.upgrade.done": "строители получили заказ: %s, уровень %s.",
+  "livingcolonists.order.upgrade.refused": "строители не взяли %s: смотри сообщение колонии."
 }

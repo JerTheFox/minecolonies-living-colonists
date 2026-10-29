@@ -1,0 +1,262 @@
+package me.bytefox.livingcolonists.errands;
+
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
+import me.bytefox.livingcolonists.Config;
+import me.bytefox.livingcolonists.LivingColonists;
+import me.bytefox.livingcolonists.behaviour.ColonyAccess;
+import me.bytefox.livingcolonists.llm.ToolCall;
+import me.bytefox.livingcolonists.llm.ToolSpec;
+import me.bytefox.livingcolonists.talk.TalkService;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.server.level.ServerPlayer;
+
+/**
+ * The errands colonists can run for players. Look-ups answer at once. Orders go through code: only
+ * the colony's owner and officers may give them (a friend gets a refusal in character), the order
+ * must be in the player's own recent words, and nothing happens until the player says yes, by
+ * button or by a short "yes" in chat. The last order can be taken back with {@code /lc undo}.
+ * Server thread only.
+ */
+public final class Errands {
+    public static final String PLAYER_WORDS = "player_words";
+    private static final DateTimeFormatter CLOCK = DateTimeFormatter.ofPattern("HH:mm:ss");
+
+    private record Ticket(Errand.Order order, String citizen, String colony) {
+    }
+
+    private final Map<String, Errand> errands = new LinkedHashMap<>();
+    private final OrderBook<Ticket> book = new OrderBook<>();
+
+    public Errands() {
+        ItemIndex items = new ItemIndex();
+        add(new CheckStock(items));
+        add(new UpgradeBuilding());
+    }
+
+    private void add(Errand errand) {
+        errands.put(errand.name(), errand);
+    }
+
+    public List<ToolSpec> specs() {
+        return errands.values().stream().map(Errand::spec).toList();
+    }
+
+    public boolean handles(String tool) {
+        return errands.containsKey(tool);
+    }
+
+    /** Runs one call for the model; the reply is JSON. */
+    public String run(ToolCall call, Errand.Context context) {
+        Errand errand = errands.get(call.name());
+        JsonObject arguments;
+        try {
+            arguments = call.arguments().isBlank() ? new JsonObject() : JsonParser.parseString(call.arguments()).getAsJsonObject();
+        } catch (JsonParseException | IllegalStateException e) {
+            return Errand.error("The arguments were not valid JSON.").toString();
+        }
+        if (errand.isOrder()) {
+            Optional<JsonObject> refusal = refuse(errand, context, arguments);
+            if (refusal.isPresent()) {
+                return refusal.get().toString();
+            }
+        }
+        Errand.Result result;
+        try {
+            result = errand.run(context, arguments);
+        } catch (RuntimeException e) {
+            LivingColonists.LOGGER.warn("Errand {} failed", call.name(), e);
+            return Errand.error("That couldn't be done right now.").toString();
+        }
+        if (result instanceof Errand.Result.Answer answer && !errand.isOrder()) {
+            LivingColonists.LOGGER.info("Look-up by {}: {}{} -> {}", context.citizen().getName(), call.name(),
+                    call.arguments(), answer.reply());
+        }
+        return switch (result) {
+            case Errand.Result.Answer answer -> answer.reply().toString();
+            case Errand.Result.Proposal proposal -> propose(context, proposal.order()).toString();
+        };
+    }
+
+    /** Why an order can't be taken, if it can't: who asks, and whether they asked in their own words. */
+    private Optional<JsonObject> refuse(Errand errand, Errand.Context context, JsonObject arguments) {
+        ServerPlayer player = context.player();
+        if (player == null) {
+            return Optional.of(Errand.error("Orders come only from a player asking you directly."));
+        }
+        if (!ColonyAccess.canGiveOrders(TalkService.role(player, context.colony()), Config.MEMBERS_ONLY.get())) {
+            log(context, errand.name(), "refused: rank");
+            return Optional.of(Errand.error("Only the colony's owner and officers give you orders. Turn it down in "
+                    + "your own way, without fuss, and suggest asking them."));
+        }
+        if (!PlayerWords.grounded(Errand.string(arguments, PLAYER_WORDS), context.playerLines())) {
+            log(context, errand.name(), "refused: not in the player's words");
+            return Optional.of(Errand.error("The player didn't ask for this in their own words. Don't do it unless "
+                    + "they ask, and then quote their words exactly in " + PLAYER_WORDS + "."));
+        }
+        return Optional.empty();
+    }
+
+    private JsonObject propose(Errand.Context context, Errand.Order order) {
+        ServerPlayer player = context.player();
+        long now = player.server.getTickCount();
+        book.propose(player.getUUID(), new Ticket(order, context.citizen().getName(), context.colony().getName()), now);
+        log(context, order.tool(), "asked: " + order.summary());
+        player.sendSystemMessage(question(context.citizen().getName(), order.question()));
+        JsonObject reply = new JsonObject();
+        reply.addProperty("success", true);
+        reply.addProperty("waiting_for_yes", order.summary());
+        reply.addProperty("info", "The player now sees yes and no buttons for this; it happens once they agree. "
+                + "Ask them to confirm in one short line, in your own way, and don't call this again.");
+        return reply;
+    }
+
+    private static Component question(String citizen, Component question) {
+        MutableComponent yes = Component.translatable("livingcolonists.order.yes").withStyle(style -> style
+                .withColor(ChatFormatting.GREEN)
+                .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/lc yes"))
+                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.translatable("livingcolonists.order.yes.hint"))));
+        MutableComponent no = Component.translatable("livingcolonists.order.no").withStyle(style -> style
+                .withColor(ChatFormatting.RED)
+                .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/lc no"))
+                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.translatable("livingcolonists.order.no.hint"))));
+        return Component.translatable("livingcolonists.order.confirm", citizen, question).withStyle(ChatFormatting.GRAY)
+                .append(" ").append(yes).append(" ").append(no);
+    }
+
+    /**
+     * A player's chat message while an order waits for them: a short yes or no settles it, and
+     * the message goes no further. Anything else is ordinary talk.
+     */
+    public boolean answer(ServerPlayer player, String message) {
+        if (book.pending(player.getUUID(), player.server.getTickCount()).isEmpty()) {
+            return false;
+        }
+        return switch (OrderBook.answer(message)) {
+            case YES -> confirm(player) > 0;
+            case NO -> cancel(player) > 0;
+            case NONE -> false;
+        };
+    }
+
+    /** {@code /lc yes}: carries out the order waiting for this player. */
+    public int confirm(ServerPlayer player) {
+        Optional<Ticket> ticket = book.take(player.getUUID(), player.server.getTickCount());
+        if (ticket.isEmpty()) {
+            player.sendSystemMessage(Component.translatable("livingcolonists.order.nothing"));
+            return 0;
+        }
+        Errand.Order order = ticket.get().order();
+        Errand.Outcome outcome;
+        try {
+            outcome = order.execute().apply(player);
+        } catch (RuntimeException e) {
+            LivingColonists.LOGGER.warn("Order {} failed", order.tool(), e);
+            outcome = new Errand.Outcome(false, Component.translatable("livingcolonists.order.failed"), null);
+        }
+        if (outcome.done()) {
+            book.done(player.getUUID(), ticket.get(), outcome.undo());
+        }
+        log(ticket.get(), player, (outcome.done() ? "done: " : "failed: ") + order.summary());
+        player.sendSystemMessage(Component.translatable("livingcolonists.order.outcome", ticket.get().citizen(),
+                outcome.message()).withStyle(outcome.done() ? ChatFormatting.GRAY : ChatFormatting.RED));
+        return outcome.done() ? 1 : 0;
+    }
+
+    /** {@code /lc no}: drops the order waiting for this player. */
+    public int cancel(ServerPlayer player) {
+        Optional<Ticket> ticket = book.take(player.getUUID(), player.server.getTickCount());
+        if (ticket.isEmpty()) {
+            player.sendSystemMessage(Component.translatable("livingcolonists.order.nothing"));
+            return 0;
+        }
+        log(ticket.get(), player, "cancelled: " + ticket.get().order().summary());
+        player.sendSystemMessage(Component.translatable("livingcolonists.order.cancelled", ticket.get().citizen())
+                .withStyle(ChatFormatting.GRAY));
+        return 1;
+    }
+
+    /** {@code /lc undo}: takes back this player's last order, where it can be taken back. */
+    public int undo(ServerPlayer player) {
+        Optional<OrderBook.Undo<Ticket>> last = book.takeUndo(player.getUUID());
+        if (last.isEmpty()) {
+            player.sendSystemMessage(Component.translatable("livingcolonists.order.nothing_to_undo"));
+            return 0;
+        }
+        last.get().undo().run();
+        log(last.get().order(), player, "undone: " + last.get().order().order().summary());
+        player.sendSystemMessage(Component.translatable("livingcolonists.order.undone", last.get().order().citizen())
+                .withStyle(ChatFormatting.GRAY));
+        return 1;
+    }
+
+    /** {@code /lcdebug orders}: what was ordered lately, newest last. */
+    public List<String> log() {
+        return book.log();
+    }
+
+    public void clear() {
+        book.clear();
+    }
+
+    private void log(Errand.Context context, String tool, String what) {
+        String player = context.player() == null ? "-" : context.player().getGameProfile().getName();
+        line(context.colony().getName(), player, context.citizen().getName(), tool + " " + what);
+    }
+
+    private void log(Ticket ticket, ServerPlayer player, String what) {
+        line(ticket.colony(), player.getGameProfile().getName(), ticket.citizen(), ticket.order().tool() + " " + what);
+    }
+
+    private void line(String colony, String player, String citizen, String what) {
+        String line = LocalTime.now().format(CLOCK) + " [" + colony + "] " + player + " -> " + citizen + ": " + what;
+        book.log(line);
+        LivingColonists.LOGGER.info("Order {}", line);
+    }
+
+    /** A function with one required text parameter, or none. */
+    static ToolSpec spec(String name, String description, String parameter, String parameterDescription) {
+        Map<String, String> parameters = new LinkedHashMap<>();
+        if (parameter != null) {
+            parameters.put(parameter, parameterDescription);
+        }
+        return spec(name, description, parameters);
+    }
+
+    /** An order: its parameters, and the player's own words asking for it. */
+    static ToolSpec orderSpec(String name, String description, Map<String, String> parameters) {
+        Map<String, String> all = new LinkedHashMap<>(parameters);
+        all.put(PLAYER_WORDS, "The player's own words asking for this, quoted exactly from their message");
+        return spec(name, description + " Only when the player asks for it themselves; they confirm before it happens.", all);
+    }
+
+    private static ToolSpec spec(String name, String description, Map<String, String> parameters) {
+        JsonObject schema = new JsonObject();
+        schema.addProperty("type", "object");
+        JsonObject properties = new JsonObject();
+        JsonArray required = new JsonArray();
+        parameters.forEach((key, text) -> {
+            JsonObject property = new JsonObject();
+            property.addProperty("type", "string");
+            property.addProperty("description", text);
+            properties.add(key, property);
+            required.add(key);
+        });
+        schema.add("properties", properties);
+        schema.add("required", required);
+        return new ToolSpec(name, description, schema);
+    }
+}

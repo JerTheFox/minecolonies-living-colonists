@@ -99,6 +99,7 @@ public final class DebugCommand {
                 .then(withColonist(Commands.literal("relations"),
                         (context, citizen) -> showRelations(context.getSource(), bonds, citizen))
                         .then(Commands.literal("all").executes(context -> showColonyRelations(context.getSource(), bonds))))
+                .then(Commands.literal("orders").executes(context -> showOrders(context.getSource(), talk)))
                 .then(Commands.literal("thread").executes(context -> showThread(context.getSource(), talk))
                         .then(Commands.literal("break").executes(context -> breakThread(context.getSource(), talk)))));
     }
@@ -311,6 +312,17 @@ public final class DebugCommand {
             line.append(note.kind() ? "\n    + " : "\n    - ").append(note.text());
         }
         return line.toString();
+    }
+
+    private static int showOrders(CommandSourceStack source, TalkService talk) {
+        List<String> log = talk.errands().log();
+        if (log.isEmpty()) {
+            source.sendSuccess(() -> Component.translatable("livingcolonists.debug.orders.none"), false);
+        }
+        for (String line : log) {
+            source.sendSuccess(() -> Component.literal(line), false);
+        }
+        return log.size();
     }
 
     private static int showThread(CommandSourceStack source, TalkService talk) throws CommandSyntaxException {
