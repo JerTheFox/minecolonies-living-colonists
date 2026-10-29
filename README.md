@@ -26,7 +26,11 @@ You look at the baker and press a key: the chat opens, and a line above the inpu
 - Errands go through the colony's own systems: fetching, delivering, crafting requests and more, based on [Colonist Errands](https://github.com/Lovkar-Squid/colonist-errands).
 - Talk to the whole colony or to one colonist privately; colonists understand names and professions in any language.
 - Speech bubbles via Comics Bubbles Chat when it's installed, plain chat otherwise.
-- Any OpenAI-compatible provider, with the API key read from an environment variable.
+- Every colonist gets a personality: an archetype picked mostly from their MineColonies skills, with a dash of chance, and a short background written once by the model. Archetypes and prompts are plain files you can edit, add or delete.
+- Memory profiles from *minimal* (just orders and answers, cheapest) to *immersive* (colonists remember much more), with old memories fading out.
+- Only colony members (owner, officers, friends) can talk to colonists; only owners and officers can give orders. Can be turned off.
+- Any OpenAI-compatible provider, with separate models for chat and for writing characters, retries, a fallback endpoint and token usage statistics.
+- An in-game settings screen, and `/lcdebug` commands for server operators.
 
 ## Requirements
 
@@ -100,11 +104,12 @@ The mod follows the game's language setting. English and Russian are included. T
 
 1. ✅ A command → a colonist → an AI reply in chat.
 2. ✅ Talking without commands: the whole colony or one colonist privately.
-3. Perception and memory, ported from Colonist Errands.
-4. Errands through the colony's request system.
-5. Colonists speak first, with a line budget.
-6. Colonists talk to each other.
-7. Speech bubbles.
+3. Personalities, perception and memory: archetypes, backgrounds, memory profiles, `/lcdebug`.
+4. In-game settings screen.
+5. Errands through the colony's request system.
+6. Colonists speak first, with a line budget.
+7. Colonists talk to each other.
+8. Speech bubbles.
 
 ## About this project
 
