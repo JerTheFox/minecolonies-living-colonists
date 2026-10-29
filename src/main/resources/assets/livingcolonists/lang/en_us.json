@@ -21,5 +21,12 @@
 
   "livingcolonists.chat.click_to_answer": "Click to talk to them privately",
   "livingcolonists.client.no_server_mod": "The server doesn't have Living Colonists.",
-  "livingcolonists.job.unemployed": "Unemployed"
+  "livingcolonists.job.unemployed": "Unemployed",
+
+  "livingcolonists.debug.stats.empty": "No requests to the language model yet.",
+  "livingcolonists.debug.stats.title": "Language model usage",
+  "livingcolonists.debug.stats.model": "%s",
+  "livingcolonists.debug.stats.session": "  this run: %s",
+  "livingcolonists.debug.stats.total": "  in total: %s",
+  "livingcolonists.debug.stats.counts": "%s requests (%s failed), prompt %s tokens (%s cached), reply %s tokens, %s s on average"
 }

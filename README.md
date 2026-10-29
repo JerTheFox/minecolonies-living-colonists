@@ -62,13 +62,19 @@ Open `config/livingcolonists-common.toml` (it appears after the first launch), p
 | Option | Default | Meaning |
 |---|---|---|
 | `baseUrl` | `https://api.deepseek.com` | OpenAI-compatible API base URL |
-| `model` | `deepseek-flash` | model id as the provider's `/models` lists it |
+| `chatModel` | `deepseek-flash` | model for replies, as the provider's `/models` lists it |
+| `characterModel` | empty | optional smarter model for backgrounds and memory summaries, e.g. `deepseek-v4-pro`; empty uses `chatModel` |
 | `apiKey` | empty | your API key |
 | `apiKeyEnv` | `LIVINGCOLONISTS_API_KEY` | environment variable read when `apiKey` is empty |
 | `timeoutSeconds` | `30` | how long to wait for a reply |
+| `retries` | `2` | retries after timeouts, rate limits and server errors |
 | `maxTokens` | `2000` | token limit per request, including the model's thinking |
 | `temperature` | `1.0` | higher is more varied |
 | `extraParams` | `{}` | extra JSON merged into each request, e.g. `{"thinking":{"type":"disabled"}}` for DeepSeek |
+
+The `[llm.fallback]` section sets up a second API used when the main one fails even after retries, for example a local model: `enabled`, `baseUrl`, `model`, `apiKey` (may stay empty for local models), `apiKeyEnv`.
+
+Server operators can see how many requests and tokens each model used with `/lcdebug stats`.
 
 ## Usage
 

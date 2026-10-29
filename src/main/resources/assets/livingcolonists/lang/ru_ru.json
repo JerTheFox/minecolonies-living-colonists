@@ -21,5 +21,12 @@
 
   "livingcolonists.chat.click_to_answer": "Нажмите, чтобы поговорить лично",
   "livingcolonists.client.no_server_mod": "На сервере нет Living Colonists.",
-  "livingcolonists.job.unemployed": "Безработный"
+  "livingcolonists.job.unemployed": "Безработный",
+
+  "livingcolonists.debug.stats.empty": "Запросов к модели ещё не было.",
+  "livingcolonists.debug.stats.title": "Расход языковой модели",
+  "livingcolonists.debug.stats.model": "%s",
+  "livingcolonists.debug.stats.session": "  с запуска: %s",
+  "livingcolonists.debug.stats.total": "  всего: %s",
+  "livingcolonists.debug.stats.counts": "запросов %s (неудачных %s), промпт %s токенов (из кэша %s), ответ %s токенов, в среднем %s с"
 }

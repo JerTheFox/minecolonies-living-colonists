@@ -15,22 +15,43 @@ public final class ChatResponses {
 
     public static ChatResult parse(int status, String body) {
         if (status != 200) {
-            return new ChatResult.Failure(httpError(status, body));
+            return new ChatResult.Failure(httpError(status, body), status == 408 || status == 429 || status >= 500);
         }
         try {
-            JsonArray choices = JsonParser.parseString(body).getAsJsonObject().getAsJsonArray("choices");
+            JsonObject root = JsonParser.parseString(body).getAsJsonObject();
+            JsonArray choices = root.getAsJsonArray("choices");
             if (choices == null || choices.isEmpty()) {
-                return new ChatResult.Failure("response has no choices");
+                return new ChatResult.Failure("response has no choices", false);
             }
             JsonObject choice = choices.get(0).getAsJsonObject();
             JsonElement content = choice.getAsJsonObject("message").get("content");
             if (content == null || content.isJsonNull() || content.getAsString().isBlank()) {
-                return new ChatResult.Failure("empty reply, finish_reason=" + string(choice.get("finish_reason")));
+                return new ChatResult.Failure("empty reply, finish_reason=" + string(choice.get("finish_reason")), false);
             }
-            return new ChatResult.Reply(content.getAsString().strip());
+            return new ChatResult.Reply(content.getAsString().strip(), usage(root.getAsJsonObject("usage")));
         } catch (JsonParseException | IllegalStateException | ClassCastException e) {
-            return new ChatResult.Failure("malformed response: " + truncate(body));
+            return new ChatResult.Failure("malformed response: " + truncate(body), false);
         }
+    }
+
+    /**
+     * Token counts. Cached prompt tokens are {@code prompt_cache_hit_tokens} on DeepSeek and
+     * {@code prompt_tokens_details.cached_tokens} on OpenAI-style APIs.
+     */
+    private static Usage usage(JsonObject usage) {
+        if (usage == null) {
+            return Usage.NONE;
+        }
+        long cached = number(usage.get("prompt_cache_hit_tokens"));
+        JsonElement details = usage.get("prompt_tokens_details");
+        if (cached == 0 && details != null && details.isJsonObject()) {
+            cached = number(details.getAsJsonObject().get("cached_tokens"));
+        }
+        return new Usage(number(usage.get("prompt_tokens")), number(usage.get("completion_tokens")), cached);
+    }
+
+    private static long number(JsonElement element) {
+        return element == null || !element.isJsonPrimitive() ? 0 : element.getAsLong();
     }
 
     private static String httpError(int status, String body) {

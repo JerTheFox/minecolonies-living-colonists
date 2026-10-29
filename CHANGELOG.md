@@ -7,6 +7,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Separate `chatModel` and optional `characterModel` (for backgrounds and memory summaries; empty uses the chat model).
+- Retries after temporary failures (timeouts, rate limits, server errors) and an optional fallback API, for example a local model.
+- Token usage statistics per model, for this run and in total, saved with the world: `/lcdebug stats` (operators).
 - Two chat modes, switched with **H** or with the *Players | Colony* switch above the chat input. In *Colony* mode, while you are inside the colony's borders, your ordinary chat goes to the whole colony: a colonist you name answers, a profession you name ("builders, when will you finish?") gets answers from those colonists, and otherwise two or three random colonists answer. The model works out who is addressed, in any language. Players inside the colony see the conversation.
 - Private talks. **Y** ("Talk to colonist") picks the colonist you look at and opens the chat; your messages then go to that colonist only, like a direct message, from anywhere in the colony. The colonist keeps working. Press **Y** while looking at nobody, click the ✕ above the chat input, or leave the colony to end it. Clicking a colonist's name in chat starts a private talk too.
 - Colonists answer even when they are in unloaded chunks of the colony.

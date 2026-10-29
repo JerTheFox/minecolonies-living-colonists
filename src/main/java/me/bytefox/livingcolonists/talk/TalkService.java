@@ -1,7 +1,5 @@
 package me.bytefox.livingcolonists.talk;
 
-import java.net.http.HttpClient;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -28,6 +26,7 @@ import me.bytefox.livingcolonists.llm.ChatMessage;
 import me.bytefox.livingcolonists.llm.ChatResult;
 import me.bytefox.livingcolonists.llm.LlmClient;
 import me.bytefox.livingcolonists.llm.LlmSettings;
+import me.bytefox.livingcolonists.llm.ModelRole;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -57,11 +56,13 @@ public final class TalkService {
     /** How far from the line of sight a colonist still counts as looked at. */
     private static final double TARGET_RADIUS = 0.8;
 
-    private final LlmClient client = new LlmClient(HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(10))
-            .build());
+    private final LlmClient client;
     private final SpeechOutput output = new ChatSpeechOutput();
     private final Random random = new Random();
+    public TalkService(LlmClient client) {
+        this.client = client;
+    }
+
     /** Colonists waiting for a reply, as {@link #key}. Server thread only. */
     private final Set<Long> thinking = new HashSet<>();
     /** Colonists' lines waiting for their turn (see {@link LinePacing}). Server thread only. */
@@ -173,7 +174,7 @@ public final class TalkService {
      * @param sentAt server tick when the player sent the message
      */
     private void ask(ServerPlayer player, ICitizenData citizen, String message, Audience audience, long sentAt) {
-        Optional<LlmSettings> settings = Config.llmSettings();
+        Optional<LlmSettings> settings = Config.llmSettings(ModelRole.CHAT);
         if (player == null || settings.isEmpty()) {
             return;
         }
@@ -230,7 +231,7 @@ public final class TalkService {
     }
 
     private static Optional<LlmSettings> settings(ServerPlayer player) {
-        Optional<LlmSettings> settings = Config.llmSettings();
+        Optional<LlmSettings> settings = Config.llmSettings(ModelRole.CHAT);
         if (settings.isEmpty()) {
             player.sendSystemMessage(Component.translatable("livingcolonists.talk.no_key"));
         }

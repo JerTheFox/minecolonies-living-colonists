@@ -10,14 +10,16 @@ import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
 
 class ChatRequestsTest {
+    private static final LlmEndpoint ENDPOINT = new LlmEndpoint("https://api.example.com", "test-model", "secret-key");
+
     private static LlmSettings settings(String extraParams) {
-        return new LlmSettings("https://api.example.com", "test-model", "secret-key", 30, 2000, 0.7,
-                JsonParser.parseString(extraParams).getAsJsonObject());
+        return new LlmSettings(ENDPOINT, null, 30, 2000, 0.7,
+                JsonParser.parseString(extraParams).getAsJsonObject(), 2);
     }
 
     @Test
     void buildsChatCompletionsBody() {
-        JsonObject body = JsonParser.parseString(ChatRequests.toJson(settings("{}"),
+        JsonObject body = JsonParser.parseString(ChatRequests.toJson(ENDPOINT, settings("{}"),
                 List.of(ChatMessage.system("You are John."), ChatMessage.user("Hi")))).getAsJsonObject();
 
         assertEquals("test-model", body.get("model").getAsString());
@@ -29,7 +31,7 @@ class ChatRequestsTest {
 
     @Test
     void mergesExtraParamsAndLetsThemOverride() {
-        JsonObject body = JsonParser.parseString(ChatRequests.toJson(
+        JsonObject body = JsonParser.parseString(ChatRequests.toJson(ENDPOINT,
                 settings("{\"thinking\":{\"type\":\"disabled\"},\"temperature\":1.3}"),
                 List.of(ChatMessage.user("Hi")))).getAsJsonObject();
 
@@ -41,7 +43,8 @@ class ChatRequestsTest {
     void neverPutsTheKeyIntoTheBodyOrToString() {
         LlmSettings settings = settings("{}");
 
-        assertFalse(ChatRequests.toJson(settings, List.of(ChatMessage.user("Hi"))).contains("secret-key"));
+        assertFalse(ChatRequests.toJson(ENDPOINT, settings, List.of(ChatMessage.user("Hi"))).contains("secret-key"));
         assertFalse(settings.toString().contains("secret-key"));
+        assertFalse(ENDPOINT.toString().contains("secret-key"));
     }
 }

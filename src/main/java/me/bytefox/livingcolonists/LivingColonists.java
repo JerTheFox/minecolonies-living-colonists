@@ -1,6 +1,13 @@
 package me.bytefox.livingcolonists;
 
+import java.net.http.HttpClient;
+import java.time.Duration;
+
 import com.mojang.logging.LogUtils;
+import me.bytefox.livingcolonists.debug.DebugCommand;
+import me.bytefox.livingcolonists.debug.UsageData;
+import me.bytefox.livingcolonists.llm.LlmClient;
+import me.bytefox.livingcolonists.llm.UsageStats;
 import me.bytefox.livingcolonists.network.ConversationAction;
 import me.bytefox.livingcolonists.network.ConversationState;
 import me.bytefox.livingcolonists.talk.Conversations;
@@ -16,7 +23,9 @@ import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.ServerChatEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
@@ -27,7 +36,14 @@ public final class LivingColonists {
     public static final String MODID = "livingcolonists";
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    private final TalkService talk = new TalkService();
+    /** How often usage statistics are marked for saving, in ticks (1 minute). */
+    private static final int USAGE_SAVE_INTERVAL = 1200;
+
+    private final UsageStats usage = new UsageStats();
+    private final LlmClient client = new LlmClient(
+            HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build(), usage, LlmClient.DEFAULT_BACKOFF);
+    private final TalkService talk = new TalkService(client);
+    private UsageData usageData;
     private final Conversations conversations = new Conversations(talk);
 
     public LivingColonists(IEventBus modEventBus, ModContainer modContainer) {
@@ -35,23 +51,41 @@ public final class LivingColonists {
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::registerPayloads);
 
-        NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent event) ->
-                TalkCommand.register(event.getDispatcher(), talk, conversations));
+        NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent event) -> {
+            TalkCommand.register(event.getDispatcher(), talk, conversations);
+            DebugCommand.register(event.getDispatcher(), usage);
+        });
         NeoForge.EVENT_BUS.addListener(this::onServerChat);
         NeoForge.EVENT_BUS.addListener((ServerTickEvent.Post event) -> {
             conversations.tick(event.getServer());
             talk.tick(event.getServer());
+            if (event.getServer().getTickCount() % USAGE_SAVE_INTERVAL == 0) {
+                markUsageDirty();
+            }
         });
+        NeoForge.EVENT_BUS.addListener((ServerStartedEvent event) -> {
+            usage.clearSession();
+            usageData = event.getServer().overworld().getDataStorage()
+                    .computeIfAbsent(UsageData.factory(usage), UsageData.NAME);
+        });
+        NeoForge.EVENT_BUS.addListener((ServerStoppingEvent event) -> markUsageDirty());
         NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent event) ->
                 conversations.forget(event.getEntity().getUUID()));
         NeoForge.EVENT_BUS.addListener((ServerStoppedEvent event) -> {
             conversations.clear();
             talk.clear();
+            usageData = null;
         });
     }
 
+    private void markUsageDirty() {
+        if (usageData != null && usage.takeDirty()) {
+            usageData.setDirty();
+        }
+    }
+
     private void commonSetup(FMLCommonSetupEvent event) {
-        LOGGER.info("Living Colonists loaded, model {} at {}, API key {}", Config.MODEL.get(), Config.BASE_URL.get(),
+        LOGGER.info("Living Colonists loaded, model {} at {}, API key {}", Config.CHAT_MODEL.get(), Config.BASE_URL.get(),
                 Config.apiKey().isPresent() ? "found" : "missing: set apiKey in the config or " + Config.API_KEY_ENV.get());
     }
 

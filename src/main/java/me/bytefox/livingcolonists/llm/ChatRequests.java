@@ -13,12 +13,12 @@ public final class ChatRequests {
     }
 
     /**
-     * The request body. Extra parameters from the config are merged last, so they can also
-     * override the standard fields when a provider needs that.
+     * The request body for {@code endpoint}'s model. Extra parameters from the config are merged
+     * last, so they can also override the standard fields when a provider needs that.
      */
-    public static String toJson(LlmSettings settings, List<ChatMessage> messages) {
+    public static String toJson(LlmEndpoint endpoint, LlmSettings settings, List<ChatMessage> messages) {
         JsonObject body = new JsonObject();
-        body.addProperty("model", settings.model());
+        body.addProperty("model", endpoint.model());
         JsonArray array = new JsonArray();
         for (ChatMessage message : messages) {
             JsonObject item = new JsonObject();
