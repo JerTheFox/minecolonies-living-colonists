@@ -12,6 +12,8 @@ public record ConversationAction(Action action) implements CustomPacketPayload {
     public enum Action {
         /** The "Talk to colonist" key. */
         TALK,
+        /** The "Focus on colonist" key: pick a partner without opening the chat. */
+        FOCUS,
         /** The "Chat mode" key. */
         CYCLE_MODE,
         /** The ✕ next to the private talk above the chat input. */

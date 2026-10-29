@@ -19,7 +19,7 @@ class ColonyRouterTest {
 
     @Test
     void promptListsTheRosterAndTheMessage() {
-        List<ChatMessage> messages = ColonyRouter.prompt(ROSTER, "строители, когда закончите?");
+        List<ChatMessage> messages = ColonyRouter.prompt("Colonists:\n{roster}\nAnswer.", ROSTER, "строители, когда закончите?");
 
         assertTrue(messages.get(0).content().contains("3. Ann Lee — builder"), messages.get(0).content());
         assertEquals("строители, когда закончите?", messages.get(1).content());

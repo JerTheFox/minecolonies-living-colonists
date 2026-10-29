@@ -1,0 +1,1 @@
+Your background, only to shape your tone. Never retell it and don't repeat its details: {bio}

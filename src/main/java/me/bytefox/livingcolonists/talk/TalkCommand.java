@@ -24,7 +24,7 @@ public final class TalkCommand {
                                         StringArgumentType.getString(context, "message")))))
                 .then(Commands.literal("lock")
                         .executes(context -> {
-                            conversations.pressTalk(context.getSource().getPlayerOrException());
+                            conversations.pressTalk(context.getSource().getPlayerOrException(), false);
                             return 1;
                         })
                         .then(Commands.argument("colony", IntegerArgumentType.integer(0))

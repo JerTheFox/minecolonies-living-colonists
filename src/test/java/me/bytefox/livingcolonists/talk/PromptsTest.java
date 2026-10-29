@@ -24,20 +24,9 @@ class PromptsTest {
     }
 
     @Test
-    void systemPromptNamesTheColonistAndThePlayer() {
-        String prompt = Prompts.system("John Brown", "baker", "Riverside", "evening", "Max", false);
-
-        assertTrue(prompt.contains("John Brown"));
-        assertTrue(prompt.contains("baker"));
-        assertTrue(prompt.contains("Riverside"));
-        assertTrue(prompt.contains("evening"));
-        assertTrue(prompt.contains("Max"));
-    }
-
-    @Test
-    void colonyWidePromptSaysTheMessageWentToEveryone() {
-        assertTrue(Prompts.system("John Brown", "baker", "Riverside", "evening", "Max", true).contains("whole colony"));
-        assertTrue(Prompts.system("John Brown", "baker", "Riverside", "evening", "Max", false).contains("privately"));
+    void cleansBackgrounds() {
+        assertEquals("Grumbles a lot. Works hard.", Prompts.cleanBio("  §6Grumbles a lot.\n\nWorks   hard.  "));
+        assertEquals(Prompts.MAX_BIO_LENGTH, Prompts.cleanBio("a".repeat(5000)).length());
     }
 
     @Test

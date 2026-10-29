@@ -83,7 +83,27 @@ The `[behaviour]` section sets how colonists behave:
 | `cooldownSeconds` | `3` | shortest time between one player's messages to colonists |
 | `membersOnly` | `true` | only the colony's owner, officers and friends may talk to its colonists; only owners and officers may give orders |
 
-Server operators can see how many requests and tokens each model used with `/lcdebug stats`, and show or change the profile with `/lcdebug profile`.
+### Personalities and prompts
+
+Every colonist gets an archetype (grumbler, chatterbox, quiet one, gossip, workhorse, idler, dreamer, optimist, worrier, joker, thinker), picked mostly from their MineColonies skills with a share of chance, and a short background the model writes once. Children get a description of their temperament, sometimes take after a parent, and get an adult background when they grow up.
+
+Archetypes live in `config/livingcolonists/archetypes/` as JSON files: `name`, `prompt` (how the colonist behaves), `weight` (how common), `talkativeness` (0 to 1) and `skills` (skill name to affinity, e.g. `{"Strength": 0.6, "Intelligence": -0.4}`). Add a file to add an archetype, delete one to remove it; delete the folder to get the defaults back.
+
+Prompt templates live in `config/livingcolonists/prompts/`: `reply-private.txt`, `reply-colony.txt`, `character.txt`, `background.txt`, `route-colony.txt`, `bio.txt`, `bio-child.txt`, `bio-grownup.txt`. Placeholders like `{name}`, `{job}` and `{character}` are filled in by the mod. Delete a file to restore its default. `/lcdebug reload` rereads both folders.
+
+### Commands for operators
+
+`/lcdebug` needs operator rights on a server, or cheats turned on in single-player. Regular players only have `/lc`. Without a name, colonist commands act on your conversation partner, or else on the colonist you look at.
+
+| Command | What it does |
+|---|---|
+| `/lcdebug stats` | requests and tokens per model, this run and in total |
+| `/lcdebug profile [name]` | show or change the profile |
+| `/lcdebug colonist [name]` | archetype, background and skills of the colonist you look at, or the named one |
+| `/lcdebug archetype <id\|reroll> [name]` | set or re-pick an archetype |
+| `/lcdebug bio regenerate [name]` | write a new background |
+| `/lcdebug prompt [name]` | the last prompt sent for this colonist's reply |
+| `/lcdebug reload` | reread archetypes and prompts |
 
 ## Usage
 
@@ -94,7 +114,7 @@ Colonists listen while you are inside the colony's borders. There are two ways t
 - **The whole colony.** Switch the chat to *Colony* with **H** or with the *Players | Colony* switch above the chat input, and write as usual. Name a colonist and they answer; name a profession ("builders, when will you finish?") and those colonists answer; otherwise two or three colonists answer. Players inside the colony see the conversation.
 - **One colonist, privately.** Look at a colonist and press **Y**: the chat opens, and whatever you type goes to that colonist only, like a direct message, wherever in the colony you are. They keep working while you talk. Clicking a colonist's name in chat does the same. Press **Y** while looking at nobody, or click ✕ above the chat input, to end it.
 
-Colonists take a couple of seconds to answer, as if typing, and several answers come one after another. Both keys can be rebound in Controls. In *Players* mode the chat works as usual.
+Colonists take a couple of seconds to answer, as if typing, and several answers come one after another. A third key, *Focus on colonist*, is unbound by default: it picks the colonist you look at as your partner without opening the chat. All keys can be rebound in Controls. In *Players* mode the chat works as usual.
 
 Commands do the same for clients without the mod: `/lc talk <message>`, `/lc lock`, `/lc mode [players|colony]`.
 

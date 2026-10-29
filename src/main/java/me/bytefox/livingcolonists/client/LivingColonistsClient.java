@@ -14,7 +14,7 @@ import net.neoforged.neoforge.client.settings.KeyConflictContext;
 import net.neoforged.neoforge.common.NeoForge;
 import org.lwjgl.glfw.GLFW;
 
-/** Client side: the two keys and the chat indicator. Never loaded on a dedicated server. */
+/** Client side: the keys and the chat indicator. Never loaded on a dedicated server. */
 @Mod(value = LivingColonists.MODID, dist = Dist.CLIENT)
 public final class LivingColonistsClient {
     private static final String CATEGORY = "key.categories.livingcolonists";
@@ -22,6 +22,9 @@ public final class LivingColonistsClient {
     /** Y, next to T for chat: lock the colonist you look at and open the chat. */
     private static final KeyMapping TALK = new KeyMapping("key.livingcolonists.talk", KeyConflictContext.IN_GAME,
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Y, CATEGORY);
+    /** Unbound by default: pick the colonist you look at as your partner without opening the chat. */
+    private static final KeyMapping FOCUS = new KeyMapping("key.livingcolonists.focus", KeyConflictContext.IN_GAME,
+            InputConstants.UNKNOWN, CATEGORY);
     /** H: players ↔ whole colony. */
     private static final KeyMapping MODE = new KeyMapping("key.livingcolonists.mode", KeyConflictContext.IN_GAME,
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_H, CATEGORY);
@@ -29,6 +32,7 @@ public final class LivingColonistsClient {
     public LivingColonistsClient(IEventBus modEventBus) {
         modEventBus.addListener((RegisterKeyMappingsEvent event) -> {
             event.register(TALK);
+            event.register(FOCUS);
             event.register(MODE);
         });
         NeoForge.EVENT_BUS.addListener(LivingColonistsClient::onClientTick);
@@ -40,6 +44,9 @@ public final class LivingColonistsClient {
     private static void onClientTick(ClientTickEvent.Post event) {
         while (TALK.consumeClick()) {
             ClientConversation.send(ConversationAction.Action.TALK);
+        }
+        while (FOCUS.consumeClick()) {
+            ClientConversation.send(ConversationAction.Action.FOCUS);
         }
         while (MODE.consumeClick()) {
             ClientConversation.send(ConversationAction.Action.CYCLE_MODE);

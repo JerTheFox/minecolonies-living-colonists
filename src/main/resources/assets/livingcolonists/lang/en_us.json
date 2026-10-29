@@ -1,6 +1,7 @@
 {
   "key.categories.livingcolonists": "Living Colonists",
   "key.livingcolonists.talk": "Talk to colonist",
+  "key.livingcolonists.focus": "Focus on colonist (no chat)",
   "key.livingcolonists.mode": "Chat: players / colony",
 
   "livingcolonists.talk.nobody": "There is no colonist to talk to.",
@@ -32,5 +33,21 @@
   "livingcolonists.talk.cooldown": "Not so fast: wait %s s.",
   "livingcolonists.colony.not_member": "Only members of %s can talk to its colonists.",
   "livingcolonists.debug.profile.current": "Profile %s: personality %s, perception %s, memory %s",
-  "livingcolonists.debug.profile.set": "Profile set to %s."
+  "livingcolonists.debug.profile.set": "Profile set to %s.",
+  "livingcolonists.debug.colonist.none": "Focus on a colonist, look at one, or name one at the end of the command.",
+  "livingcolonists.debug.colonist.not_found": "No colonist called \"%s\" in this colony.",
+  "livingcolonists.debug.colonist.ambiguous": "Several colonists match \"%s\", give more of the name.",
+  "livingcolonists.debug.colonist.title": "%s of %s, %s",
+  "livingcolonists.debug.colonist.child": "child",
+  "livingcolonists.debug.colonist.adult": "adult",
+  "livingcolonists.debug.colonist.archetype": "Archetype: %s",
+  "livingcolonists.debug.colonist.bio": "Background: %s",
+  "livingcolonists.debug.colonist.skills": "Skills: %s",
+  "livingcolonists.debug.archetype.unknown": "There is no archetype \"%s\".",
+  "livingcolonists.debug.archetype.set": "%s is now %s.",
+  "livingcolonists.debug.bio.requested": "Writing a new background for %s; see /lcdebug colonist in a few seconds.",
+  "livingcolonists.debug.bio.busy": "Can't write a background for %s now: one is being written, there is no API key, or the personality module is off.",
+  "livingcolonists.debug.prompt.none": "%s hasn't answered anyone since the server started.",
+  "livingcolonists.debug.reload": "Reloaded %s archetypes and %s prompts.",
+  "livingcolonists.debug.world_not_ready": "No world is loaded."
 }

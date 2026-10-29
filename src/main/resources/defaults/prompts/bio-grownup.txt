@@ -1,0 +1,6 @@
+{name} grew up in a Minecraft MineColonies colony and now works as a {job}.
+As a child: {childhood}
+Character now: {archetype}
+{gender}. Skills: {skills}.
+Write {length} in English about who they have become, with a light nod to their childhood.
+Keep it general: no specific events, dates, named people or places, no catchphrases or signature gestures. Plain text only.

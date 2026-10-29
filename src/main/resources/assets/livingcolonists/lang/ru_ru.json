@@ -1,6 +1,7 @@
 {
   "key.categories.livingcolonists": "Living Colonists",
   "key.livingcolonists.talk": "Говорить с колонистом",
+  "key.livingcolonists.focus": "Фокус на колонисте (без чата)",
   "key.livingcolonists.mode": "Чат: игроки / колония",
 
   "livingcolonists.talk.nobody": "Не с кем поговорить.",
@@ -32,5 +33,21 @@
   "livingcolonists.talk.cooldown": "Не так быстро: подождите %s с.",
   "livingcolonists.colony.not_member": "Говорить с колонистами колонии %s могут только её участники.",
   "livingcolonists.debug.profile.current": "Профиль %s: характер %s, восприятие %s, память %s",
-  "livingcolonists.debug.profile.set": "Профиль изменён на %s."
+  "livingcolonists.debug.profile.set": "Профиль изменён на %s.",
+  "livingcolonists.debug.colonist.none": "Выберите колониста фокусом, посмотрите на него или назовите в конце команды.",
+  "livingcolonists.debug.colonist.not_found": "В этой колонии нет колониста «%s».",
+  "livingcolonists.debug.colonist.ambiguous": "Под «%s» подходят несколько колонистов, уточните имя.",
+  "livingcolonists.debug.colonist.title": "%s из колонии %s, %s",
+  "livingcolonists.debug.colonist.child": "ребёнок",
+  "livingcolonists.debug.colonist.adult": "взрослый",
+  "livingcolonists.debug.colonist.archetype": "Архетип: %s",
+  "livingcolonists.debug.colonist.bio": "Биография: %s",
+  "livingcolonists.debug.colonist.skills": "Навыки: %s",
+  "livingcolonists.debug.archetype.unknown": "Архетипа «%s» нет.",
+  "livingcolonists.debug.archetype.set": "%s теперь %s.",
+  "livingcolonists.debug.bio.requested": "Пишу новую биографию для %s; через несколько секунд смотрите /lcdebug colonist.",
+  "livingcolonists.debug.bio.busy": "Сейчас нельзя написать биографию для %s: она уже пишется, нет API-ключа или модуль характера выключен.",
+  "livingcolonists.debug.prompt.none": "%s ещё никому не отвечал с запуска сервера.",
+  "livingcolonists.debug.reload": "Перечитано архетипов: %s, промптов: %s.",
+  "livingcolonists.debug.world_not_ready": "Мир не загружен."
 }

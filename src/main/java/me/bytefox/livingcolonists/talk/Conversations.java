@@ -81,7 +81,8 @@ public final class Conversations {
 
     public void onAction(ServerPlayer player, ConversationAction.Action action) {
         switch (action) {
-            case TALK -> pressTalk(player);
+            case TALK -> pressTalk(player, true);
+            case FOCUS -> pressTalk(player, false);
             case CYCLE_MODE -> setMode(player, entry(player).mode.next());
             case RELEASE -> release(player, true);
             case MODE_PLAYERS -> setMode(player, ChatMode.PLAYERS);
@@ -93,10 +94,10 @@ public final class Conversations {
      * The "Talk to colonist" key: pick the colonist under the crosshair; looking at nobody, end the
      * private talk, or pick the nearest colonist if there is no talk yet.
      */
-    public void pressTalk(ServerPlayer player) {
+    public void pressTalk(ServerPlayer player, boolean openChat) {
         Optional<AbstractEntityCitizen> lookedAt = TalkService.findListener(player, LOOK_RANGE, true);
         if (lookedAt.isPresent()) {
-            lock(player, lookedAt.get().getCitizenData(), true);
+            lock(player, lookedAt.get().getCitizenData(), openChat);
             return;
         }
         if (entry(player).partner != null) {
@@ -105,7 +106,7 @@ public final class Conversations {
         }
         Optional<AbstractEntityCitizen> nearest = TalkService.findListener(player, NEAREST_RANGE, false);
         if (nearest.isPresent()) {
-            lock(player, nearest.get().getCitizenData(), true);
+            lock(player, nearest.get().getCitizenData(), openChat);
         } else {
             player.sendSystemMessage(Component.translatable("livingcolonists.talk.nobody"));
         }
@@ -176,6 +177,14 @@ public final class Conversations {
                 release(player, true);
             }
         }
+    }
+
+    /** The colonist the player is talking to privately, if any and still in the colony. */
+    public Optional<ICitizenData> partner(ServerPlayer player) {
+        Entry entry = players.get(player.getUUID());
+        Partner partner = entry == null ? null : entry.partner;
+        return partner == null ? Optional.empty()
+                : Optional.ofNullable(TalkService.resolve(partner.dimension(), partner.colonyId(), partner.citizenId()));
     }
 
     public void forget(UUID playerId) {

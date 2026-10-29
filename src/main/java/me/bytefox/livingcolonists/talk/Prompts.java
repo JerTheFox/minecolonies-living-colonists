@@ -2,8 +2,10 @@ package me.bytefox.livingcolonists.talk;
 
 import java.util.Locale;
 
-/** Prompt text and reply clean-up, kept free of game classes so it can be unit-tested. */
+/** Values for prompt templates and clean-up of model output, kept free of game classes for unit tests. */
 public final class Prompts {
+    /** Longest background kept, in characters. */
+    public static final int MAX_BIO_LENGTH = 1200;
     /** Longest reply that goes to chat, in characters. */
     public static final int MAX_REPLY_LENGTH = 400;
 
@@ -40,24 +42,6 @@ public final class Prompts {
     }
 
     /**
-     * @param wholeColony the player wrote to the whole colony rather than to this colonist alone
-     */
-    public static String system(String name, String job, String colony, String timeOfDay, String playerName,
-                                boolean wholeColony) {
-        String situation = wholeColony
-                ? "%s, a player, wrote a message to the whole colony in the game chat, and you answer it.".formatted(playerName)
-                : "%s, a player, is talking to you privately in the game chat.".formatted(playerName);
-        return """
-                You are %s, a %s living in the colony "%s" in Minecraft with the MineColonies mod. \
-                It is %s. %s
-                Stay in character as a colonist with your own temper and worries. \
-                Reply like a chat message: one or two short sentences, in the same language the player writes in. \
-                No stage directions, no quotation marks, no name in front of the reply. \
-                If you don't know something about the colony, say so instead of making it up."""
-                .formatted(name, job, colony, timeOfDay, situation);
-    }
-
-    /**
      * Strips what models add around a chat line: a name prefix, wrapping quotes, line breaks, and
      * Minecraft formatting codes, which could hide or garble text in chat.
      */
@@ -78,5 +62,11 @@ public final class Prompts {
 
     private static boolean isQuotePair(char first, char last) {
         return (first == '"' && last == '"') || (first == '«' && last == '»') || (first == '“' && last == '”');
+    }
+
+    /** A background as one paragraph of plain text, without formatting codes, within a sane length. */
+    public static String cleanBio(String text) {
+        String bio = text.replaceAll("§.?", "").replaceAll("\\s+", " ").strip();
+        return bio.length() > MAX_BIO_LENGTH ? bio.substring(0, MAX_BIO_LENGTH - 1) + "…" : bio;
     }
 }

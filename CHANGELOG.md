@@ -7,6 +7,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Personalities: every colonist gets an archetype, picked mostly from their MineColonies skills with a share of chance, and a short background written once by the character model. Children get a description of their temperament instead of a past, sometimes take after a parent, and get an adult background when they grow up.
+- Archetypes (`config/livingcolonists/archetypes/*.json`) and prompts (`config/livingcolonists/prompts/*.txt`) are plain files: edit, add or delete them. Eleven archetypes come with the mod.
+- `/lcdebug colonist`, `archetype <id|reroll>`, `bio regenerate`, `prompt` and `reload` for operators (and in single-player worlds with cheats on). Without a name they act on your conversation partner, or else on the colonist you look at.
+- A "Focus on colonist" key (unbound by default) picks the colonist you look at as your conversation partner without opening the chat, handy for `/lcdebug`.
 - Profiles `MINIMAL`, `LIGHT`, `DEFAULT`, `IMMERSIVE` set how deep personalities, perception and memory go; each module can be overridden separately. `/lcdebug profile` shows or changes the profile.
 - Only a colony's owner, officers and friends can talk to its colonists (`membersOnly`, on by default).
 - A short cooldown between one player's messages to colonists (`cooldownSeconds`, 3 by default).

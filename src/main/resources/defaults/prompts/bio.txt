@@ -1,0 +1,6 @@
+Write a short background for {name}, a {job} in a Minecraft MineColonies colony.
+Character: {archetype}
+{gender}. Skills: {skills}.
+Write {length} in English about their general past, temperament and habits.
+Keep it general: no specific events, dates, named people or places, no catchphrases or signature gestures, nothing they would repeat word for word in conversation.
+It should give them a voice and an attitude, not facts to recite. Plain text only.

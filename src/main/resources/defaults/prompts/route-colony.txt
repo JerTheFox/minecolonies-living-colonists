@@ -1,0 +1,7 @@
+A player wrote a chat message to a whole MineColonies colony. Decide which colonists it is addressed to.
+Colonists:
+{roster}
+Answer with JSON only.
+If the message names colonists or a profession (for example "builders" means every builder), answer {"to": [numbers of those colonists]}.
+If it is for everyone or for nobody in particular, answer {"to": "everyone"}.
+The message may be in any language.

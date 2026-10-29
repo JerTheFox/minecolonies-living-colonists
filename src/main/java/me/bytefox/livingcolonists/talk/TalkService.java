@@ -31,6 +31,9 @@ import me.bytefox.livingcolonists.llm.ChatResult;
 import me.bytefox.livingcolonists.llm.LlmClient;
 import me.bytefox.livingcolonists.llm.LlmSettings;
 import me.bytefox.livingcolonists.llm.ModelRole;
+import me.bytefox.livingcolonists.personality.PersonalityService;
+import me.bytefox.livingcolonists.prompt.PromptLibrary;
+import me.bytefox.livingcolonists.prompt.Templates;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -61,12 +64,18 @@ public final class TalkService {
     private static final double TARGET_RADIUS = 0.8;
 
     private final LlmClient client;
+    private final PromptLibrary prompts;
+    private final PersonalityService personalities;
     private final SpeechOutput output = new ChatSpeechOutput();
     private final Random random = new Random();
-    public TalkService(LlmClient client) {
+    public TalkService(LlmClient client, PromptLibrary prompts, PersonalityService personalities) {
         this.client = client;
+        this.prompts = prompts;
+        this.personalities = personalities;
     }
 
+    /** The last reply prompt of each colonist, as {@link #key}, for {@code /lcdebug prompt}. Server thread only. */
+    private final Map<Long, String> lastPrompts = new HashMap<>();
     /** Pause between one player's messages to colonists. Server thread only. */
     private final Cooldown cooldown = new Cooldown();
     /** Colonists waiting for a reply, as {@link #key}. Server thread only. */
@@ -98,7 +107,13 @@ public final class TalkService {
         }
     }
 
+    /** The last prompt sent for this colonist's reply, if any. */
+    public Optional<String> lastPrompt(ICitizenData citizen) {
+        return Optional.ofNullable(lastPrompts.get(key(citizen.getColony().getID(), citizen.getId())));
+    }
+
     public void clear() {
+        lastPrompts.clear();
         cooldown.clear();
         thinking.clear();
         pending.clear();
@@ -161,7 +176,7 @@ public final class TalkService {
         UUID playerId = player.getUUID();
         ResourceKey<Level> dimension = colony.getDimension();
         int colonyId = colony.getID();
-        client.complete(settings.get(), ColonyRouter.prompt(roster, message)).thenAccept(result -> server.execute(() -> {
+        client.complete(settings.get(), ColonyRouter.prompt(prompts.get(PromptLibrary.ROUTE_COLONY), roster, message)).thenAccept(result -> server.execute(() -> {
             List<Integer> addressed = List.of();
             if (result instanceof ChatResult.Reply reply) {
                 addressed = ColonyRouter.parse(reply.text(), ids.size());
@@ -197,9 +212,15 @@ public final class TalkService {
             return;
         }
         IColony colony = citizen.getColony();
-        String prompt = Prompts.system(speaker.name(), speaker.job(), speaker.colony(),
-                Prompts.timeOfDay(colony.getWorld().getDayTime()), player.getGameProfile().getName(),
-                audience == Audience.COLONY);
+        Map<String, String> values = new HashMap<>(personalities.promptValues(citizen, player.server));
+        values.put("name", speaker.name());
+        values.put("job", speaker.job());
+        values.put("colony", speaker.colony());
+        values.put("time", Prompts.timeOfDay(colony.getWorld().getDayTime()));
+        values.put("player", player.getGameProfile().getName());
+        String prompt = Templates.render(prompts.get(audience == Audience.COLONY
+                ? PromptLibrary.REPLY_COLONY : PromptLibrary.REPLY_PRIVATE), values);
+        lastPrompts.put(key, prompt);
         MinecraftServer server = player.server;
         UUID playerId = player.getUUID();
         ResourceKey<Level> dimension = colony.getDimension();

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
@@ -12,6 +13,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import me.bytefox.livingcolonists.llm.ChatMessage;
+import me.bytefox.livingcolonists.prompt.Templates;
 
 /**
  * Decides which colonists answer a message to the whole colony. A short request asks the model
@@ -28,21 +30,14 @@ public final class ColonyRouter {
     private ColonyRouter() {
     }
 
-    public static List<ChatMessage> prompt(List<Member> roster, String message) {
-        StringBuilder system = new StringBuilder("""
-                A player wrote a chat message to a whole MineColonies colony. Decide which colonists it is addressed to.
-                Colonists:
-                """);
+    /** @param template the {@code route-colony.txt} prompt, with a {@code {roster}} placeholder */
+    public static List<ChatMessage> prompt(String template, List<Member> roster, String message) {
+        StringBuilder lines = new StringBuilder();
         for (int i = 0; i < roster.size(); i++) {
-            system.append(i + 1).append(". ").append(roster.get(i).name()).append(" — ").append(roster.get(i).job()).append('\n');
+            lines.append(i + 1).append(". ").append(roster.get(i).name()).append(" — ").append(roster.get(i).job()).append('\n');
         }
-        system.append("""
-                Answer with JSON only.
-                If the message names colonists or a profession (for example "builders" means every builder), \
-                answer {"to": [numbers of those colonists]}.
-                If it is for everyone or for nobody in particular, answer {"to": "everyone"}.
-                The message may be in any language.""");
-        return List.of(ChatMessage.system(system.toString()), ChatMessage.user(message));
+        return List.of(ChatMessage.system(Templates.render(template, Map.of("roster", lines.toString().strip()))),
+                ChatMessage.user(message));
     }
 
     /**
