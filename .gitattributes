@@ -1,0 +1,8 @@
+# LF everywhere, matching .editorconfig, regardless of core.autocrlf.
+* text=auto eol=lf
+
+# Windows scripts need CRLF.
+*.bat text eol=crlf
+
+*.png binary
+*.jar binary

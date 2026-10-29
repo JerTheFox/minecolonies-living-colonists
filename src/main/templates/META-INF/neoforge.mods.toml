@@ -1,0 +1,40 @@
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
+license="${mod_license}"
+issueTrackerURL="https://github.com/JerTheFox/minecolonies-living-colonists/issues"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+displayURL="https://github.com/JerTheFox/minecolonies-living-colonists"
+authors="JerTheFox"
+# Pixel art: keep the logo sharp when the mod list scales it.
+logoFile="logo.png"
+logoBlur=false
+credits="Built on code from Colonist Errands by Lovkar and ideas from Talking Colonists by sshcrack and ColonyChat. Made with the help of Claude. See README."
+description='''
+MineColonies colonists talk in text chat almost like players: they write first, reply, remember conversations and gossip about the colony. Replies come from any OpenAI-compatible LLM API.
+'''
+
+[[dependencies.${mod_id}]]
+    modId="neoforge"
+    type="required"
+    versionRange="[${neo_version},)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    type="required"
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="BOTH"
+
+# Exactly one version: addons break on neighbouring MineColonies builds.
+[[dependencies.${mod_id}]]
+    modId="minecolonies"
+    type="required"
+    versionRange="[${minecolonies_version}]"
+    ordering="AFTER"
+    side="BOTH"

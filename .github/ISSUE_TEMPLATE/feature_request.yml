@@ -1,0 +1,25 @@
+name: Feature request
+description: An idea for the mod
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: Idea
+      description: What should colonists do, and in what situation?
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: What problem does it solve, or what would it make better in play?
+
+  - type: textarea
+    id: example
+    attributes:
+      label: Example
+      description: A short example of how it would look in chat, if it helps.
+      placeholder: |
+        <John Brown · Baker> ...

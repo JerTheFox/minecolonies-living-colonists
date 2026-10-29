@@ -1,0 +1,115 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.148'
+    id 'idea'
+}
+
+tasks.named('wrapper', Wrapper).configure {
+    distributionType = Wrapper.DistributionType.BIN
+}
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = mod_id
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+repositories {
+    maven {
+        name = 'LDTTeam'
+        url = 'https://ldtteam.jfrog.io/ldtteam/modding/'
+        content { includeGroup 'com.ldtteam' }
+    }
+}
+
+// Local secrets for the dev runs: KEY=VALUE lines from .env (see .env.example).
+var dotEnv = providers.fileContents(layout.projectDirectory.file('.env')).asText.map { text ->
+    text.readLines()
+            .collect { it.trim() }
+            .findAll { it && !it.startsWith('#') && it.contains('=') }
+            .collectEntries { line ->
+                var i = line.indexOf('=')
+                [(line.substring(0, i).trim()): line.substring(i + 1).trim()]
+            }
+}.orElse([:])
+
+neoForge {
+    version = project.neo_version
+
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.parchment_minecraft_version
+    }
+
+    runs {
+        client {
+            client()
+        }
+
+        server {
+            server()
+            programArgument '--nogui'
+        }
+
+        configureEach {
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+            logLevel = org.slf4j.event.Level.DEBUG
+            environment.putAll(dotEnv)
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+// localRuntime: mods needed only to run the dev environment; they do not
+// become dependencies of the built jar.
+configurations {
+    runtimeClasspath.extendsFrom localRuntime
+}
+
+dependencies {
+    // Transitive dependencies are off: ldtteam POMs pull in older Structurize
+    // and BlockUI, JEI and build tooling. The set is declared explicitly.
+    implementation("com.ldtteam:minecolonies:${minecolonies_version}") { transitive = false }
+    localRuntime("com.ldtteam:structurize:${structurize_version}") { transitive = false }
+    localRuntime("com.ldtteam:blockui:${blockui_version}") { transitive = false }
+    localRuntime("com.ldtteam:domum-ornamentum:${domum_ornamentum_version}:main") { transitive = false }
+}
+
+var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neo_version            : neo_version,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+            minecolonies_version   : minecolonies_version,
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from "src/main/templates"
+    into "build/generated/sources/modMetadata"
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}

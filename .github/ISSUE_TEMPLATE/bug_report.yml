@@ -1,0 +1,90 @@
+name: Bug report
+description: Something does not work as it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please check that you run the exact MineColonies version the mod supports (see README) — other versions are not supported.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Switch chat mode to "Nearest colonist"
+        2. Write "hello" to a baker
+        3. ...
+    validations:
+      required: true
+
+  - type: input
+    id: mod-version
+    attributes:
+      label: Living Colonists version
+      placeholder: 0.1.0
+    validations:
+      required: true
+
+  - type: input
+    id: minecolonies-version
+    attributes:
+      label: MineColonies version
+      placeholder: 1.1.1405
+    validations:
+      required: true
+
+  - type: input
+    id: neoforge-version
+    attributes:
+      label: NeoForge version
+      placeholder: 21.1.264
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Where does it happen
+      options:
+        - Single-player
+        - Dedicated server
+        - LAN
+    validations:
+      required: true
+
+  - type: input
+    id: provider
+    attributes:
+      label: LLM provider and model
+      placeholder: DeepSeek, deepseek-chat
+
+  - type: textarea
+    id: modpack
+    attributes:
+      label: Other mods
+      description: Modpack name, or other MineColonies addons and chat-related mods you have installed.
+
+  - type: input
+    id: log
+    attributes:
+      label: Log
+      description: Link to `logs/latest.log` (for example via https://mclo.gs). For server-side problems, the server log.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: secrets
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked that the log and config I share contain no API keys.
+          required: true
