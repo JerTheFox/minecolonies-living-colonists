@@ -63,5 +63,10 @@
   "livingcolonists.debug.bonds.empty": "У %s нет ни обещаний от игроков, ни истории с ними.",
   "livingcolonists.debug.bonds.cleared": "%s забыл(а) обещания и отношения: %s.",
   "livingcolonists.promise.kept": "%s заметил(а), что вы сдержали обещание.",
-  "livingcolonists.promise.broken": "%s напрасно ждал(а), что вы сдержите обещание."
+  "livingcolonists.promise.broken": "%s напрасно ждал(а), что вы сдержите обещание.",
+  "livingcolonists.typing.one": "%s печатает",
+  "livingcolonists.typing.two": "%s и %s печатают",
+  "livingcolonists.typing.many": "%s и ещё %s печатают",
+  "livingcolonists.limit.daily": "На сегодня колонисты наговорились: дневной лимит сервера исчерпан.",
+  "livingcolonists.limit.hourly": "Вы много говорили с колонистами за этот час. Попробуйте через %s мин."
 }

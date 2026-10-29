@@ -1,5 +1,6 @@
 package me.bytefox.livingcolonists.llm;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,8 +27,27 @@ public final class UsageStats {
     private final Map<String, Counts> session = new HashMap<>();
     private Map<String, Counts> saved = Map.of();
     private boolean dirty;
+    private LocalDate day;
+    private long dayTokens;
 
-    public synchronized void record(String model, ChatResult result, long latencyMillis) {
+    public void record(String model, ChatResult result, long latencyMillis) {
+        record(model, result, latencyMillis, LocalDate.now());
+    }
+
+    /** Tokens used on this day, for the daily limit; only the current day is kept, and only in memory. */
+    public synchronized long tokensOn(LocalDate day) {
+        return day.equals(this.day) ? dayTokens : 0;
+    }
+
+    /** Records one request, made on {@code today}. */
+    public synchronized void record(String model, ChatResult result, long latencyMillis, LocalDate today) {
+        if (!today.equals(day)) {
+            day = today;
+            dayTokens = 0;
+        }
+        if (result instanceof ChatResult.Reply reply) {
+            dayTokens += reply.usage().promptTokens() + reply.usage().completionTokens();
+        }
         Counts one = switch (result) {
             case ChatResult.Reply reply -> new Counts(1, 0, reply.usage().promptTokens(),
                     reply.usage().completionTokens(), reply.usage().cachedTokens(), latencyMillis);

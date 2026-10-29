@@ -63,5 +63,10 @@
   "livingcolonists.debug.bonds.empty": "%s has no promises from players and no history with them.",
   "livingcolonists.debug.bonds.cleared": "%s forgot %s promises and relations.",
   "livingcolonists.promise.kept": "%s noticed you kept your promise.",
-  "livingcolonists.promise.broken": "%s waited for your promise in vain."
+  "livingcolonists.promise.broken": "%s waited for your promise in vain.",
+  "livingcolonists.typing.one": "%s is typing",
+  "livingcolonists.typing.two": "%s and %s are typing",
+  "livingcolonists.typing.many": "%s and %s more are typing",
+  "livingcolonists.limit.daily": "The colonists have talked enough for today: the server's daily limit is reached.",
+  "livingcolonists.limit.hourly": "You've talked to the colonists a lot this hour. Try again in %s min."
 }

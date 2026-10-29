@@ -51,6 +51,20 @@ class ChatResponsesTest {
     }
 
     @Test
+    void aReplyCutOffByTheTokenLimitKeepsItsWholeSentences() {
+        ChatResult.Reply reply = assertInstanceOf(ChatResult.Reply.class, ChatResponses.parse(200,
+                completion("\"Ask Max. I promised not to tell, so I won't give it awa\"", "length")));
+        assertEquals("Ask Max.", reply.text());
+    }
+
+    @Test
+    void aReplyCutOffBeforeItsFirstSentenceEndsIsAFailure() {
+        ChatResult.Failure failure = assertInstanceOf(ChatResult.Failure.class, ChatResponses.parse(200,
+                completion("\"Ask Max, I promised not to te\"", "length")));
+        assertTrue(failure.reason().contains("cut off"), failure.reason());
+    }
+
+    @Test
     void nullContentIsAFailure() {
         assertInstanceOf(ChatResult.Failure.class, ChatResponses.parse(200, completion("null", "stop")));
     }

@@ -8,11 +8,13 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.LongSupplier;
 
 /**
  * Asynchronous client for an OpenAI-compatible chat completions API.
@@ -27,6 +29,9 @@ import java.util.function.Consumer;
  */
 public final class LlmClient {
     /** Pauses before the first, second and later retries. */
+    /** The failure reason of a request refused because the daily token limit is reached. */
+    public static final String DAILY_LIMIT = "daily token limit reached";
+
     public static final List<Duration> DEFAULT_BACKOFF = List.of(Duration.ofSeconds(1), Duration.ofSeconds(3),
             Duration.ofSeconds(8));
 
@@ -34,6 +39,8 @@ public final class LlmClient {
     private final UsageStats stats;
     private final List<Duration> backoff;
     private final Consumer<String> log;
+    /** Tokens allowed per day; 0 means no limit. */
+    private volatile LongSupplier dailyTokenLimit = () -> 0;
 
     /** @param log where notes about retries go (the mod's log in game) */
     public LlmClient(HttpClient http, UsageStats stats, List<Duration> backoff, Consumer<String> log) {
@@ -49,12 +56,26 @@ public final class LlmClient {
 
     /** The same, offering the model {@code tools}; a reply may then ask for calls instead of answering. */
     public CompletableFuture<ChatResult> complete(LlmSettings settings, List<ChatMessage> messages, List<ToolSpec> tools) {
+        if (overDailyLimit()) {
+            return CompletableFuture.completedFuture(new ChatResult.Failure(DAILY_LIMIT, false));
+        }
         return withRetries(settings.primary(), settings, messages, tools, 0).thenCompose(result -> {
             if (result instanceof ChatResult.Failure && settings.fallback() != null) {
                 return withRetries(settings.fallback(), settings, messages, tools, 0);
             }
             return CompletableFuture.completedFuture(result);
         });
+    }
+
+    /** Sets where the daily token limit comes from (the config); 0 means no limit. */
+    public void limitDailyTokens(LongSupplier limit) {
+        dailyTokenLimit = limit;
+    }
+
+    /** Whether today's tokens reached the daily limit: then no request is sent until tomorrow. */
+    public boolean overDailyLimit() {
+        long limit = dailyTokenLimit.getAsLong();
+        return limit > 0 && stats.tokensOn(LocalDate.now()) >= limit;
     }
 
     private CompletableFuture<ChatResult> withRetries(LlmEndpoint endpoint, LlmSettings settings, List<ChatMessage> messages,

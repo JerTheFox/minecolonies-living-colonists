@@ -37,10 +37,28 @@ public final class ChatResponses {
             if (content == null || content.isJsonNull() || content.getAsString().isBlank()) {
                 return new ChatResult.Failure("empty reply, finish_reason=" + string(choice.get("finish_reason")), false);
             }
-            return new ChatResult.Reply(content.getAsString().strip(), usage(root.getAsJsonObject("usage")));
+            String text = content.getAsString().strip();
+            if ("length".equals(string(choice.get("finish_reason")))) {
+                // Cut off by max_tokens (a reasoning model thought too long): keep the sentences that ended.
+                text = wholeSentences(text);
+                if (text.isEmpty()) {
+                    return new ChatResult.Failure("reply cut off by max_tokens before its first sentence ended", false);
+                }
+            }
+            return new ChatResult.Reply(text, usage(root.getAsJsonObject("usage")));
         } catch (JsonParseException | IllegalStateException | ClassCastException e) {
             return new ChatResult.Failure("malformed response: " + truncate(body), false);
         }
+    }
+
+    /** The text up to its last sentence end (. ! ? …), or empty if no sentence ended. */
+    static String wholeSentences(String text) {
+        for (int i = text.length() - 1; i >= 0; i--) {
+            if (".!?…".indexOf(text.charAt(i)) >= 0) {
+                return text.substring(0, i + 1).strip();
+            }
+        }
+        return "";
     }
 
     private static List<ToolCall> toolCalls(JsonElement element) {

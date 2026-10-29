@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
@@ -269,7 +270,7 @@ public final class MemoryService {
         values.put("known", known(List.of(citizen)));
         UUID playerId = UUID.fromString(parts[2]);
         List<Promise> open = bonds.open(citizen, playerId);
-        values.put("player_rules", Templates.render(prompts.get(PromptLibrary.MEMORY_PLAYER),
+        values.put("rules", Templates.render(prompts.get(PromptLibrary.MEMORY_PLAYER),
                 Map.of("player", player.get(), "name", name, "promises", Bonds.numbered(open, now))));
         int citizenId = citizen.getId();
         String playerName = player.get();
@@ -308,9 +309,12 @@ public final class MemoryService {
                 .map(citizen -> citizen.getName() + ", " + jobOf(citizen)).collect(Collectors.joining("; ")) + ")");
         values.put("where", "the colony's group chat, where players and colonists talk");
         values.put("known", known(participants));
-        values.put("player_rules", "");
+        values.put("rules", prompts.get(PromptLibrary.MEMORY_COLONISTS));
+        List<Integer> participantIds = participants.stream().map(ICitizenData::getId).toList();
         return request(server, key, transcript, values, lines, MAX_COLONY_FACTS, colony, participants, Fact.COLONY_CHAT,
-                null);
+                (current, digest) -> bonds.noteColonists(current, participantIds.stream()
+                        .map(id -> current.getCitizenManager().getCivilian(id)).filter(Objects::nonNull).toList(),
+                        digest.colonists()));
     }
 
     /**

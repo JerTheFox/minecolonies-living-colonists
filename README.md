@@ -83,7 +83,10 @@ The `[behaviour]` section sets how colonists behave:
 | `personality`, `perception`, `memory`, `conversation` | `profile` | override one module: `off`, `low`, `default` or `high`; `conversation` sets how long colony chats run on their own |
 | `cooldownSeconds` | `3` | shortest time between one player's messages to colonists |
 | `playerNames` | empty | what colonists call players instead of nicknames, e.g. `["JerTheFox=Максим,Макс,Максик"]`, most common form first |
+| `colonyChatAnywhere` | `false` | colony members read and write their colony's chat from anywhere, not only inside its borders |
 | `membersOnly` | `true` | only the colony's owner, officers and friends may talk to its colonists; only owners and officers may give orders |
+
+The optional `[limits]` section guards public servers against chat spam and runaway costs; `0` turns a limit off, and both are off by default: `messagesPerPlayerPerHour` (messages one player may send to colonists in an hour) and `tokensPerDay` (tokens the whole server may spend in a day; then colonists rest until midnight).
 
 ### Personalities and prompts
 
@@ -97,7 +100,9 @@ Colonists remember. Recent lines of each private talk and of the colony chat go 
 
 Promises count. Promise a colonist planks by tomorrow or a house within a week, and they remember the deadline, remind you when it has passed, thank you when you keep it and hold it against you when you don't. A promised home, job, treatment or building is noticed by itself once it happens. Colonists also remember whether you are kind or rude to them, and the colony talks: a player rude to several colonists gets a reputation.
 
-Prompt templates live in `config/livingcolonists/prompts/`: `reply-private.txt`, `reply-colony.txt`, `character.txt`, `background.txt`, `route-colony.txt`, `bio.txt`, `bio-child.txt`, `bio-grownup.txt`, `memory.txt`, `memory-player.txt`. Placeholders like `{name}`, `{job}`, `{character}` and `{situation}` are filled in by the mod. Files you haven't edited follow the mod's defaults when it updates; delete a file to restore its default. `/lcdebug reload` rereads both folders.
+Colonists have their own life too. They remember who they get along with and who gets on their nerves, so the same pairs side with each other or argue. When something happens in the colony (a death, a birth, a child growing up, a newcomer, a finished building, a raid) and players are around, a colonist brings it up in the colony chat and others join in. A promise past its deadline gets you a private reminder from the colonist waiting for it.
+
+Prompt templates live in `config/livingcolonists/prompts/`: `reply-private.txt`, `reply-colony.txt`, `character.txt`, `background.txt`, `route-colony.txt`, `bio.txt`, `bio-child.txt`, `bio-grownup.txt`, `memory.txt`, `memory-player.txt`, `memory-colonists.txt`. Placeholders like `{name}`, `{job}`, `{character}` and `{situation}` are filled in by the mod. Files you haven't edited follow the mod's defaults when it updates; delete a file to restore its default. `/lcdebug reload` rereads both folders.
 
 ### Commands for operators
 
@@ -130,7 +135,7 @@ Colonists listen while you are inside the colony's borders. Three keys cover the
 - **The whole colony.** Name a colonist and they answer first; name a profession ("builders, when will you finish?") and those colonists answer. Then the conversation lives on its own: others may join in, argue, answer each other or let it die down, and it can drift to another topic. Players inside the colony see it.
 - **One colonist, privately.** Whatever you type goes to that colonist only, like a direct message, wherever in the colony you are; such lines are marked `<You> → <Colonist>` in chat. They keep working while you talk, and remember your recent talks. Clicking a colonist's name in chat does the same. Press **U** while looking at nobody, or click ✕ above the chat input, to end it.
 
-For colony members (owner, officers, friends), a *Players | Colony* switch above the chat input shows where your message goes and can be clicked. Unbound by default: a key to switch the mode, and *Focus on colonist*, which picks a private partner without opening the chat. All keys can be rebound in Controls. Colonists take a moment to answer, as if reading and typing.
+For colony members (owner, officers, friends), a *Players | Colony* switch above the chat input shows where your message goes and can be clicked. Unbound by default: a key to switch the mode, and *Focus on colonist*, which picks a private partner without opening the chat. All keys can be rebound in Controls. Colonists take a moment to answer, as if reading and typing: after the reading pause, "Idris is typing..." shows above the hotbar (or next to the switch while the chat is open). Colonists' names are shown in their colony's color, and so are the arrow and addressee of private lines. Colony and private lines are written to the server log, like player chat.
 
 Commands do the same for clients without the mod: `/lc talk <message>`, `/lc lock`, `/lc mode [players|colony]`.
 

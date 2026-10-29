@@ -7,6 +7,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- "Idris is typing..." while a colonist writes a line you will see, shown after a reading pause; the dots jump in a small wave now and then.
+- Colonists' names are shown in their colony's color; the arrow and addressee of private lines too.
+- Colony and private lines are written to the server log, like player chat.
+- Colonists react to what happens in the colony: a death, a birth, a child growing up, a newcomer, a finished or upgraded building, the start and end of a raid open a colony conversation while players are around (at most once every five minutes per colony).
+- A colonist reminds you in private of a promise past its deadline, once per promise.
+- Colonists remember how they get along with each other, written down from colony conversations: friends and rivals answer each other more often, and colonists argue more with those they dislike.
+- `colonyChatAnywhere` (off by default): colony members read and write their colony's chat from anywhere.
+- Optional `[limits]`: `messagesPerPlayerPerHour` and `tokensPerDay`, both off by default.
+- Prompt templates start with the rules shared by every colonist, so the provider's prompt cache covers them.
 - Colony chat is a living conversation: whoever a message addresses answers first, then other colonists may join in, reply to each other or let the talk die down; talkative archetypes speak up more often, quiet ones rarely. How long threads run without players follows the new `conversation` level (up to about 16 lines on `high`). This replaces the two or three random answers.
 - Promises: when you promise a colonist something in a private talk ("I'll bring you planks tomorrow", "you'll have a house in a week"), they write it down with its deadline. They remind you when it is overdue, thank you when it is kept and are disappointed when it is broken. Promises of a home, a job or treatment close by themselves when the colonist gets one, and promises of a building when it is finished; a promise left past its deadline for three days counts as broken, one without a deadline is forgotten after ten days. Adapted from Colonist Errands.
 - Relations: colonists remember whether you are kind or rude to them and whether you keep your word, and it shows in their tone. When several colonists agree, the whole colony knows your reputation.
@@ -58,6 +67,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- A reply cut off by the token limit no longer ends mid-word in chat: only its finished sentences go out, and replies get more room for the model's reasoning.
 - A newcomer who got the id of a colonist who died or left no longer inherits their character, memories, promises and relations (MineColonies reuses ids); a deleted colony's data is dropped too.
 - An archetype file with a value of the wrong type is skipped with a warning instead of failing the server start.
 - Colonists no longer make up colony events, noises or visitors, which then spread as gossip.

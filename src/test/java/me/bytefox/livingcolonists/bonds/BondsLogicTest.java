@@ -17,7 +17,7 @@ class BondsLogicTest {
     private static final UUID ANNA = UUID.fromString("00000000-0000-0000-0000-000000000002");
 
     private static Promise promise(long id, UUID maker, String name, String text, long made, long due) {
-        return new Promise(id, maker, name, text, Promise.About.GENERAL, made, due, Promise.Status.OPEN, 0, false);
+        return new Promise(id, maker, name, text, Promise.About.GENERAL, made, due, Promise.Status.OPEN, 0, false, false);
     }
 
     @Test
@@ -40,6 +40,37 @@ class BondsLogicTest {
                 new Digests.Resolution("cancelled", 9)), digest.resolutions());
         assertEquals(List.of(new Digests.Conduct(true, "Max brought flowers."),
                 new Digests.Conduct(false, "Max called Anna lazy.")), digest.conduct());
+    }
+
+    @Test
+    void theColonyDigestCarriesHowColonistsGetAlong() {
+        Digests.Digest digest = Digests.parseAll("""
+                friendly | Anna Becker | Oleg Petrov | Oleg backed Anna up about the fields.
+                tension | Idris Kowalski | Anna Becker | Idris mocked Anna's harvest.
+                tension | Idris Kowalski | broken line
+                """, 5);
+        assertEquals(List.of(new Digests.ColonistBond(true, "Anna Becker", "Oleg Petrov", "Oleg backed Anna up about the fields."),
+                new Digests.ColonistBond(false, "Idris Kowalski", "Anna Becker", "Idris mocked Anna's harvest.")),
+                digest.colonists());
+    }
+
+    @Test
+    void colonistsArgueMoreWithThoseTheyDislike() {
+        assertEquals(0.35, Bonds.contrarinessWith(0.35, 0), 1e-9);
+        assertTrue(Bonds.contrarinessWith(0.35, -30) > 0.35);
+        assertTrue(Bonds.contrarinessWith(0.35, 30) < 0.35);
+        assertTrue(Bonds.contrarinessWith(0.8, -100) <= 0.9);
+        assertTrue(Bonds.contrarinessWith(0.1, 100) >= 0);
+        assertEquals(1.0, Bonds.replyWeight(0), 1e-9);
+        assertTrue(Bonds.replyWeight(-30) > 1 && Bonds.replyWeight(30) > 1);
+    }
+
+    @Test
+    void howAColonistGetsAlongWithOthersReadsAsAShortLine() {
+        Relation friends = Relation.EMPTY.with(Bonds.KIND, "Oleg backed Anna up.", 0).with(Bonds.KIND, "x", 0)
+                .with(Bonds.KIND, "Oleg shared his lunch.", 0).with(Bonds.KIND, "y", 0);
+        assertEquals("Oleg Petrov: you are good friends (lately: y)", Bonds.colonistLine("Oleg Petrov", friends));
+        assertEquals("", Bonds.colonistLine("Oleg Petrov", Relation.EMPTY));
     }
 
     @Test
@@ -88,9 +119,9 @@ class BondsLogicTest {
                 promise(1, MAX, "Max", "Max promised to bring bread.", 0, DAY),
                 promise(2, ANNA, "Anna", "Anna promised a new hoe.", 0, 0),
                 new Promise(3, MAX, "Max", "Max promised a house.", Promise.About.HOUSING, 0, 0, Promise.Status.KEPT,
-                        2 * DAY, false),
+                        2 * DAY, false, false),
                 new Promise(4, MAX, "Max", "Max promised fish.", Promise.About.FOOD, 0, 0, Promise.Status.BROKEN,
-                        0, false));
+                        0, false, false));
         String block = Bonds.promisesBlock(promises, 2 * DAY + 10);
         assertEquals("""
                 Promises players made to you:

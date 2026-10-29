@@ -39,20 +39,26 @@ final class ConversationIndicator {
     private ConversationIndicator() {
     }
 
+    /** The switch for colony members, and who is typing next to it. */
     static void render(ScreenEvent.Render.Post event) {
-        if (!(event.getScreen() instanceof ChatScreen screen) || !ClientConversation.state().member()) {
+        if (!(event.getScreen() instanceof ChatScreen screen)) {
             return;
         }
         Font font = Minecraft.getInstance().font;
         int top = screen.height - BOTTOM_OFFSET - PADDING;
         int bottom = top + font.lineHeight + 2 * PADDING - 1;
         GuiGraphics graphics = event.getGuiGraphics();
-        for (Button button : layout(font, ClientConversation.state())) {
-            boolean hovered = button.contains(event.getMouseX(), event.getMouseY(), top, bottom);
-            int background = button.active() ? ACTIVE_BACKGROUND : hovered ? HOVER_BACKGROUND : IDLE_BACKGROUND;
-            graphics.fill(button.left(), top, button.right(), bottom, background);
-            graphics.drawString(font, button.text(), button.left() + PADDING, top + PADDING, button.color());
+        int right = 2 - GAP;
+        if (ClientConversation.state().member()) {
+            for (Button button : layout(font, ClientConversation.state())) {
+                boolean hovered = button.contains(event.getMouseX(), event.getMouseY(), top, bottom);
+                int background = button.active() ? ACTIVE_BACKGROUND : hovered ? HOVER_BACKGROUND : IDLE_BACKGROUND;
+                graphics.fill(button.left(), top, button.right(), bottom, background);
+                graphics.drawString(font, button.text(), button.left() + PADDING, top + PADDING, button.color());
+                right = button.right();
+            }
         }
+        TypingIndicator.draw(graphics, font, right + 2 * GAP, top + PADDING);
     }
 
     static void click(ScreenEvent.MouseButtonPressed.Pre event) {

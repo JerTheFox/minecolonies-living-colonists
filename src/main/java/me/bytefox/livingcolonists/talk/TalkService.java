@@ -14,6 +14,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
@@ -26,7 +27,10 @@ import me.bytefox.livingcolonists.Config;
 import me.bytefox.livingcolonists.LivingColonists;
 import me.bytefox.livingcolonists.behaviour.ColonyAccess;
 import me.bytefox.livingcolonists.behaviour.Cooldown;
+import me.bytefox.livingcolonists.behaviour.HourlyLimit;
+import me.bytefox.livingcolonists.behaviour.Module;
 import me.bytefox.livingcolonists.bonds.BondsService;
+import me.bytefox.livingcolonists.bonds.Promise;
 import me.bytefox.livingcolonists.llm.ChatMessage;
 import me.bytefox.livingcolonists.llm.ChatResult;
 import me.bytefox.livingcolonists.llm.LlmClient;
@@ -63,6 +67,11 @@ import net.minecraft.world.phys.Vec3;
 public final class TalkService {
     /** Rounds of colony function calls per reply before the model has to answer. */
     private static final int MAX_TOOL_ROUNDS = 2;
+    /**
+     * Token room for a reply: the line is short, but DeepSeek's reasoning sometimes took the whole
+     * usual 2000 and cut the line off mid-word.
+     */
+    private static final int REPLY_TOKENS = 4000;
     /** How far away a colonist can be addressed with the command, in blocks. */
     private static final double TALK_RANGE = 8.0;
     /** How far from the line of sight a colonist still counts as looked at. */
@@ -76,13 +85,17 @@ public final class TalkService {
     private final BondsService bonds;
     private final ColonyTools tools;
     private final ColonyThreads threads;
+    private final ColonyEvents events;
     private final SpeechOutput output = new ChatSpeechOutput();
+    private final Typing typing = new Typing();
     private final Random random = new Random();
 
     /** The last reply prompt of each colonist, as {@link #key}, for {@code /lcdebug prompt}. Server thread only. */
     private final Map<Long, String> lastPrompts = new HashMap<>();
     /** Pause between one player's messages to colonists. Server thread only. */
     private final Cooldown cooldown = new Cooldown();
+    /** Optional cap on one player's messages to colonists per hour. Server thread only. */
+    private final HourlyLimit hourly = new HourlyLimit();
     /** Colonists waiting for a private reply, as {@link #key}. Server thread only. */
     private final Set<Long> thinking = new HashSet<>();
     /** Private replies waiting for their typing pause (see {@link LinePacing}). Server thread only. */
@@ -100,7 +113,8 @@ public final class TalkService {
         this.memory = memory;
         this.bonds = bonds;
         this.tools = new ColonyTools(perception);
-        this.threads = new ColonyThreads(this, prompts, memory, personalities, output);
+        this.threads = new ColonyThreads(this, prompts, memory, personalities, output, typing, bonds);
+        this.events = new ColonyEvents(threads);
     }
 
     public ColonyThreads threads() {
@@ -118,12 +132,15 @@ public final class TalkService {
             PendingLine line = pending.poll();
             ICitizenData citizen = resolve(line.dimension(), line.speaker().colonyId(), line.speaker().citizenId());
             ServerPlayer player = server.getPlayerList().getPlayer(line.playerId());
+            typing.stop(server, line.speaker());
             if (citizen != null && player != null) {
                 output.colonistWhispered(line.speaker(), player, line.text());
                 memory.rememberPrivate(citizen, player.getUUID(), line.speaker().name(), line.text());
             }
         }
         threads.tick(server);
+        events.tick(server);
+        typing.tick(server);
     }
 
     /** The last prompt sent for this colonist's reply, if any. */
@@ -134,9 +151,12 @@ public final class TalkService {
     public void clear() {
         lastPrompts.clear();
         cooldown.clear();
+        hourly.clear();
         thinking.clear();
         pending.clear();
         threads.clear();
+        events.clear();
+        typing.clear();
     }
 
     /** {@code /lc talk}: a private word with the colonist under the crosshair or the nearest one. */
@@ -181,11 +201,13 @@ public final class TalkService {
         UUID playerId = player.getUUID();
         ResourceKey<Level> dimension = citizen.getColony().getDimension();
         long earliest = server.getTickCount() + LinePacing.gap(random);
+        typing.start(server, speaker, List.of(player), earliest);
         generate(citizen, prompt, messages, true, server, result -> {
             thinking.remove(key);
             ServerPlayer author = server.getPlayerList().getPlayer(playerId);
             Optional<String> text = lineOf(speaker, result);
             if (text.isEmpty()) {
+                typing.stop(server, speaker);
                 if (author != null && result instanceof ChatResult.Failure) {
                     author.sendSystemMessage(Component.translatable("livingcolonists.talk.failed", speaker.name()));
                 }
@@ -195,6 +217,49 @@ public final class TalkService {
             long at = LinePacing.slot(server.getTickCount(), earliest + LinePacing.typingTicks(text.get().length()), 0);
             pending.add(new PendingLine(at, dimension, speaker, playerId, text.get()));
         });
+    }
+
+    /**
+     * A colonist writes first to remind a player of an overdue promise, in private, while the player
+     * is in the colony. Returns whether the reminder went ahead.
+     */
+    public boolean remindPromise(ServerPlayer player, ICitizenData citizen, Promise promise) {
+        IColony colony = citizen.getColony();
+        Speaker speaker = speakerOf(citizen);
+        long key = key(speaker.colonyId(), speaker.citizenId());
+        if (Config.level(Module.CONVERSATION) == me.bytefox.livingcolonists.behaviour.Level.OFF
+                || !isInside(player, colony) || thinking.contains(key) || client.overDailyLimit()
+                || Config.llmSettings(ModelRole.CHAT).isEmpty()) {
+            return false;
+        }
+        String playerName = playerName(player);
+        List<ChatMessage> messages = new ArrayList<>();
+        for (MemoryLine line : memory.privateTalk(citizen, player.getUUID())) {
+            messages.add(line.speaker().equals(speaker.name()) ? ChatMessage.assistant(line.text()) : ChatMessage.user(line.text()));
+        }
+        messages.add(ChatMessage.user("[" + playerName + " is in the colony. You write to them first.]"));
+        Map<String, String> values = promptValues(citizen, player);
+        values.put("initiative", "You write to " + playerName + " first, unprompted, to remind them of a promise that is "
+                + "overdue now: \"" + promise.text() + "\". Say it in your own way and mood, in one or two sentences. "
+                + "Write in the language of the game locale " + player.clientInformation().language() + ".");
+        String prompt = Templates.render(prompts.get(PromptLibrary.REPLY_PRIVATE), values);
+        thinking.add(key);
+        MinecraftServer server = player.server;
+        UUID playerId = player.getUUID();
+        ResourceKey<Level> dimension = colony.getDimension();
+        long earliest = server.getTickCount() + LinePacing.gap(random);
+        typing.start(server, speaker, List.of(player), earliest);
+        generate(citizen, prompt, messages, false, server, result -> {
+            thinking.remove(key);
+            Optional<String> text = lineOf(speaker, result);
+            if (text.isEmpty()) {
+                typing.stop(server, speaker);
+                return;
+            }
+            long at = LinePacing.slot(server.getTickCount(), earliest + LinePacing.typingTicks(text.get().length()), 0);
+            pending.add(new PendingLine(at, dimension, speaker, playerId, text.get()));
+        });
+        return true;
     }
 
     /** The colonist passed a fact on as gossip, so they won't retell it. */
@@ -264,7 +329,7 @@ public final class TalkService {
         messages.add(ChatMessage.system(prompt));
         messages.addAll(conversation);
         List<ToolSpec> offered = withTools && Config.toolsEnabled() ? tools.specs() : List.of();
-        converse(settings.get(), messages, offered, 0, server, citizen.getColony().getDimension(), speaker,
+        converse(settings.get().withMinTokens(REPLY_TOKENS), messages, offered, 0, server, citizen.getColony().getDimension(), speaker,
                 new StringBuilder(), done);
     }
 
@@ -319,11 +384,21 @@ public final class TalkService {
         if (!mayTalk(player, colony)) {
             return false;
         }
+        if (client.overDailyLimit()) {
+            player.sendSystemMessage(Component.translatable("livingcolonists.limit.daily"));
+            return false;
+        }
         Optional<Long> wait = cooldown.tryUse(player.getUUID(), player.server.getTickCount(),
                 Config.COOLDOWN_SECONDS.get() * 20L);
         if (wait.isPresent()) {
             player.displayClientMessage(Component.translatable("livingcolonists.talk.cooldown",
                     (wait.get() + 19) / 20), true);
+            return false;
+        }
+        Optional<Long> hour = hourly.tryUse(player.getUUID(), player.server.getTickCount(),
+                Config.MESSAGES_PER_PLAYER_PER_HOUR.get());
+        if (hour.isPresent()) {
+            player.sendSystemMessage(Component.translatable("livingcolonists.limit.hourly", (hour.get() + 1199) / 1200));
             return false;
         }
         return true;
@@ -359,18 +434,48 @@ public final class TalkService {
         return settings;
     }
 
-    /** Players inside the colony's borders, plus the author wherever they are. */
+    /**
+     * Players inside the colony's borders, plus the author wherever they are; with
+     * {@code colonyChatAnywhere}, also the colony's members wherever they are.
+     */
     static Collection<ServerPlayer> colonyAudience(MinecraftServer server, IColony colony, ServerPlayer author) {
         Set<ServerPlayer> players = new LinkedHashSet<>();
         if (author != null) {
             players.add(author);
         }
+        boolean anywhere = Config.COLONY_CHAT_ANYWHERE.get();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            if (isInside(player, colony)) {
+            if (isInside(player, colony) || anywhere && role(player, colony) != ColonyAccess.Role.OTHER) {
                 players.add(player);
             }
         }
         return players;
+    }
+
+    /**
+     * The colony whose chat the player writes to: the one they stand in; with
+     * {@code colonyChatAnywhere}, outside any colony, the one they own, else lead, else are a friend of.
+     */
+    public static IColony chatColony(ServerPlayer player) {
+        IColony here = IColonyManager.getInstance().getColonyByPosFromWorld(player.level(), player.blockPosition());
+        if (here != null || !Config.COLONY_CHAT_ANYWHERE.get()) {
+            return here;
+        }
+        IColony best = null;
+        for (IColony colony : IColonyManager.getInstance().getAllColonies()) {
+            ColonyAccess.Role role = role(player, colony);
+            if (role != ColonyAccess.Role.OTHER && (best == null || role.ordinal() < role(player, best).ordinal())) {
+                best = colony;
+            }
+        }
+        return best;
+    }
+
+    /** The game locale most of these players use, like {@code ru_ru}; English when there is nobody. */
+    static String language(Collection<ServerPlayer> players) {
+        return players.stream().map(player -> player.clientInformation().language())
+                .collect(Collectors.groupingBy(code -> code, Collectors.counting()))
+                .entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey).orElse("en_us");
     }
 
     public static boolean isInside(ServerPlayer player, IColony colony) {
@@ -389,7 +494,8 @@ public final class TalkService {
         return new Speaker(citizen.getName(),
                 Prompts.jobName(job == null ? null : job.getJobRegistryEntry().getKey().getPath()),
                 job == null ? null : job.getJobRegistryEntry().getTranslationKey(),
-                citizen.getColony().getName(), citizen.getColony().getID(), citizen.getId());
+                citizen.getColony().getName(), citizen.getColony().getID(), citizen.getId(),
+                citizen.getColony().getTeamColonyColor());
     }
 
     /**

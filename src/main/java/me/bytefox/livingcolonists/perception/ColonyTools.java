@@ -43,7 +43,7 @@ public final class ColonyTools {
     public List<ToolSpec> specs() {
         return List.of(
                 spec("colonist_info", "Facts about one colonist of your colony: profession, age, skills, home, needs, "
-                        + "family. Write the name as the colony spells it, in Latin letters.",
+                        + "family. Write the name exactly as the colony spells it, in its own alphabet.",
                         "name", "The colonist's name"),
                 spec("best_for_job", "Colonists ranked by how well their skills fit a profession (its primary and "
                         + "secondary skill), with their current jobs.",

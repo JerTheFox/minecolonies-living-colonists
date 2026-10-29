@@ -191,6 +191,39 @@ public final class Bonds {
         return String.join(" ", parts);
     }
 
+    /**
+     * How likely a colonist disagrees with someone they have a history with: more with those they
+     * dislike, less with friends.
+     */
+    public static double contrarinessWith(double contrariness, int rapport) {
+        return Math.clamp(contrariness - rapport * 0.006, 0, 0.9);
+    }
+
+    /** How much likelier a colonist answers someone they have strong feelings about, either way. */
+    public static double replyWeight(int rapport) {
+        return 1 + Math.min(1, Math.abs(rapport) / 50.0);
+    }
+
+    /** How a colonist gets along with another one, for the colony chat prompt; empty when it's nothing special. */
+    public static String colonistLine(String other, Relation relation) {
+        int rapport = relation.rapport();
+        String tone;
+        if (rapport >= 25) {
+            tone = "you are good friends";
+        } else if (rapport >= 8) {
+            tone = "you get along well";
+        } else if (rapport <= -25) {
+            tone = "you can't stand each other";
+        } else if (rapport <= -8) {
+            tone = "there is friction between you";
+        } else {
+            return "";
+        }
+        String lately = relation.notes().isEmpty() ? ""
+                : " (lately: " + relation.notes().get(relation.notes().size() - 1).text() + ")";
+        return other + ": " + tone + lately;
+    }
+
     private static String deadline(Promise promise, long now) {
         if (promise.due() == 0) {
             return "no deadline";

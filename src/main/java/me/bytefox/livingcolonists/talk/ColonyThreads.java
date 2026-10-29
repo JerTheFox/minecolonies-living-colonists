@@ -2,12 +2,14 @@ package me.bytefox.livingcolonists.talk;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.PriorityQueue;
@@ -22,6 +24,8 @@ import me.bytefox.livingcolonists.Config;
 import me.bytefox.livingcolonists.LivingColonists;
 import me.bytefox.livingcolonists.behaviour.Level;
 import me.bytefox.livingcolonists.behaviour.Module;
+import me.bytefox.livingcolonists.bonds.Bonds;
+import me.bytefox.livingcolonists.bonds.BondsService;
 import me.bytefox.livingcolonists.llm.ChatMessage;
 import me.bytefox.livingcolonists.llm.ChatResult;
 import me.bytefox.livingcolonists.llm.LlmClient;
@@ -56,6 +60,8 @@ public final class ColonyThreads {
     private static final int THREAD_PACE = 2;
     /** A thread with no line for this long (one minute) is over. */
     private static final long IDLE_TICKS = 1200;
+    /** A colony brings up an event at most once in this many ticks (five minutes). */
+    private static final long EVENT_GAP_TICKS = 6000;
     /** At most this many colonists answer one message addressed to several. */
     private static final int MAX_ADDRESSED = 3;
     /** How much likelier a colonist named in the last line, or already talking, is to speak next. */
@@ -68,6 +74,8 @@ public final class ColonyThreads {
     private final MemoryService memory;
     private final PersonalityService personalities;
     private final SpeechOutput output;
+    private final Typing typing;
+    private final BondsService bonds;
     private final Random random = new Random();
     private final Map<Integer, Thread> threads = new HashMap<>();
     private final PriorityQueue<Scheduled> scheduled = new PriorityQueue<>(Comparator.comparingLong(Scheduled::tick));
@@ -85,15 +93,22 @@ public final class ColonyThreads {
         UUID lastPlayer;
         final Deque<Integer> addressed = new ArrayDeque<>();
         final Set<Integer> participants = new HashSet<>();
+        /** A colony event the next line opens the thread with, if any. */
+        String opening;
+        /** The game locale an event thread is written in, from the players around. */
+        String language;
+        long lastEventTick = Long.MIN_VALUE / 2;
     }
 
     ColonyThreads(TalkService talk, PromptLibrary prompts, MemoryService memory, PersonalityService personalities,
-                  SpeechOutput output) {
+                  SpeechOutput output, Typing typing, BondsService bonds) {
         this.talk = talk;
         this.prompts = prompts;
         this.memory = memory;
         this.personalities = personalities;
         this.output = output;
+        this.typing = typing;
+        this.bonds = bonds;
     }
 
     public void clear() {
@@ -106,7 +121,7 @@ public final class ColonyThreads {
         while (!scheduled.isEmpty() && scheduled.peek().tick() <= now) {
             scheduled.poll().action().run();
         }
-        expire(now);
+        expire(server, now);
     }
 
     /** The colony's recent chat, for {@code /lcdebug thread}. */
@@ -122,6 +137,7 @@ public final class ColonyThreads {
         }
         thread.version++;
         thread.addressed.clear();
+        typing.stopColony(colony.getWorld().getServer(), colony.getID());
         return true;
     }
 
@@ -131,12 +147,48 @@ public final class ColonyThreads {
                 + ", participants: " + thread.participants.size() + ", addressed queue: " + thread.addressed.size();
     }
 
+    /**
+     * A colony event opens a conversation: one of {@code preferred} (or anyone) brings it up, and the
+     * thread goes on as usual. Only with players around, not over a conversation that's going on,
+     * and not more often than every few minutes. Returns whether it started.
+     *
+     * @param what the event in English, like "Anna Becker has died."
+     */
+    public boolean startEvent(MinecraftServer server, IColony colony, String what, List<Integer> preferred) {
+        Collection<ServerPlayer> audience = TalkService.colonyAudience(server, colony, null);
+        if (Config.level(Module.CONVERSATION) == Level.OFF || audience.isEmpty()) {
+            return false;
+        }
+        long now = server.getTickCount();
+        Thread existing = threads.get(colony.getID());
+        if (existing != null && (now - existing.lastLineTick < IDLE_TICKS || now - existing.lastEventTick < EVENT_GAP_TICKS)) {
+            return false;
+        }
+        Thread thread = threads.computeIfAbsent(colony.getID(), id -> new Thread());
+        thread.version++;
+        typing.stopColony(server, colony.getID());
+        thread.colonistTurns = 0;
+        thread.addressed.clear();
+        thread.participants.clear();
+        thread.lastSpeaker = -1;
+        thread.lastPlayer = null;
+        thread.lastLineTick = now;
+        thread.lastEventTick = now;
+        thread.opening = what;
+        thread.language = TalkService.language(audience);
+        preferred.stream().limit(1).forEach(thread.addressed::add);
+        LivingColonists.LOGGER.info("Colony {} talks about: {}", colony.getName(), what);
+        nextTurn(server, colony, thread, thread.version);
+        return true;
+    }
+
     void onPlayerMessage(ServerPlayer player, IColony colony, String message) {
         MinecraftServer server = player.server;
-        output.playerSaid(player, message, TalkService.colonyAudience(server, colony, player));
+        output.playerSaid(player, colony.getName(), message, TalkService.colonyAudience(server, colony, player));
         memory.rememberColony(colony, TalkService.playerName(player), message);
         Thread thread = threads.computeIfAbsent(colony.getID(), id -> new Thread());
         thread.version++;
+        typing.stopColony(server, colony.getID());
         thread.colonistTurns = 0;
         thread.addressed.clear();
         thread.lastSpeaker = -1;
@@ -204,41 +256,57 @@ public final class ColonyThreads {
         if (citizen == null) {
             return;
         }
-        boolean answeringPlayer = thread.colonistTurns == 0;
+        String opening = thread.opening;
+        thread.opening = null;
+        boolean answeringPlayer = thread.colonistTurns == 0 && opening == null;
         ServerPlayer player = thread.lastPlayer == null ? null : server.getPlayerList().getPlayer(thread.lastPlayer);
         Map<String, String> values = talk.promptValues(citizen, player);
         values.put("transcript", transcriptText(colony));
+        String along = bonds.colonistBlock(citizen, chatPeople(colony, thread));
+        if (!along.isEmpty()) {
+            values.put("bonds", values.get("bonds").isEmpty() ? along : values.get("bonds") + "\n" + along);
+        }
         values.put("turn", answeringPlayer
                 ? values.get("player") + " just wrote to the colony chat, and you answer."
                 : "Join the conversation: answer what was said last, or add something of your own. Don't repeat what "
                         + "others already said. People chat about more than their troubles: unless the talk is about the "
                         + "colony's problems, don't steer back to them; if you bring up something new, keep it light, like "
                         + "work, a neighbour, the weather, a plan or a joke.");
+        if (opening != null) {
+            values.put("turn", "Something just happened in the colony: " + opening + " Bring it up in the colony chat "
+                    + "in your own way, as someone who just heard of it. Write in the language of the game locale "
+                    + thread.language + ".");
+        }
         Optional<Fact> rumor = Optional.empty();
-        if (!answeringPlayer) {
+        if (!answeringPlayer && opening == null) {
             values.put("initiative", Prompts.chatInitiative(random));
-            values.put("turn", values.get("turn") + " " + Prompts.stance(contrariness(citizen), random));
+            values.put("turn", values.get("turn") + " " + Prompts.stance(Bonds.contrarinessWith(contrariness(citizen),
+                    bonds.rapport(colony, citizen.getId(), thread.lastSpeaker)), random));
             rumor = memory.rumor(citizen, null, random);
             rumor.ifPresent(fact -> values.put("initiative", values.get("initiative") + " " + Prompts.gossip(fact.text())));
         }
         Optional<Fact> gossip = rumor;
         String prompt = Templates.render(prompts.get(PromptLibrary.REPLY_COLONY), values);
         List<MemoryLine> lines = memory.colonyChat(colony);
-        String last = lines.isEmpty() ? "" : lines.get(lines.size() - 1).speaker() + ": " + lines.get(lines.size() - 1).text();
+        String last = opening != null ? "[Colony news: " + opening + "]"
+                : lines.isEmpty() ? "" : lines.get(lines.size() - 1).speaker() + ": " + lines.get(lines.size() - 1).text();
         Speaker speaker = TalkService.speakerOf(citizen);
+        // The colonist first reads what was said, then types: others see "typing" from the end of the reading pause.
+        long readingEnd = thread.lastLineTick + THREAD_PACE * LinePacing.gap(random);
+        typing.start(server, speaker, TalkService.colonyAudience(server, colony, player), readingEnd);
         talk.generate(citizen, prompt, List.of(ChatMessage.user(last)), answeringPlayer, server, result -> {
             if (thread.version != version) {
                 return;
             }
             Optional<String> text = TalkService.lineOf(speaker, result);
             if (text.isEmpty()) {
+                typing.stop(server, speaker);
                 thread.addressed.clear();
                 return;
             }
             gossip.ifPresent(fact -> talk.told(colony.getDimension(), speaker, fact));
             long now = server.getTickCount();
-            long pause = THREAD_PACE * (LinePacing.gap(random) + LinePacing.typingTicks(text.get().length()));
-            long at = Math.max(now, thread.lastLineTick + pause);
+            long at = Math.max(now, readingEnd + THREAD_PACE * LinePacing.typingTicks(text.get().length()));
             thread.lastLineTick = at;
             scheduled.add(new Scheduled(at, () -> say(server, colony, thread, version, speaker, text.get())));
         });
@@ -249,6 +317,7 @@ public final class ColonyThreads {
             return;
         }
         ServerPlayer author = thread.lastPlayer == null ? null : server.getPlayerList().getPlayer(thread.lastPlayer);
+        typing.stop(server, speaker);
         output.colonistSaid(speaker, text, TalkService.colonyAudience(server, colony, author));
         memory.rememberColony(colony, speaker.name(), text);
         thread.lastLineTick = server.getTickCount();
@@ -279,7 +348,7 @@ public final class ColonyThreads {
         List<ThreadPolicy.Candidate<Integer>> candidates = new ArrayList<>();
         for (int i = 0; i < citizens.size(); i++) {
             ICitizenData citizen = citizens.get(i);
-            double weight = talkativeness(citizen);
+            double weight = talkativeness(citizen) * Bonds.replyWeight(bonds.rapport(colony, citizen.getId(), thread.lastSpeaker));
             if (named.isPresent() && named.getAsInt() == i) {
                 weight *= NAMED_BONUS;
             }
@@ -292,6 +361,13 @@ public final class ColonyThreads {
             candidates.add(new ThreadPolicy.Candidate<>(citizen.getId(), weight));
         }
         return ThreadPolicy.pickSpeaker(candidates, thread.lastSpeaker, random);
+    }
+
+    /** Colonists who spoke in the thread, and whoever spoke last. */
+    private static List<ICitizenData> chatPeople(IColony colony, Thread thread) {
+        Set<Integer> ids = new HashSet<>(thread.participants);
+        ids.add(thread.lastSpeaker);
+        return ids.stream().map(id -> colony.getCitizenManager().getCivilian(id)).filter(Objects::nonNull).toList();
     }
 
     private double contrariness(ICitizenData citizen) {
@@ -334,11 +410,13 @@ public final class ColonyThreads {
      * through a network outage can take minutes) becomes stale, or it would revive the ended thread
      * next to a new one.
      */
-    private void expire(long now) {
-        threads.values().removeIf(thread -> {
+    private void expire(MinecraftServer server, long now) {
+        threads.entrySet().removeIf(entry -> {
+            Thread thread = entry.getValue();
             boolean over = now - thread.lastLineTick > IDLE_TICKS && thread.addressed.isEmpty();
             if (over) {
                 thread.version++;
+                typing.stopColony(server, entry.getKey());
             }
             return over;
         });

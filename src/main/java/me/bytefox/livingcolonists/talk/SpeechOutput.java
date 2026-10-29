@@ -9,8 +9,8 @@ import net.minecraft.server.level.ServerPlayer;
  * another implementation later. Called on the server thread only.
  */
 public interface SpeechOutput {
-    /** A player said something to colonists. */
-    void playerSaid(ServerPlayer player, String text, Collection<ServerPlayer> recipients);
+    /** A player said something in a colony's chat. */
+    void playerSaid(ServerPlayer player, String colony, String text, Collection<ServerPlayer> recipients);
 
     /** A colonist said something. */
     void colonistSaid(Speaker speaker, String text, Collection<ServerPlayer> recipients);

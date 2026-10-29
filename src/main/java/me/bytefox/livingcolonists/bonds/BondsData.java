@@ -13,8 +13,8 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.saveddata.SavedData;
 
 /**
- * Promises players made to colonists and how players treat them, saved with the world in
- * {@code data/livingcolonists_bonds.dat}. Server thread only.
+ * Promises players made to colonists, how players treat them and how colonists get along with each
+ * other, saved with the world in {@code data/livingcolonists_bonds.dat}. Server thread only.
  */
 public final class BondsData extends SavedData {
     public static final String NAME = "livingcolonists_bonds";
@@ -23,6 +23,8 @@ public final class BondsData extends SavedData {
     final Map<String, List<Promise>> promises = new HashMap<>();
     /** Key: {@code colonyId:citizenId:playerUuid}. */
     final Map<String, Relation> relations = new HashMap<>();
+    /** Key: {@code colonyId:smallerCitizenId:largerCitizenId}. */
+    final Map<String, Relation> colonists = new HashMap<>();
     /** The name colonists last knew each player by, for what the colony says about them. */
     final Map<UUID, String> playerNames = new HashMap<>();
     long nextId = 1;
@@ -42,26 +44,31 @@ public final class BondsData extends SavedData {
                 CompoundTag p = entries.getCompound(i);
                 list.add(new Promise(p.getLong("id"), p.getUUID("maker"), p.getString("makerName"), p.getString("text"),
                         Promise.About.of(p.getString("about")), p.getLong("made"), p.getLong("due"),
-                        status(p.getString("status")), p.getLong("resolved"), p.getBoolean("needSeen")));
+                        status(p.getString("status")), p.getLong("resolved"), p.getBoolean("needSeen"),
+                        p.getBoolean("reminded")));
             }
             data.promises.put(key, list);
         }
-        CompoundTag relations = tag.getCompound("relations");
-        for (String key : relations.getAllKeys()) {
-            CompoundTag r = relations.getCompound(key);
+        readRelations(tag.getCompound("relations"), data.relations);
+        readRelations(tag.getCompound("colonists"), data.colonists);
+        CompoundTag names = tag.getCompound("players");
+        for (String key : names.getAllKeys()) {
+            data.playerNames.put(UUID.fromString(key), names.getString(key));
+        }
+        return data;
+    }
+
+    private static void readRelations(CompoundTag tag, Map<String, Relation> into) {
+        for (String key : tag.getAllKeys()) {
+            CompoundTag r = tag.getCompound(key);
             List<Relation.Note> notes = new ArrayList<>();
             ListTag entries = r.getList("notes", Tag.TAG_COMPOUND);
             for (int i = 0; i < entries.size(); i++) {
                 CompoundTag n = entries.getCompound(i);
                 notes.add(new Relation.Note(n.getLong("time"), n.getString("text"), n.getBoolean("kind")));
             }
-            data.relations.put(key, new Relation(r.getInt("rapport"), notes));
+            into.put(key, new Relation(r.getInt("rapport"), notes));
         }
-        CompoundTag names = tag.getCompound("players");
-        for (String key : names.getAllKeys()) {
-            data.playerNames.put(UUID.fromString(key), names.getString(key));
-        }
-        return data;
     }
 
     private static Promise.Status status(String name) {
@@ -93,11 +100,22 @@ public final class BondsData extends SavedData {
                 p.putString("status", promise.status().name());
                 p.putLong("resolved", promise.resolved());
                 p.putBoolean("needSeen", promise.needSeen());
+                p.putBoolean("reminded", promise.reminded());
                 entries.add(p);
             }
             promiseTag.put(key, entries);
         });
-        CompoundTag relationTag = new CompoundTag();
+        CompoundTag names = new CompoundTag();
+        playerNames.forEach((uuid, name) -> names.putString(uuid.toString(), name));
+        tag.put("promises", promiseTag);
+        tag.put("relations", writeRelations(relations));
+        tag.put("colonists", writeRelations(colonists));
+        tag.put("players", names);
+        return tag;
+    }
+
+    private static CompoundTag writeRelations(Map<String, Relation> relations) {
+        CompoundTag tag = new CompoundTag();
         relations.forEach((key, relation) -> {
             CompoundTag r = new CompoundTag();
             r.putInt("rapport", relation.rapport());
@@ -110,13 +128,8 @@ public final class BondsData extends SavedData {
                 notes.add(n);
             }
             r.put("notes", notes);
-            relationTag.put(key, r);
+            tag.put(key, r);
         });
-        CompoundTag names = new CompoundTag();
-        playerNames.forEach((uuid, name) -> names.putString(uuid.toString(), name));
-        tag.put("promises", promiseTag);
-        tag.put("relations", relationTag);
-        tag.put("players", names);
         return tag;
     }
 }

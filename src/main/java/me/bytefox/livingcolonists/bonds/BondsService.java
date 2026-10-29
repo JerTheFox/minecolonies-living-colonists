@@ -6,6 +6,7 @@
 package me.bytefox.livingcolonists.bonds;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -43,10 +44,27 @@ public final class BondsService {
     private static final int MAX_RESOLVED = 20;
     /** Longest deadline taken from a promise, in days. */
     private static final int MAX_DUE_DAYS = 60;
+    /** At most one promise reminder per player in this many server ticks (ten minutes). */
+    private static final long REMINDER_GAP_TICKS = 12000;
+    /** A nickname-like part of a colonist's name the character model may use instead of the full name. */
+    private static final int MIN_FIRST_NAME = 3;
 
     private BondsData data;
     /** The colony events already seen, per colony; events from before the server started count as seen. */
     private final Map<Integer, Set<IColonyEventDescription>> seenEvents = new HashMap<>();
+    /** Who reminds a player of an overdue promise; set by the talk layer. */
+    private Reminder reminder;
+    /** Server tick of each player's last reminder, so reminders don't pile up. */
+    private final Map<UUID, Long> lastReminder = new HashMap<>();
+
+    /** Starts a colonist's private reminder; returns whether it went ahead. */
+    public interface Reminder {
+        boolean remind(ServerPlayer maker, ICitizenData citizen, Promise promise);
+    }
+
+    public void setReminder(Reminder reminder) {
+        this.reminder = reminder;
+    }
 
     public void attach(BondsData data) {
         this.data = data;
@@ -55,6 +73,7 @@ public final class BondsService {
     public void detach() {
         data = null;
         seenEvents.clear();
+        lastReminder.clear();
     }
 
     // ---- what the digest of a private talk brings
@@ -97,7 +116,7 @@ public final class BondsService {
             Promise.About about = Promise.About.of(made.about());
             long due = made.days() > 0 ? now + Math.min(made.days(), MAX_DUE_DAYS) * DAY : 0;
             list.add(new Promise(data.nextId++, player, playerName, made.text(), about, now, due, Promise.Status.OPEN, 0,
-                    needUnmet(citizen, about)));
+                    needUnmet(citizen, about), false));
         }
         for (Digests.Conduct conduct : digest.conduct()) {
             note(citizen, player, conduct.kind() ? Bonds.KIND : Bonds.RUDE, conduct.note(), now);
@@ -223,6 +242,9 @@ public final class BondsService {
                     lapsed(server, citizen, promise, lapse.get(), now);
                     continue;
                 }
+                if (promise.due() > 0 && now > promise.due() && !promise.reminded()) {
+                    remindOnce(server, citizen, promise);
+                }
                 if (promise.about() != Promise.About.HOUSING && promise.about() != Promise.About.WORK
                         && promise.about() != Promise.About.HEALTH) {
                     continue;
@@ -239,6 +261,20 @@ public final class BondsService {
                     });
                 }
             }
+        }
+    }
+
+    /** The colonist reminds the maker of an overdue promise in private, once, if the maker is around. */
+    private void remindOnce(MinecraftServer server, ICitizenData citizen, Promise promise) {
+        ServerPlayer maker = server.getPlayerList().getPlayer(promise.maker());
+        long tick = server.getTickCount();
+        if (maker == null || reminder == null || tick - lastReminder.getOrDefault(maker.getUUID(), Long.MIN_VALUE / 2)
+                < REMINDER_GAP_TICKS) {
+            return;
+        }
+        if (reminder.remind(maker, citizen, promise)) {
+            lastReminder.put(maker.getUUID(), tick);
+            replace(citizen, promise.withReminded());
         }
     }
 
@@ -336,12 +372,85 @@ public final class BondsService {
         if (data == null) {
             return;
         }
-        int before = data.promises.size() + data.relations.size();
+        int before = data.promises.size() + data.relations.size() + data.colonists.size();
         data.promises.keySet().removeIf(key);
         data.relations.keySet().removeIf(key);
-        if (data.promises.size() + data.relations.size() != before) {
+        // A pair is dropped when either colonist matches.
+        data.colonists.keySet().removeIf(pair -> {
+            String[] parts = pair.split(":");
+            return key.test(pair) || key.test(parts[0] + ":" + parts[2]);
+        });
+        if (data.promises.size() + data.relations.size() + data.colonists.size() != before) {
             data.setDirty();
         }
+    }
+
+    // ---- colonists among themselves
+
+    /** How colonists got along in a colony conversation, as the character model wrote it down. */
+    public void noteColonists(IColony colony, List<ICitizenData> participants, List<Digests.ColonistBond> bonds) {
+        if (data == null || bonds.isEmpty()) {
+            return;
+        }
+        long now = now(colony);
+        for (Digests.ColonistBond bond : bonds) {
+            ICitizenData first = byName(participants, bond.first());
+            ICitizenData second = byName(participants, bond.second());
+            if (first == null || second == null || first.getId() == second.getId()) {
+                continue;
+            }
+            int delta = bond.friendly() ? Bonds.KIND : Bonds.RUDE;
+            String note = Digests.cleanFact(bond.note());
+            data.colonists.merge(pair(colony.getID(), first.getId(), second.getId()), Relation.EMPTY.with(delta, note, now),
+                    (old, fresh) -> old.with(delta, note, now));
+        }
+        data.setDirty();
+    }
+
+    /** -100 to 100: how two colonists of the colony get along, 0 without history. */
+    public int rapport(IColony colony, int first, int second) {
+        Relation relation = data == null ? null : data.colonists.get(pair(colony.getID(), first, second));
+        return relation == null ? 0 : relation.rapport();
+    }
+
+    /** How the colonist gets along with the others named, for the colony chat prompt; empty if with nobody special. */
+    public String colonistBlock(ICitizenData citizen, Collection<ICitizenData> others) {
+        if (data == null) {
+            return "";
+        }
+        List<String> lines = new ArrayList<>();
+        for (ICitizenData other : others) {
+            if (other.getId() == citizen.getId()) {
+                continue;
+            }
+            Relation relation = data.colonists.get(pair(citizen.getColony().getID(), citizen.getId(), other.getId()));
+            String line = relation == null ? "" : Bonds.colonistLine(other.getName(), relation);
+            if (!line.isEmpty()) {
+                lines.add("- " + line);
+            }
+        }
+        return lines.isEmpty() ? "" : "How you get along with people in this chat:\n" + String.join("\n", lines);
+    }
+
+    /** By full name, then by first name, ignoring case. */
+    private static ICitizenData byName(List<ICitizenData> citizens, String name) {
+        String wanted = name.strip();
+        for (ICitizenData citizen : citizens) {
+            if (citizen.getName().equalsIgnoreCase(wanted)) {
+                return citizen;
+            }
+        }
+        for (ICitizenData citizen : citizens) {
+            String first = citizen.getName().split(" ")[0];
+            if (first.length() >= MIN_FIRST_NAME && first.equalsIgnoreCase(wanted)) {
+                return citizen;
+            }
+        }
+        return null;
+    }
+
+    private static String pair(int colonyId, int first, int second) {
+        return colonyId + ":" + Math.min(first, second) + ":" + Math.max(first, second);
     }
 
     /** Forgets the colonist's promises and relations; returns how many were dropped. */

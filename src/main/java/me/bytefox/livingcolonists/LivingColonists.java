@@ -22,6 +22,7 @@ import me.bytefox.livingcolonists.personality.PersonalityService;
 import me.bytefox.livingcolonists.prompt.PromptLibrary;
 import me.bytefox.livingcolonists.network.ConversationAction;
 import me.bytefox.livingcolonists.network.ConversationState;
+import me.bytefox.livingcolonists.network.TypingState;
 import me.bytefox.livingcolonists.talk.Conversations;
 import me.bytefox.livingcolonists.talk.TalkCommand;
 import me.bytefox.livingcolonists.talk.TalkService;
@@ -74,6 +75,8 @@ public final class LivingColonists {
 
     public LivingColonists(IEventBus modEventBus, ModContainer modContainer) {
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+        client.limitDailyTokens(() -> Config.SPEC.isLoaded() ? Config.TOKENS_PER_DAY.get() : 0);
+        bonds.setReminder(talk::remindPromise);
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::registerPayloads);
 
@@ -159,6 +162,8 @@ public final class LivingColonists {
                 (payload, context) -> conversations.onAction((ServerPlayer) context.player(), payload.action()));
         registrar.playToClient(ConversationState.TYPE, ConversationState.STREAM_CODEC,
                 (payload, context) -> me.bytefox.livingcolonists.client.ClientConversation.apply(payload));
+        registrar.playToClient(TypingState.TYPE, TypingState.STREAM_CODEC,
+                (payload, context) -> me.bytefox.livingcolonists.client.TypingIndicator.apply(payload));
     }
 
     /**

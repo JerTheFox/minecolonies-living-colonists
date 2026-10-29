@@ -74,7 +74,7 @@ public final class Conversations {
             }
             return;
         }
-        IColony colony = IColonyManager.getInstance().getColonyByPosFromWorld(player.level(), player.blockPosition());
+        IColony colony = TalkService.chatColony(player);
         if (colony == null) {
             player.sendSystemMessage(Component.translatable("livingcolonists.colony.outside"));
             return;
@@ -160,7 +160,7 @@ public final class Conversations {
     /** Choosing a mode also ends a private talk. */
     /** The "Write to the colony" key: works inside a colony's borders, and opens the chat there. */
     public void chatToColony(ServerPlayer player) {
-        IColony colony = IColonyManager.getInstance().getColonyByPosFromWorld(player.level(), player.blockPosition());
+        IColony colony = TalkService.chatColony(player);
         if (colony == null) {
             player.displayClientMessage(Component.translatable("livingcolonists.colony.outside"), true);
             return;

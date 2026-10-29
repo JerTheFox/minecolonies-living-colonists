@@ -47,7 +47,11 @@ public final class LivingColonistsClient {
         NeoForge.EVENT_BUS.addListener(LivingColonistsClient::onKey);
         NeoForge.EVENT_BUS.addListener(ConversationIndicator::render);
         NeoForge.EVENT_BUS.addListener(ConversationIndicator::click);
-        NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut event) -> ClientConversation.reset());
+        NeoForge.EVENT_BUS.addListener(TypingIndicator::renderHud);
+        NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut event) -> {
+            ClientConversation.reset();
+            TypingIndicator.reset();
+        });
     }
 
     /**

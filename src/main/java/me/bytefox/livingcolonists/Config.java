@@ -136,10 +136,30 @@ public final class Config {
                     "the most common form first. Example: [\"JerTheFox=Максим,Макс,Максик\"]")
             .defineListAllowEmpty("playerNames", List.of(), () -> "Nickname=Name", value -> value instanceof String);
 
+    public static final ModConfigSpec.BooleanValue COLONY_CHAT_ANYWHERE = BUILDER
+            .comment("Colony members (owner, officers, friends) read their colony's chat wherever they are, and can write",
+                    "to it from outside its borders. Off: only players inside the colony's borders take part.")
+            .define("colonyChatAnywhere", false);
+
     public static final ModConfigSpec.BooleanValue MEMBERS_ONLY = BUILDER
             .comment("Only the colony's owner, officers and friends may talk to its colonists,",
                     "and only the owner and officers may give them orders. Off: anyone inside the colony may.")
             .define("membersOnly", true);
+
+    static {
+        BUILDER.pop();
+        BUILDER.comment("Optional limits against chat spam and runaway costs on public servers; 0 turns a limit off")
+                .push("limits");
+    }
+
+    public static final ModConfigSpec.IntValue MESSAGES_PER_PLAYER_PER_HOUR = BUILDER
+            .comment("Messages one player may send to colonists in an hour of server time")
+            .defineInRange("messagesPerPlayerPerHour", 0, 0, 100000);
+
+    public static final ModConfigSpec.LongValue TOKENS_PER_DAY = BUILDER
+            .comment("Tokens the whole server may spend in a day (prompt and reply together, counted since the server",
+                    "started). When reached, colonists stop answering until midnight.")
+            .defineInRange("tokensPerDay", 0L, 0L, Long.MAX_VALUE);
 
     static {
         BUILDER.pop();

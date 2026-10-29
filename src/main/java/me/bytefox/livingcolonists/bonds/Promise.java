@@ -19,9 +19,10 @@ import java.util.UUID;
  * @param due      world game time it is due by, or 0 without a deadline
  * @param resolved world game time it was kept, broken or cancelled
  * @param needSeen the need it is about (no home, no job, sick) was seen unmet, so meeting it now counts as keeping it
+ * @param reminded the colonist already reminded the maker of it after it became overdue
  */
 public record Promise(long id, UUID maker, String makerName, String text, About about, long made, long due,
-                      Status status, long resolved, boolean needSeen) {
+                      Status status, long resolved, boolean needSeen, boolean reminded) {
 
     public enum Status {
         OPEN, KEPT, BROKEN, CANCELLED
@@ -50,10 +51,14 @@ public record Promise(long id, UUID maker, String makerName, String text, About 
     }
 
     public Promise resolve(Status to, long now) {
-        return new Promise(id, maker, makerName, text, about, made, due, to, now, needSeen);
+        return new Promise(id, maker, makerName, text, about, made, due, to, now, needSeen, reminded);
     }
 
     public Promise withNeedSeen() {
-        return new Promise(id, maker, makerName, text, about, made, due, status, resolved, true);
+        return new Promise(id, maker, makerName, text, about, made, due, status, resolved, true, reminded);
+    }
+
+    public Promise withReminded() {
+        return new Promise(id, maker, makerName, text, about, made, due, status, resolved, needSeen, true);
     }
 }

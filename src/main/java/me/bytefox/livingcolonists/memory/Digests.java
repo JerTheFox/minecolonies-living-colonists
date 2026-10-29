@@ -23,9 +23,13 @@ public final class Digests {
             "^\\s*[-*•]?\\s*(kept|broken|cancelled)\\s*\\|\\s*#?(\\d{1,2})\\s*$", Pattern.CASE_INSENSITIVE);
     private static final Pattern CONDUCT = Pattern.compile(
             "^\\s*[-*•]?\\s*(kind|rude)\\s*\\|\\s*(.+?)\\s*$", Pattern.CASE_INSENSITIVE);
-    /** New promises and conduct notes taken from one conversation at most. */
+    private static final Pattern COLONISTS = Pattern.compile(
+            "^\\s*[-*•]?\\s*(friendly|tension)\\s*\\|\\s*([^|]+?)\\s*\\|\\s*([^|]+?)\\s*\\|\\s*(.+?)\\s*$",
+            Pattern.CASE_INSENSITIVE);
+    /** New promises, conduct notes and colonist bonds taken from one conversation at most. */
     private static final int MAX_PROMISES = 3;
     private static final int MAX_CONDUCT = 2;
+    private static final int MAX_COLONIST_BONDS = 3;
 
     /** @param importance 1 to 5 */
     public record Entry(int importance, String text) {
@@ -42,9 +46,13 @@ public final class Digests {
     public record Conduct(boolean kind, String note) {
     }
 
+    /** How two colonists got along in a colony conversation. */
+    public record ColonistBond(boolean friendly, String first, String second, String note) {
+    }
+
     /** Everything the character model wrote down about a conversation. */
     public record Digest(List<Entry> facts, List<NewPromise> promises, List<Resolution> resolutions,
-                         List<Conduct> conduct) {
+                         List<Conduct> conduct, List<ColonistBond> colonists) {
     }
 
     private Digests() {
@@ -64,9 +72,15 @@ public final class Digests {
         List<NewPromise> promises = new ArrayList<>();
         List<Resolution> resolutions = new ArrayList<>();
         List<Conduct> conduct = new ArrayList<>();
+        List<ColonistBond> colonists = new ArrayList<>();
         for (String line : text.split("\\R")) {
             Matcher matcher;
-            if ((matcher = LINE.matcher(line)).matches()) {
+            if ((matcher = COLONISTS.matcher(line)).matches()) {
+                if (colonists.size() < MAX_COLONIST_BONDS) {
+                    colonists.add(new ColonistBond(matcher.group(1).equalsIgnoreCase("friendly"), matcher.group(2),
+                            matcher.group(3), matcher.group(4)));
+                }
+            } else if ((matcher = LINE.matcher(line)).matches()) {
                 if (facts.size() < maxFacts) {
                     int importance = Math.max(1, Math.min(5, Integer.parseInt(matcher.group(1))));
                     facts.add(new Entry(importance, matcher.group(2)));
@@ -84,7 +98,7 @@ public final class Digests {
                 }
             }
         }
-        return new Digest(facts, promises, resolutions, conduct);
+        return new Digest(facts, promises, resolutions, conduct, colonists);
     }
 
     /** The facts as a prompt block, oldest first, with when and where each was heard; empty without facts. */
