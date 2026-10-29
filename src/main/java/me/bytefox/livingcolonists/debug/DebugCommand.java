@@ -21,6 +21,9 @@ import me.bytefox.livingcolonists.Config;
 import me.bytefox.livingcolonists.behaviour.Module;
 import me.bytefox.livingcolonists.behaviour.Profile;
 import me.bytefox.livingcolonists.llm.UsageStats;
+import me.bytefox.livingcolonists.bonds.BondsService;
+import me.bytefox.livingcolonists.bonds.Promise;
+import me.bytefox.livingcolonists.bonds.Relation;
 import me.bytefox.livingcolonists.memory.Fact;
 import me.bytefox.livingcolonists.memory.MemoryLine;
 import me.bytefox.livingcolonists.memory.MemoryService;
@@ -57,7 +60,8 @@ public final class DebugCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, UsageStats stats,
                                 PersonalityService personalities, PromptLibrary prompts, TalkService talk,
-                                Conversations conversations, PerceptionService perception, MemoryService memory) {
+                                Conversations conversations, PerceptionService perception, MemoryService memory,
+                                BondsService bonds) {
         DebugCommand.conversations = conversations;
         DebugCommand.perception = perception;
         dispatcher.register(Commands.literal("lcdebug")
@@ -87,6 +91,11 @@ public final class DebugCommand {
                         .then(withColonist(Commands.literal("clear"),
                                 (context, citizen) -> clearMemory(context.getSource(), memory, citizen)))
                         .then(Commands.literal("digest").executes(context -> digest(context.getSource(), memory))))
+                .then(Commands.literal("bonds")
+                        .then(withColonist(Commands.literal("show"),
+                                (context, citizen) -> showBonds(context.getSource(), bonds, citizen)))
+                        .then(withColonist(Commands.literal("clear"),
+                                (context, citizen) -> clearBonds(context.getSource(), bonds, citizen))))
                 .then(Commands.literal("thread").executes(context -> showThread(context.getSource(), talk))
                         .then(Commands.literal("break").executes(context -> breakThread(context.getSource(), talk)))));
     }
@@ -222,6 +231,35 @@ public final class DebugCommand {
             }
         });
         return talks.size() + facts.size();
+    }
+
+    private static int showBonds(CommandSourceStack source, BondsService bonds, ICitizenData citizen) {
+        List<Promise> promises = bonds.promises(citizen);
+        Map<String, Relation> relations = bonds.relations(citizen);
+        if (promises.isEmpty() && relations.isEmpty()) {
+            source.sendSuccess(() -> Component.translatable("livingcolonists.debug.bonds.empty", citizen.getName()), false);
+            return 0;
+        }
+        long now = citizen.getColony().getWorld().getGameTime();
+        for (Promise promise : promises) {
+            String due = promise.due() == 0 ? "no deadline" : "due in " + (promise.due() - now) / 24000 + "d";
+            String line = "  [" + promise.status() + ", " + promise.about().key() + ", " + due + "] " + promise.makerName()
+                    + ": " + promise.text();
+            source.sendSuccess(() -> Component.literal(line), false);
+        }
+        relations.forEach((player, relation) -> {
+            String line = "  " + player + ": rapport " + relation.rapport() + relation.notes().stream()
+                    .map(note -> (note.kind() ? " +" : " -") + note.text()).reduce("", String::concat);
+            source.sendSuccess(() -> Component.literal(line), false);
+        });
+        return promises.size() + relations.size();
+    }
+
+    private static int clearBonds(CommandSourceStack source, BondsService bonds, ICitizenData citizen) {
+        int dropped = bonds.forget(citizen);
+        source.sendSuccess(() -> Component.translatable("livingcolonists.debug.bonds.cleared", citizen.getName(), dropped),
+                true);
+        return dropped;
     }
 
     private static int digest(CommandSourceStack source, MemoryService memory) {

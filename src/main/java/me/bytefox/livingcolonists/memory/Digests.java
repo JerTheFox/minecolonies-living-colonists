@@ -2,6 +2,7 @@ package me.bytefox.livingcolonists.memory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Random;
 import java.util.regex.Matcher;
@@ -16,8 +17,34 @@ public final class Digests {
     private static final Pattern SECRET_MARK = Pattern.compile("\\s*\\(secret\\)\\s*[.!]?\\s*$", Pattern.CASE_INSENSITIVE);
     private static final Pattern LINE = Pattern.compile("^\\s*[-*•]?\\s*(\\d{1,3})\\s*\\|\\s*(.+?)\\s*$");
 
+    private static final Pattern PROMISE = Pattern.compile(
+            "^\\s*[-*•]?\\s*promise\\s*\\|\\s*(\\d{1,3})\\s*\\|\\s*([A-Za-z]+)\\s*\\|\\s*(.+?)\\s*$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern RESOLUTION = Pattern.compile(
+            "^\\s*[-*•]?\\s*(kept|broken|cancelled)\\s*\\|\\s*#?(\\d{1,2})\\s*$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern CONDUCT = Pattern.compile(
+            "^\\s*[-*•]?\\s*(kind|rude)\\s*\\|\\s*(.+?)\\s*$", Pattern.CASE_INSENSITIVE);
+    /** New promises and conduct notes taken from one conversation at most. */
+    private static final int MAX_PROMISES = 3;
+    private static final int MAX_CONDUCT = 2;
+
     /** @param importance 1 to 5 */
     public record Entry(int importance, String text) {
+    }
+
+    /** @param days deadline in days from now, 0 without one */
+    public record NewPromise(int days, String about, String text) {
+    }
+
+    /** @param kind "kept", "broken" or "cancelled"; @param number the open promise's number, from 1 */
+    public record Resolution(String kind, int number) {
+    }
+
+    public record Conduct(boolean kind, String note) {
+    }
+
+    /** Everything the character model wrote down about a conversation. */
+    public record Digest(List<Entry> facts, List<NewPromise> promises, List<Resolution> resolutions,
+                         List<Conduct> conduct) {
     }
 
     private Digests() {
@@ -25,15 +52,39 @@ public final class Digests {
 
     /** Lines like {@code 3 | Max promised bread}; anything else, like {@code [nothing]}, is skipped. */
     public static List<Entry> parse(String text, int max) {
-        List<Entry> entries = new ArrayList<>();
+        return parseAll(text, max).facts();
+    }
+
+    /**
+     * Facts ({@code 3 | ...}), new promises ({@code promise | days | topic | ...}), promises resolved
+     * ({@code kept | 2}) and conduct ({@code kind | ...}, {@code rude | ...}); other lines are skipped.
+     */
+    public static Digest parseAll(String text, int maxFacts) {
+        List<Entry> facts = new ArrayList<>();
+        List<NewPromise> promises = new ArrayList<>();
+        List<Resolution> resolutions = new ArrayList<>();
+        List<Conduct> conduct = new ArrayList<>();
         for (String line : text.split("\\R")) {
-            Matcher matcher = LINE.matcher(line);
-            if (entries.size() < max && matcher.matches()) {
-                int importance = Math.max(1, Math.min(5, Integer.parseInt(matcher.group(1))));
-                entries.add(new Entry(importance, matcher.group(2)));
+            Matcher matcher;
+            if ((matcher = LINE.matcher(line)).matches()) {
+                if (facts.size() < maxFacts) {
+                    int importance = Math.max(1, Math.min(5, Integer.parseInt(matcher.group(1))));
+                    facts.add(new Entry(importance, matcher.group(2)));
+                }
+            } else if ((matcher = PROMISE.matcher(line)).matches()) {
+                if (promises.size() < MAX_PROMISES) {
+                    promises.add(new NewPromise(Integer.parseInt(matcher.group(1)), matcher.group(2), matcher.group(3)));
+                }
+            } else if ((matcher = RESOLUTION.matcher(line)).matches()) {
+                resolutions.add(new Resolution(matcher.group(1).toLowerCase(Locale.ROOT),
+                        Integer.parseInt(matcher.group(2))));
+            } else if ((matcher = CONDUCT.matcher(line)).matches()) {
+                if (conduct.size() < MAX_CONDUCT) {
+                    conduct.add(new Conduct(matcher.group(1).equalsIgnoreCase("kind"), matcher.group(2)));
+                }
             }
         }
-        return entries;
+        return new Digest(facts, promises, resolutions, conduct);
     }
 
     /** The facts as a prompt block, oldest first, with when and where each was heard; empty without facts. */

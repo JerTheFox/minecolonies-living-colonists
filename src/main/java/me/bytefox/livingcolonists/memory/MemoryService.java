@@ -11,6 +11,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 import com.minecolonies.api.colony.ICitizenData;
@@ -19,6 +20,9 @@ import com.minecolonies.api.colony.IColonyManager;
 import me.bytefox.livingcolonists.Config;
 import me.bytefox.livingcolonists.LivingColonists;
 import me.bytefox.livingcolonists.behaviour.Level;
+import me.bytefox.livingcolonists.bonds.Bonds;
+import me.bytefox.livingcolonists.bonds.BondsService;
+import me.bytefox.livingcolonists.bonds.Promise;
 import me.bytefox.livingcolonists.behaviour.Module;
 import me.bytefox.livingcolonists.llm.ChatMessage;
 import me.bytefox.livingcolonists.llm.ChatResult;
@@ -60,11 +64,17 @@ public final class MemoryService {
     private static final int KNOWN_IN_DIGEST = 20;
     /** Already noted lines shown before the new ones, for context. */
     private static final int CONTEXT_LINES = 4;
+    /**
+     * Token room for writing a conversation down: DeepSeek's reasoning takes 900 to 1800 tokens here
+     * and sometimes ran out of the usual 2000, leaving an empty answer.
+     */
+    private static final int DIGEST_TOKENS = 8000;
     private static final int MAX_PRIVATE_FACTS = 5;
     private static final int MAX_COLONY_FACTS = 8;
 
     private final LlmClient client;
     private final PromptLibrary prompts;
+    private final BondsService bonds;
     private MemoryData data;
     /** Conversations being written down, by transcript key. */
     private final Set<String> digesting = new HashSet<>();
@@ -72,9 +82,10 @@ public final class MemoryService {
     private final Map<String, Long> retryAt = new HashMap<>();
     private long lastCleanupDay = -1;
 
-    public MemoryService(LlmClient client, PromptLibrary prompts) {
+    public MemoryService(LlmClient client, PromptLibrary prompts, BondsService bonds) {
         this.client = client;
         this.prompts = prompts;
+        this.bonds = bonds;
     }
 
     public void attach(MemoryData data) {
@@ -255,8 +266,19 @@ public final class MemoryService {
         values.put("who", name + " (" + jobOf(citizen) + ")");
         values.put("where", "a private talk between " + name + " and the player " + player.get());
         values.put("known", known(List.of(citizen)));
+        UUID playerId = UUID.fromString(parts[2]);
+        List<Promise> open = bonds.open(citizen, playerId);
+        values.put("player_rules", Templates.render(prompts.get(PromptLibrary.MEMORY_PLAYER),
+                Map.of("player", player.get(), "name", name, "promises", Bonds.numbered(open, now))));
+        int citizenId = citizen.getId();
+        String playerName = player.get();
         return request(server, key, transcript, values, lines, MAX_PRIVATE_FACTS, colony, List.of(citizen),
-                Fact.privateTalk(player.get()));
+                Fact.privateTalk(playerName), (current, digest) -> {
+                    ICitizenData owner = current.getCitizenManager().getCivilian(citizenId);
+                    if (owner != null) {
+                        bonds.apply(owner, playerId, playerName, digest, open);
+                    }
+                });
     }
 
     private boolean digestColony(MinecraftServer server, int colonyId, Transcript transcript, boolean force) {
@@ -285,7 +307,9 @@ public final class MemoryService {
                 .map(citizen -> citizen.getName() + ", " + jobOf(citizen)).collect(Collectors.joining("; ")) + ")");
         values.put("where", "the colony's group chat, where players and colonists talk");
         values.put("known", known(participants));
-        return request(server, key, transcript, values, lines, MAX_COLONY_FACTS, colony, participants, Fact.COLONY_CHAT);
+        values.put("player_rules", "");
+        return request(server, key, transcript, values, lines, MAX_COLONY_FACTS, colony, participants, Fact.COLONY_CHAT,
+                null);
     }
 
     /**
@@ -294,7 +318,7 @@ public final class MemoryService {
      */
     private boolean request(MinecraftServer server, String key, Transcript transcript, Map<String, String> values,
                             List<MemoryLine> lines, int maxFacts, IColony colony, List<ICitizenData> owners,
-                            String source) {
+                            String source, BiConsumer<IColony, Digests.Digest> after) {
         Optional<LlmSettings> settings = Config.llmSettings(ModelRole.CHARACTER);
         FactLimits limits = FactLimits.of(level());
         if (settings.isEmpty()) {
@@ -311,7 +335,7 @@ public final class MemoryService {
         List<Integer> ownerIds = owners.stream().map(ICitizenData::getId).toList();
         MemoryData target = data;
         digesting.add(key);
-        client.complete(settings.get(), List.of(ChatMessage.user(prompt))).thenAccept(result -> server.execute(() -> {
+        client.complete(settings.get().withMinTokens(DIGEST_TOKENS), List.of(ChatMessage.user(prompt))).thenAccept(result -> server.execute(() -> {
             digesting.remove(key);
             if (data != target) {
                 return;
@@ -322,8 +346,12 @@ public final class MemoryService {
                     if (now == null) {
                         return;
                     }
-                    List<Digests.Entry> entries = Digests.parse(reply.text(), max);
+                    Digests.Digest digest = Digests.parseAll(reply.text(), max);
+                    List<Digests.Entry> entries = digest.facts();
                     store(now, ownerIds, entries, source);
+                    if (after != null) {
+                        after.accept(now, digest);
+                    }
                     transcript.markDigested(mark);
                     retryAt.remove(key);
                     data.setDirty();

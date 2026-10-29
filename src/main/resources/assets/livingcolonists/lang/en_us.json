@@ -59,5 +59,9 @@
   "livingcolonists.partner.look_to_talk": "Look at a colonist (within 16 blocks) to talk to them privately.",
   "livingcolonists.partner.look_to_focus": "Look at a colonist (within 16 blocks) to pick them as your partner.",
   "livingcolonists.debug.memory.facts": "%s remembers %s facts:",
-  "livingcolonists.debug.memory.digest": "Writing down %s conversations; the facts arrive in a few seconds."
+  "livingcolonists.debug.memory.digest": "Writing down %s conversations; the facts arrive in a few seconds.",
+  "livingcolonists.debug.bonds.empty": "%s has no promises from players and no history with them.",
+  "livingcolonists.debug.bonds.cleared": "%s forgot %s promises and relations.",
+  "livingcolonists.promise.kept": "%s noticed you kept your promise.",
+  "livingcolonists.promise.broken": "%s waited for your promise in vain."
 }

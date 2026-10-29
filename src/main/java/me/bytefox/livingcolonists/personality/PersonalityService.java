@@ -40,6 +40,8 @@ import net.minecraft.server.MinecraftServer;
 public final class PersonalityService {
     /** Probability that a child takes after one of their parents' archetypes. */
     private static final double INHERIT_CHANCE = 0.3;
+    /** Token room for a background, so a reasoning model's long thinking doesn't leave it empty. */
+    private static final int BIO_TOKENS = 4000;
 
     private final PromptLibrary prompts;
     private final ArchetypeLibrary archetypes;
@@ -140,7 +142,7 @@ public final class PersonalityService {
         IColony colony = citizen.getColony();
         int colonyId = colony.getID();
         int citizenId = citizen.getId();
-        client.complete(settings.get(), List.of(ChatMessage.user(prompt)))
+        client.complete(settings.get().withMinTokens(BIO_TOKENS), List.of(ChatMessage.user(prompt)))
                 .thenAccept(result -> server.execute(() -> {
                     writing.remove(key);
                     if (data == null) {

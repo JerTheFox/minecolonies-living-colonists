@@ -26,6 +26,7 @@ import me.bytefox.livingcolonists.Config;
 import me.bytefox.livingcolonists.LivingColonists;
 import me.bytefox.livingcolonists.behaviour.ColonyAccess;
 import me.bytefox.livingcolonists.behaviour.Cooldown;
+import me.bytefox.livingcolonists.bonds.BondsService;
 import me.bytefox.livingcolonists.llm.ChatMessage;
 import me.bytefox.livingcolonists.llm.ChatResult;
 import me.bytefox.livingcolonists.llm.LlmClient;
@@ -72,6 +73,7 @@ public final class TalkService {
     private final PersonalityService personalities;
     private final PerceptionService perception;
     private final MemoryService memory;
+    private final BondsService bonds;
     private final ColonyTools tools;
     private final ColonyThreads threads;
     private final SpeechOutput output = new ChatSpeechOutput();
@@ -90,12 +92,13 @@ public final class TalkService {
     }
 
     public TalkService(LlmClient client, PromptLibrary prompts, PersonalityService personalities,
-                       PerceptionService perception, MemoryService memory) {
+                       PerceptionService perception, MemoryService memory, BondsService bonds) {
         this.client = client;
         this.prompts = prompts;
         this.personalities = personalities;
         this.perception = perception;
         this.memory = memory;
+        this.bonds = bonds;
         this.tools = new ColonyTools(perception);
         this.threads = new ColonyThreads(this, prompts, memory, personalities, output);
     }
@@ -229,7 +232,9 @@ public final class TalkService {
             Map<String, List<String>> names = Config.playerNames();
             values.put("player", PlayerNames.name(player.getGameProfile().getName(), names));
             values.put("addressing", PlayerNames.addressing(player.getGameProfile().getName(), names, random));
+            values.put("bonds", bonds.block(citizen, player, values.get("player")));
         } else {
+            values.put("bonds", bonds.block(citizen, null, null));
             values.put("player", "a player");
             values.put("addressing", "");
         }

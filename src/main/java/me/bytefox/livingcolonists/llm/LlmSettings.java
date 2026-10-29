@@ -16,6 +16,12 @@ public record LlmSettings(LlmEndpoint primary, LlmEndpoint fallback, int timeout
         extraParams = extraParams.deepCopy();
     }
 
+    /** The same settings with room for at least {@code tokens}, for tasks a reasoning model thinks long about. */
+    public LlmSettings withMinTokens(int tokens) {
+        return tokens <= maxTokens ? this
+                : new LlmSettings(primary, fallback, timeoutSeconds, tokens, temperature, extraParams, retries);
+    }
+
     @Override
     public JsonObject extraParams() {
         return extraParams.deepCopy();

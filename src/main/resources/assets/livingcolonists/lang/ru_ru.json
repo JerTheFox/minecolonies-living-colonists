@@ -59,5 +59,9 @@
   "livingcolonists.partner.look_to_talk": "Посмотрите на колониста (до 16 блоков), чтобы поговорить с ним лично.",
   "livingcolonists.partner.look_to_focus": "Посмотрите на колониста (до 16 блоков), чтобы выбрать его собеседником.",
   "livingcolonists.debug.memory.facts": "%s помнит фактов: %s",
-  "livingcolonists.debug.memory.digest": "Записываю разговоров: %s; факты появятся через несколько секунд."
+  "livingcolonists.debug.memory.digest": "Записываю разговоров: %s; факты появятся через несколько секунд.",
+  "livingcolonists.debug.bonds.empty": "У %s нет ни обещаний от игроков, ни истории с ними.",
+  "livingcolonists.debug.bonds.cleared": "%s забыл(а) обещания и отношения: %s.",
+  "livingcolonists.promise.kept": "%s заметил(а), что вы сдержали обещание.",
+  "livingcolonists.promise.broken": "%s напрасно ждал(а), что вы сдержите обещание."
 }

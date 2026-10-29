@@ -8,6 +8,8 @@ import me.bytefox.livingcolonists.debug.DebugCommand;
 import me.bytefox.livingcolonists.debug.UsageData;
 import me.bytefox.livingcolonists.llm.LlmClient;
 import me.bytefox.livingcolonists.llm.UsageStats;
+import me.bytefox.livingcolonists.bonds.BondsData;
+import me.bytefox.livingcolonists.bonds.BondsService;
 import me.bytefox.livingcolonists.memory.MemoryData;
 import me.bytefox.livingcolonists.memory.MemoryService;
 import me.bytefox.livingcolonists.perception.PerceptionService;
@@ -56,8 +58,9 @@ public final class LivingColonists {
     private final PersonalityService personalities = new PersonalityService(prompts,
             new ArchetypeLibrary(FMLPaths.CONFIGDIR.get()), client);
     private final PerceptionService perception = new PerceptionService();
-    private final MemoryService memory = new MemoryService(client, prompts);
-    private final TalkService talk = new TalkService(client, prompts, personalities, perception, memory);
+    private final BondsService bonds = new BondsService();
+    private final MemoryService memory = new MemoryService(client, prompts, bonds);
+    private final TalkService talk = new TalkService(client, prompts, personalities, perception, memory, bonds);
     private UsageData usageData;
     private final Conversations conversations = new Conversations(talk);
 
@@ -69,13 +72,14 @@ public final class LivingColonists {
         NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent event) -> {
             TalkCommand.register(event.getDispatcher(), talk, conversations);
             DebugCommand.register(event.getDispatcher(), usage, personalities, prompts, talk, conversations, perception,
-                    memory);
+                    memory, bonds);
         });
         NeoForge.EVENT_BUS.addListener(this::onServerChat);
         NeoForge.EVENT_BUS.addListener((ServerTickEvent.Post event) -> {
             conversations.tick(event.getServer());
             talk.tick(event.getServer());
             memory.tick(event.getServer());
+            bonds.tick(event.getServer());
             if (event.getServer().getTickCount() % USAGE_SAVE_INTERVAL == 0) {
                 markUsageDirty();
             }
@@ -89,6 +93,8 @@ public final class LivingColonists {
                     .computeIfAbsent(PersonalityData.factory(), PersonalityData.NAME));
             memory.attach(event.getServer().overworld().getDataStorage()
                     .computeIfAbsent(MemoryData.factory(), MemoryData.NAME));
+            bonds.attach(event.getServer().overworld().getDataStorage()
+                    .computeIfAbsent(BondsData.factory(), BondsData.NAME));
             usage.clearSession();
             usageData = event.getServer().overworld().getDataStorage()
                     .computeIfAbsent(UsageData.factory(usage), UsageData.NAME);
@@ -102,6 +108,7 @@ public final class LivingColonists {
             usageData = null;
             personalities.detach();
             memory.detach();
+            bonds.detach();
         });
     }
 

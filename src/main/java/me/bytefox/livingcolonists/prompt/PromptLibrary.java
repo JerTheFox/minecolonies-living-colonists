@@ -26,9 +26,10 @@ public final class PromptLibrary {
     public static final String BIO_CHILD = "bio-child.txt";
     public static final String BIO_GROWNUP = "bio-grownup.txt";
     public static final String MEMORY = "memory.txt";
+    public static final String MEMORY_PLAYER = "memory-player.txt";
 
     public static final List<String> ALL = List.of(REPLY_PRIVATE, REPLY_COLONY, CHARACTER, BACKGROUND, ROUTE_COLONY,
-            BIO, BIO_CHILD, BIO_GROWNUP, MEMORY);
+            BIO, BIO_CHILD, BIO_GROWNUP, MEMORY, MEMORY_PLAYER);
 
     private final Path directory;
     private volatile Map<String, String> templates = Map.of();
