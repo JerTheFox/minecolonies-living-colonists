@@ -57,9 +57,12 @@ public final class Prompts {
                 .formatted(name, job, colony, timeOfDay, situation);
     }
 
-    /** Strips what models add around a chat line: a name prefix, wrapping quotes, line breaks. */
+    /**
+     * Strips what models add around a chat line: a name prefix, wrapping quotes, line breaks, and
+     * Minecraft formatting codes, which could hide or garble text in chat.
+     */
     public static String cleanReply(String text, String name) {
-        String line = text.strip().replaceAll("\\s*\\R+\\s*", " ");
+        String line = text.replaceAll("§.?", "").strip().replaceAll("\\s*\\R+\\s*", " ");
         String prefix = name + ":";
         if (line.regionMatches(true, 0, prefix, 0, prefix.length())) {
             line = line.substring(prefix.length()).strip();

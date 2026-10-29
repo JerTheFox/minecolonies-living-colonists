@@ -46,5 +46,6 @@ class PromptsTest {
         assertEquals("Line one line two", Prompts.cleanReply("  Line one\n\nline two ", "John Brown"));
         assertEquals("«Нет» — значит нет.", Prompts.cleanReply("«Нет» — значит нет.", "John Brown"));
         assertEquals(Prompts.MAX_REPLY_LENGTH, Prompts.cleanReply("a".repeat(1000), "John").length());
+        assertEquals("plain text", Prompts.cleanReply("§kplain §ctext§r", "John"));
     }
 }
