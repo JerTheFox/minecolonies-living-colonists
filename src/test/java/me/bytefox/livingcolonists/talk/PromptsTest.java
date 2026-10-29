@@ -25,13 +25,19 @@ class PromptsTest {
 
     @Test
     void systemPromptNamesTheColonistAndThePlayer() {
-        String prompt = Prompts.system("John Brown", "baker", "Riverside", "evening", "Max");
+        String prompt = Prompts.system("John Brown", "baker", "Riverside", "evening", "Max", false);
 
         assertTrue(prompt.contains("John Brown"));
         assertTrue(prompt.contains("baker"));
         assertTrue(prompt.contains("Riverside"));
         assertTrue(prompt.contains("evening"));
         assertTrue(prompt.contains("Max"));
+    }
+
+    @Test
+    void colonyWidePromptSaysTheMessageWentToEveryone() {
+        assertTrue(Prompts.system("John Brown", "baker", "Riverside", "evening", "Max", true).contains("whole colony"));
+        assertTrue(Prompts.system("John Brown", "baker", "Riverside", "evening", "Max", false).contains("privately"));
     }
 
     @Test

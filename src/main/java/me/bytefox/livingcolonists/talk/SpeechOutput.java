@@ -1,6 +1,7 @@
 package me.bytefox.livingcolonists.talk;
 
-import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
+import java.util.Collection;
+
 import net.minecraft.server.level.ServerPlayer;
 
 /**
@@ -8,9 +9,9 @@ import net.minecraft.server.level.ServerPlayer;
  * another implementation later. Called on the server thread only.
  */
 public interface SpeechOutput {
-    /** A player addressed a colonist. */
-    void playerSaid(ServerPlayer player, Speaker listener, String text);
+    /** A player said something to colonists. */
+    void playerSaid(ServerPlayer player, String text, Collection<ServerPlayer> recipients);
 
     /** A colonist said something. */
-    void colonistSaid(AbstractEntityCitizen citizen, Speaker speaker, String text);
+    void colonistSaid(Speaker speaker, String text, Collection<ServerPlayer> recipients);
 }

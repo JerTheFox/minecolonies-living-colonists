@@ -1,7 +1,25 @@
 {
-  "livingcolonists.talk.nobody": "Рядом нет колониста, с которым можно поговорить.",
-  "livingcolonists.talk.no_key": "У Living Colonists нет API-ключа: задайте переменную окружения %s на сервере.",
+  "key.categories.livingcolonists": "Living Colonists",
+  "key.livingcolonists.talk": "Говорить с колонистом",
+  "key.livingcolonists.mode": "Чат: игроки / колония",
+
+  "livingcolonists.talk.nobody": "Не с кем поговорить.",
+  "livingcolonists.talk.no_key": "У Living Colonists нет API-ключа: задайте apiKey в config/livingcolonists-common.toml на сервере.",
   "livingcolonists.talk.busy": "%s ещё обдумывает ваши прошлые слова.",
   "livingcolonists.talk.failed": "%s не отвечает. Подробности — в логе сервера.",
+
+  "livingcolonists.partner.locked": "Разговор с: %s",
+  "livingcolonists.partner.released": "Разговор с %s окончен",
+
+  "livingcolonists.mode.players": "Чат: игроки",
+  "livingcolonists.mode.colony": "Чат: колония",
+  "livingcolonists.colony.outside": "Вы за границами колонии, колонисты вас не слышат.",
+
+  "livingcolonists.indicator.players": "Игроки",
+  "livingcolonists.indicator.colony": "Колония",
+  "livingcolonists.indicator.partner": "→ %s (%s) ✕",
+
+  "livingcolonists.chat.click_to_answer": "Нажмите, чтобы поговорить лично",
+  "livingcolonists.client.no_server_mod": "На сервере нет Living Colonists.",
   "livingcolonists.job.unemployed": "Безработный"
 }

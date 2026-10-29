@@ -28,16 +28,25 @@ public final class ListenerPicker {
      */
     public static <T> Optional<T> pick(List<Candidate<T>> candidates, double lookX, double lookY, double lookZ,
                                        double maxDistance, double targetRadius) {
-        List<Candidate<T>> inRange = candidates.stream().filter(c -> c.distance() <= maxDistance).toList();
+        Optional<T> lookedAt = lookedAt(candidates, lookX, lookY, lookZ, maxDistance, targetRadius);
+        if (lookedAt.isPresent()) {
+            return lookedAt;
+        }
+        return candidates.stream()
+                .filter(c -> c.distance() <= maxDistance)
+                .min(Comparator.comparingDouble(Candidate::distance))
+                .map(Candidate::id);
+    }
 
-        Optional<Candidate<T>> lookedAt = inRange.stream()
+    /** Only the first candidate along the line of sight, without the nearest-one fallback. */
+    public static <T> Optional<T> lookedAt(List<Candidate<T>> candidates, double lookX, double lookY, double lookZ,
+                                           double maxDistance, double targetRadius) {
+        return candidates.stream()
+                .filter(c -> c.distance() <= maxDistance)
                 .filter(c -> along(c, lookX, lookY, lookZ) > 0)
                 .filter(c -> offAxis(c, lookX, lookY, lookZ) <= targetRadius)
-                .min(Comparator.comparingDouble(c -> along(c, lookX, lookY, lookZ)));
-        if (lookedAt.isPresent()) {
-            return lookedAt.map(Candidate::id);
-        }
-        return inRange.stream().min(Comparator.comparingDouble(Candidate::distance)).map(Candidate::id);
+                .min(Comparator.comparingDouble(c -> along(c, lookX, lookY, lookZ)))
+                .map(Candidate::id);
     }
 
     private static double along(Candidate<?> c, double lookX, double lookY, double lookZ) {

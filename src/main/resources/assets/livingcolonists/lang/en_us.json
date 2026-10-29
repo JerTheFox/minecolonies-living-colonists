@@ -1,7 +1,25 @@
 {
-  "livingcolonists.talk.nobody": "There is no colonist close enough to talk to.",
-  "livingcolonists.talk.no_key": "Living Colonists has no API key: set the %s environment variable on the server.",
+  "key.categories.livingcolonists": "Living Colonists",
+  "key.livingcolonists.talk": "Talk to colonist",
+  "key.livingcolonists.mode": "Chat: players / colony",
+
+  "livingcolonists.talk.nobody": "There is no colonist to talk to.",
+  "livingcolonists.talk.no_key": "Living Colonists has no API key: set apiKey in config/livingcolonists-common.toml on the server.",
   "livingcolonists.talk.busy": "%s is still thinking about the last thing you said.",
   "livingcolonists.talk.failed": "%s doesn't answer. The server log has the details.",
+
+  "livingcolonists.partner.locked": "Talking to %s",
+  "livingcolonists.partner.released": "Conversation with %s ended",
+
+  "livingcolonists.mode.players": "Chat: players",
+  "livingcolonists.mode.colony": "Chat: colony",
+  "livingcolonists.colony.outside": "You're outside the colony's borders, the colonists can't hear you.",
+
+  "livingcolonists.indicator.players": "Players",
+  "livingcolonists.indicator.colony": "Colony",
+  "livingcolonists.indicator.partner": "→ %s (%s) ✕",
+
+  "livingcolonists.chat.click_to_answer": "Click to talk to them privately",
+  "livingcolonists.client.no_server_mod": "The server doesn't have Living Colonists.",
   "livingcolonists.job.unemployed": "Unemployed"
 }

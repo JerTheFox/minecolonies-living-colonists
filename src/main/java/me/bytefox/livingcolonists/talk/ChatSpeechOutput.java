@@ -1,42 +1,40 @@
 package me.bytefox.livingcolonists.talk;
 
-import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
+import java.util.Collection;
+
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
 
 /**
- * Writes conversation lines into chat exactly like player chat ({@code <Name> text}), but only
- * for players within earshot. Hovering a colonist's name shows the profession and colony.
+ * Writes conversation lines into chat exactly like player chat ({@code <Name> text}). Hovering a
+ * colonist's name shows the profession and colony; clicking it starts a private talk.
  */
 public final class ChatSpeechOutput implements SpeechOutput {
-    /** How far a line can be heard, in blocks. */
-    private static final double HEARING_RANGE = 32.0;
-
     @Override
-    public void playerSaid(ServerPlayer player, Speaker listener, String text) {
-        sendNearby(player.serverLevel(), player, Component.translatable("chat.type.text", player.getDisplayName(), text));
+    public void playerSaid(ServerPlayer player, String text, Collection<ServerPlayer> recipients) {
+        send(Component.translatable("chat.type.text", player.getDisplayName(), text), recipients);
     }
 
     @Override
-    public void colonistSaid(AbstractEntityCitizen citizen, Speaker speaker, String text) {
+    public void colonistSaid(Speaker speaker, String text, Collection<ServerPlayer> recipients) {
         Component job = speaker.jobTranslationKey() == null
                 ? Component.translatable("livingcolonists.job.unemployed")
                 : Component.translatable(speaker.jobTranslationKey());
-        Component hover = Component.empty().append(job).append("\n" + speaker.colony());
-        Component name = Component.literal(speaker.name())
-                .withStyle(style -> style.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, hover)));
-        sendNearby((ServerLevel) citizen.level(), citizen, Component.translatable("chat.type.text", name, text));
+        Component hover = Component.empty().append(job).append("\n" + speaker.colony() + "\n")
+                .append(Component.translatable("livingcolonists.chat.click_to_answer").withStyle(ChatFormatting.GRAY));
+        Component name = Component.literal(speaker.name()).withStyle(style -> style
+                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, hover))
+                .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND,
+                        "/lc lock " + speaker.colonyId() + " " + speaker.citizenId())));
+        send(Component.translatable("chat.type.text", name, text), recipients);
     }
 
-    private static void sendNearby(ServerLevel level, Entity source, Component line) {
-        double rangeSqr = HEARING_RANGE * HEARING_RANGE;
-        for (ServerPlayer player : level.players()) {
-            if (player.distanceToSqr(source) <= rangeSqr) {
-                player.sendSystemMessage(line);
-            }
+    private static void send(Component line, Collection<ServerPlayer> recipients) {
+        for (ServerPlayer player : recipients) {
+            player.sendSystemMessage(line);
         }
     }
 }

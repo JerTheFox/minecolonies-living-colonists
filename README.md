@@ -4,7 +4,7 @@
 
 A [MineColonies](https://github.com/ldtteam/minecolonies) addon for NeoForge that lets colonists talk in text chat almost like other players. They start conversations, answer you, remember what you told them and gossip about the colony with each other. The words come from a language model behind any OpenAI-compatible API: DeepSeek, Gemini, OpenRouter, or a model running on your own machine.
 
-> **Status: early development.** You can already talk to a colonist with `/lc talk` (see [Usage](#usage)); the rest of this page describes where the mod is going. Expect breaking changes until the first release.
+> **Status: early development.** You can already talk to colonists (see [Usage](#usage)); the rest of this page describes where the mod is going. Expect breaking changes until the first release.
 
 ## What it should feel like
 
@@ -24,8 +24,7 @@ You look at the baker and press a key: the chat opens, and a line above the inpu
 - Memory of recent lines and events, plus long-term facts like "Max promised to build me a house". It is stored with the world and goes into your backups.
 - Mood sets the tone: a hungry colonist grumbles, a homeless one complains, one who just survived a raid is shaken.
 - Errands go through the colony's own systems: fetching, delivering, crafting requests and more, based on [Colonist Errands](https://github.com/Lovkar-Squid/colonist-errands).
-- Talking without commands: one key picks the colonist you're looking at as your conversation partner and opens the chat; another switches between talking to players and to all colonists nearby. Clicking a colonist's name in chat answers them.
-- Conversations are local: only players within earshot see them, and the server-wide chat stays clean.
+- Talk to the whole colony or to one colonist privately; colonists understand names and professions in any language.
 - Speech bubbles via Comics Bubbles Chat when it's installed, plain chat otherwise.
 - Any OpenAI-compatible provider, with the API key read from an environment variable.
 
@@ -54,14 +53,14 @@ No release yet. Once there is one, it goes into the `mods` folder of the server 
 
 The language model is set up on the server (in single-player, on your own machine):
 
-1. Put the API key into the environment variable `LIVINGCOLONISTS_API_KEY` of the server process. The key is never written to config files.
-2. Adjust `config/livingcolonists-common.toml`, section `[llm]`:
+Open `config/livingcolonists-common.toml` (it appears after the first launch), put your provider's key into `apiKey` and adjust the rest of the `[llm]` section if needed. The key is stored there as plain text, so don't share the file. Server owners who prefer not to keep it in a file can leave `apiKey` empty and set the environment variable `LIVINGCOLONISTS_API_KEY` instead.
 
 | Option | Default | Meaning |
 |---|---|---|
 | `baseUrl` | `https://api.deepseek.com` | OpenAI-compatible API base URL |
 | `model` | `deepseek-flash` | model id as the provider's `/models` lists it |
-| `apiKeyEnv` | `LIVINGCOLONISTS_API_KEY` | name of the variable holding the key |
+| `apiKey` | empty | your API key |
+| `apiKeyEnv` | `LIVINGCOLONISTS_API_KEY` | environment variable read when `apiKey` is empty |
 | `timeoutSeconds` | `30` | how long to wait for a reply |
 | `maxTokens` | `2000` | token limit per request, including the model's thinking |
 | `temperature` | `1.0` | higher is more varied |
@@ -69,13 +68,16 @@ The language model is set up on the server (in single-player, on your own machin
 
 ## Usage
 
-Look at a colonist within 8 blocks (or just stand near one) and type:
+| Key | What it does |
+|---|---|
+Colonists listen while you are inside the colony's borders. There are two ways to talk to them:
 
-```
-/lc talk Hi! How are things in the colony?
-```
+- **The whole colony.** Switch the chat to *Colony* with **H** or with the *Players | Colony* switch above the chat input, and write as usual. Name a colonist and they answer; name a profession ("builders, when will you finish?") and those colonists answer; otherwise two or three colonists answer. Players inside the colony see the conversation.
+- **One colonist, privately.** Look at a colonist and press **Y**: the chat opens, and whatever you type goes to that colonist only, like a direct message, wherever in the colony you are. They keep working while you talk. Clicking a colonist's name in chat does the same. Press **Y** while looking at nobody, or click ✕ above the chat input, to end it.
 
-Your line and the answer appear in chat for everyone within 32 blocks. Commands are temporary: keys for picking a conversation partner are next on the roadmap.
+Colonists take a couple of seconds to answer, as if typing, and several answers come one after another. Both keys can be rebound in Controls. In *Players* mode the chat works as usual.
+
+Commands do the same for clients without the mod: `/lc talk <message>`, `/lc lock`, `/lc mode [players|colony]`.
 
 ## Building from source
 
@@ -97,7 +99,7 @@ The mod follows the game's language setting. English and Russian are included. T
 ## Roadmap
 
 1. ✅ A command → a colonist → an AI reply in chat.
-2. Talking without commands: a key to pick your conversation partner, chat modes for players and colonists nearby.
+2. ✅ Talking without commands: the whole colony or one colonist privately.
 3. Perception and memory, ported from Colonist Errands.
 4. Errands through the colony's request system.
 5. Colonists speak first, with a line budget.

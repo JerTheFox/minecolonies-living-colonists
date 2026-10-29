@@ -9,8 +9,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 
 /**
  * Settings of the language model connection, in {@code config/livingcolonists-common.toml}.
- * The API key itself is never stored here: the config only names the environment variable
- * that holds it.
+ * The API key can be written here or come from an environment variable; it is never logged.
  */
 public final class Config {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
@@ -27,8 +26,13 @@ public final class Config {
             .comment("Model id as the provider's /models endpoint lists it")
             .define("model", "deepseek-flash");
 
+    public static final ModConfigSpec.ConfigValue<String> API_KEY = BUILDER
+            .comment("API key of the provider. It is stored in this file as plain text: don't share the file.",
+                    "Leave empty to read the key from the environment variable named in apiKeyEnv instead.")
+            .define("apiKey", "");
+
     public static final ModConfigSpec.ConfigValue<String> API_KEY_ENV = BUILDER
-            .comment("Name of the environment variable that holds the API key")
+            .comment("Environment variable with the API key, used when apiKey is empty")
             .define("apiKeyEnv", "LIVINGCOLONISTS_API_KEY");
 
     public static final ModConfigSpec.IntValue TIMEOUT_SECONDS = BUILDER
@@ -70,10 +74,15 @@ public final class Config {
         }
     }
 
-    /** The API key from the configured environment variable, if it is set and not blank. */
+    /** The API key from the config, or else from the environment variable; empty if neither is set. */
     public static Optional<String> apiKey() {
+        String configured = API_KEY.get().strip();
+        if (!configured.isEmpty()) {
+            return Optional.of(configured);
+        }
         return Optional.ofNullable(System.getenv(API_KEY_ENV.get()))
-                .filter(key -> !key.isBlank());
+                .map(String::strip)
+                .filter(key -> !key.isEmpty());
     }
 
     /** A snapshot of the current settings, or empty when there is no API key. Server thread. */

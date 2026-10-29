@@ -42,6 +42,14 @@ class ListenerPickerTest {
     }
 
     @Test
+    void lookedAtFindsOnlyTheColonistUnderTheCrosshair() {
+        assertEquals(Optional.of("front"), ListenerPicker.lookedAt(List.of(
+                new Candidate<>("aside", 0, 0, 2),
+                new Candidate<>("front", 4, 0.2, 0)), 1, 0, 0, 8.0, 0.8));
+        assertTrue(ListenerPicker.lookedAt(List.of(new Candidate<>("aside", 0, 0, 2)), 1, 0, 0, 8.0, 0.8).isEmpty());
+    }
+
+    @Test
     void ignoresColonistsBehindThePlayerForTheCrosshair() {
         assertEquals(Optional.of("side"), pick(List.of(
                 new Candidate<>("behind", -3, 0, 0),

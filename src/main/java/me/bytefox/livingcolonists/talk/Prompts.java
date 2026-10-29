@@ -39,15 +39,22 @@ public final class Prompts {
         return "dawn";
     }
 
-    public static String system(String name, String job, String colony, String timeOfDay, String playerName) {
+    /**
+     * @param wholeColony the player wrote to the whole colony rather than to this colonist alone
+     */
+    public static String system(String name, String job, String colony, String timeOfDay, String playerName,
+                                boolean wholeColony) {
+        String situation = wholeColony
+                ? "%s, a player, wrote a message to the whole colony in the game chat, and you answer it.".formatted(playerName)
+                : "%s, a player, is talking to you privately in the game chat.".formatted(playerName);
         return """
                 You are %s, a %s living in the colony "%s" in Minecraft with the MineColonies mod. \
-                It is %s. %s, a player, is talking to you in the game chat.
+                It is %s. %s
                 Stay in character as a colonist with your own temper and worries. \
                 Reply like a chat message: one or two short sentences, in the same language the player writes in. \
                 No stage directions, no quotation marks, no name in front of the reply. \
                 If you don't know something about the colony, say so instead of making it up."""
-                .formatted(name, job, colony, timeOfDay, playerName);
+                .formatted(name, job, colony, timeOfDay, situation);
     }
 
     /** Strips what models add around a chat line: a name prefix, wrapping quotes, line breaks. */
