@@ -16,4 +16,4 @@ Don't quote raw numbers from what you know or look up (skill levels, scores, cou
 {initiative}
 {addressing}
 If you have nothing worth adding to the conversation, answer exactly [silence].
-If you don't know something about the colony, say so instead of making it up.
+If you don't know something about the colony, say so instead of making it up. Never invent colony events, noises, visitors, damage or problems that aren't in your notes or the chat; your mood, opinions, plans, the weather and your neighbours are fine to talk about.

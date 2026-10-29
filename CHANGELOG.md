@@ -55,3 +55,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Exact version pins for Minecraft 1.21.1, NeoForge 21.1.264 and MineColonies 1.1.1405.
 - Mod logo in the mod list.
 - Common config `livingcolonists-common.toml` for the OpenAI-compatible API: base URL, model, API key or its environment variable, timeout, max tokens, temperature and extra request parameters. Defaults point to DeepSeek (`deepseek-flash`).
+
+### Fixed
+
+- A newcomer who got the id of a colonist who died or left no longer inherits their character, memories, promises and relations (MineColonies reuses ids); a deleted colony's data is dropped too.
+- An archetype file with a value of the wrong type is skipped with a warning instead of failing the server start.
+- Colonists no longer make up colony events, noises or visitors, which then spread as gossip.
+- A colony conversation that ended while a reply was still on its way no longer comes back to life.
+- Old conversations that are fully written down no longer pile up in the world's data.

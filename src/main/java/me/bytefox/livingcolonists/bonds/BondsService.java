@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import com.minecolonies.api.colony.ICitizenData;
@@ -154,7 +155,7 @@ public final class BondsService {
 
     // ---- watcher
 
-    /** Notices promises that came true or lapsed, and forgets colonists who are gone. Server tick. */
+    /** Notices promises that came true or lapsed. Server tick. */
     public void tick(MinecraftServer server) {
         if (data == null || server.getTickCount() % CHECK_INTERVAL != 0) {
             return;
@@ -211,9 +212,6 @@ public final class BondsService {
             }
             ICitizenData citizen = colony.getCitizenManager().getCivilian(Integer.parseInt(entry.getKey().split(":")[1]));
             if (citizen == null) {
-                data.promises.remove(entry.getKey());
-                data.relations.keySet().removeIf(key -> key.startsWith(entry.getKey() + ":"));
-                data.setDirty();
                 continue;
             }
             for (Promise promise : List.copyOf(entry.getValue())) {
@@ -331,6 +329,19 @@ public final class BondsService {
             }
         });
         return out;
+    }
+
+    /** Forgets promises and relations of colonists whose key matches (gone colonists, a deleted colony). */
+    public void forget(Predicate<String> key) {
+        if (data == null) {
+            return;
+        }
+        int before = data.promises.size() + data.relations.size();
+        data.promises.keySet().removeIf(key);
+        data.relations.keySet().removeIf(key);
+        if (data.promises.size() + data.relations.size() != before) {
+            data.setDirty();
+        }
     }
 
     /** Forgets the colonist's promises and relations; returns how many were dropped. */

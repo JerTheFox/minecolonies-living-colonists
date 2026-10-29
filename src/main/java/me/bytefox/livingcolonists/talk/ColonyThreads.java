@@ -329,8 +329,18 @@ public final class ColonyThreads {
                 .collect(Collectors.joining("\n"));
     }
 
-    /** Ends threads nobody has spoken in for a while. */
+    /**
+     * Ends threads nobody has spoken in for a while. A line still being written (a request retrying
+     * through a network outage can take minutes) becomes stale, or it would revive the ended thread
+     * next to a new one.
+     */
     private void expire(long now) {
-        threads.values().removeIf(thread -> now - thread.lastLineTick > IDLE_TICKS && thread.addressed.isEmpty());
+        threads.values().removeIf(thread -> {
+            boolean over = now - thread.lastLineTick > IDLE_TICKS && thread.addressed.isEmpty();
+            if (over) {
+                thread.version++;
+            }
+            return over;
+        });
     }
 }

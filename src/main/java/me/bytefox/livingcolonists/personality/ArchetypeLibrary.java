@@ -49,7 +49,8 @@ public final class ArchetypeLibrary {
                 String id = file.getFileName().toString().replaceFirst("\\.json$", "");
                 try {
                     loaded.add(Archetypes.parse(id, Files.readString(file, StandardCharsets.UTF_8)));
-                } catch (IllegalArgumentException | IOException e) {
+                } catch (RuntimeException | IOException e) {
+                    // A value of the wrong JSON type (an object for a number) throws more than IllegalArgumentException.
                     LivingColonists.LOGGER.warn("Skipping archetype {}: {}", file, e.getMessage());
                 }
             }

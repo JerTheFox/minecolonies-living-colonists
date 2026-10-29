@@ -2,7 +2,10 @@ package me.bytefox.livingcolonists;
 
 import java.net.http.HttpClient;
 import java.time.Duration;
+import java.util.function.Predicate;
 
+import com.minecolonies.api.IMinecoloniesAPI;
+import com.minecolonies.api.eventbus.events.colony.ColonyDeletedModEvent;
 import com.mojang.logging.LogUtils;
 import me.bytefox.livingcolonists.debug.DebugCommand;
 import me.bytefox.livingcolonists.debug.UsageData;
@@ -49,6 +52,11 @@ public final class LivingColonists {
 
     /** How often usage statistics are marked for saving, in ticks (1 minute). */
     private static final int USAGE_SAVE_INTERVAL = 1200;
+    /**
+     * How often data of colonists who are gone is dropped, in ticks (ten seconds). MineColonies
+     * reuses the id of a dead colonist for the next newcomer, so this has to happen soon.
+     */
+    private static final int GONE_CHECK_INTERVAL = 200;
 
     private final UsageStats usage = new UsageStats();
     private final LlmClient client = new LlmClient(
@@ -80,6 +88,9 @@ public final class LivingColonists {
             talk.tick(event.getServer());
             memory.tick(event.getServer());
             bonds.tick(event.getServer());
+            if (event.getServer().getTickCount() % GONE_CHECK_INTERVAL == 0) {
+                forget(Citizens::isGone);
+            }
             if (event.getServer().getTickCount() % USAGE_SAVE_INTERVAL == 0) {
                 markUsageDirty();
             }
@@ -112,6 +123,20 @@ public final class LivingColonists {
         });
     }
 
+    /** Drops everything the mod keeps about the colonists whose key matches. */
+    private void forget(Predicate<String> key) {
+        personalities.forget(key);
+        memory.forget(key);
+        bonds.forget(key);
+    }
+
+    /** A deleted colony's id may go to a new colony: nothing of the old one may carry over. */
+    private void onColonyDeleted(ColonyDeletedModEvent event) {
+        int id = event.getColony().getID();
+        forget(key -> key.startsWith(id + ":"));
+        memory.forgetColonyChat(id);
+    }
+
     private void markUsageDirty() {
         if (usageData != null && usage.takeDirty()) {
             usageData.setDirty();
@@ -119,6 +144,7 @@ public final class LivingColonists {
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {
+        IMinecoloniesAPI.getInstance().getEventBus().subscribe(ColonyDeletedModEvent.class, this::onColonyDeleted);
         LOGGER.info("Living Colonists loaded, model {} at {}, API key {}", Config.CHAT_MODEL.get(), Config.BASE_URL.get(),
                 Config.apiKey().isPresent() ? "found" : "missing: set apiKey in the config or " + Config.API_KEY_ENV.get());
     }

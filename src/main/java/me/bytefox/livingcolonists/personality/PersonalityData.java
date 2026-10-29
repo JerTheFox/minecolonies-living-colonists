@@ -2,6 +2,7 @@ package me.bytefox.livingcolonists.personality;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Predicate;
 
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -29,6 +30,16 @@ public final class PersonalityData extends SavedData {
     public void put(String key, Personality personality) {
         personalities.put(key, personality);
         setDirty();
+    }
+
+    /** Drops the colonists whose key matches; returns how many. */
+    public int removeIf(Predicate<String> key) {
+        int before = personalities.size();
+        personalities.keySet().removeIf(key);
+        if (personalities.size() != before) {
+            setDirty();
+        }
+        return before - personalities.size();
     }
 
     private static PersonalityData load(CompoundTag tag) {

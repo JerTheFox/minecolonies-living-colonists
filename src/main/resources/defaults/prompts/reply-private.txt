@@ -12,4 +12,4 @@ No stage directions, no quotation marks, no name in front of the reply.
 Don't quote raw numbers from what you know or look up (skill levels, scores, counts): say it in words, like "strong", "quite unhappy" or "a lot of cobblestone". Give exact amounts only if the player asks how many.
 {initiative}
 {addressing}
-If you don't know something about the colony, say so instead of making it up.
+If you don't know something about the colony, say so instead of making it up. Never invent colony events, noises, visitors, damage or problems that aren't in your notes or the chat; your mood, opinions, plans, the weather and your neighbours are fine to talk about.

@@ -12,11 +12,12 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.function.BiConsumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
-import com.minecolonies.api.colony.IColonyManager;
+import me.bytefox.livingcolonists.Citizens;
 import me.bytefox.livingcolonists.Config;
 import me.bytefox.livingcolonists.LivingColonists;
 import me.bytefox.livingcolonists.behaviour.Level;
@@ -245,7 +246,7 @@ public final class MemoryService {
             return false;
         }
         String[] parts = key.split(":");
-        IColony colony = colony(Integer.parseInt(parts[0]));
+        IColony colony = Citizens.colony(Integer.parseInt(parts[0]));
         ICitizenData citizen = colony == null ? null : colony.getCitizenManager().getCivilian(Integer.parseInt(parts[1]));
         if (citizen == null) {
             return false;
@@ -287,7 +288,7 @@ public final class MemoryService {
         if (lines.isEmpty() || !ready(server, key, force)) {
             return false;
         }
-        IColony colony = colony(colonyId);
+        IColony colony = Citizens.colony(colonyId);
         if (colony == null) {
             return false;
         }
@@ -342,7 +343,7 @@ public final class MemoryService {
             }
             switch (result) {
                 case ChatResult.Reply reply -> {
-                    IColony now = colony(colonyId);
+                    IColony now = Citizens.colony(colonyId);
                     if (now == null) {
                         return;
                     }
@@ -392,27 +393,49 @@ public final class MemoryService {
         return !digesting.contains(key) && (force || retryAt.getOrDefault(key, Long.MIN_VALUE) <= server.getTickCount());
     }
 
-    /** Forgets expired and surplus facts, and everything of colonists who are gone. */
+    /** Forgets expired and surplus facts. */
     private void cleanup() {
         FactLimits limits = FactLimits.of(level());
         data.facts.entrySet().removeIf(entry -> {
-            String[] parts = entry.getKey().split(":");
-            IColony colony = colony(Integer.parseInt(parts[0]));
+            IColony colony = Citizens.colony(Integer.parseInt(entry.getKey().split(":")[0]));
             if (colony == null) {
                 return false;
-            }
-            if (colony.getCitizenManager().getCivilian(Integer.parseInt(parts[1])) == null) {
-                return true;
             }
             entry.getValue().cleanup(now(colony), limits.facts());
             return entry.getValue().isEmpty();
         });
-        data.privateTalks.keySet().removeIf(key -> {
-            String[] parts = key.split(":");
-            IColony colony = colony(Integer.parseInt(parts[0]));
-            return colony != null && colony.getCitizenManager().getCivilian(Integer.parseInt(parts[1])) == null;
-        });
+        long privateAge = MemoryLimits.of(level()).maxAgeTicks();
+        data.privateTalks.entrySet().removeIf(entry -> stale(entry.getValue(),
+                Citizens.colony(Integer.parseInt(entry.getKey().split(":")[0])), privateAge));
+        data.colonyChats.entrySet().removeIf(entry -> stale(entry.getValue(), Citizens.colony(entry.getKey()),
+                COLONY_MAX_AGE));
         data.setDirty();
+    }
+
+    /** A conversation with every line written down and too old to remember: it only takes up space. */
+    private static boolean stale(Transcript transcript, IColony colony, long maxAge) {
+        return colony != null && transcript.undigested().isEmpty()
+                && colony.getWorld().getGameTime() - transcript.lastTime() > maxAge;
+    }
+
+    /** Forgets the talks and facts of colonists whose key matches (gone colonists, a deleted colony). */
+    public void forget(Predicate<String> key) {
+        if (data == null) {
+            return;
+        }
+        int before = data.facts.size() + data.privateTalks.size();
+        data.facts.keySet().removeIf(key);
+        data.privateTalks.keySet().removeIf(key);
+        if (data.facts.size() + data.privateTalks.size() != before) {
+            data.setDirty();
+        }
+    }
+
+    /** Forgets a deleted colony's chat; its colonists go through {@link #forget}. */
+    public void forgetColonyChat(int colonyId) {
+        if (data != null && data.colonyChats.remove(colonyId) != null) {
+            data.setDirty();
+        }
     }
 
     private String known(List<ICitizenData> citizens) {
@@ -436,19 +459,6 @@ public final class MemoryService {
 
     private static Level level() {
         return Config.level(Module.MEMORY);
-    }
-
-    /**
-     * A loaded colony by id. Colony ids are unique per dimension; keys don't carry it, so the first
-     * match wins.
-     */
-    private static IColony colony(int id) {
-        for (IColony colony : IColonyManager.getInstance().getAllColonies()) {
-            if (colony.getID() == id && colony.getWorld() != null) {
-                return colony;
-            }
-        }
-        return null;
     }
 
     private static String key(ICitizenData citizen) {
