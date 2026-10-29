@@ -20,7 +20,11 @@ import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.colony.jobs.IJob;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
+import com.minecolonies.api.colony.permissions.IPermissions;
+import com.minecolonies.api.colony.permissions.Rank;
 import me.bytefox.livingcolonists.Config;
+import me.bytefox.livingcolonists.behaviour.ColonyAccess;
+import me.bytefox.livingcolonists.behaviour.Cooldown;
 import me.bytefox.livingcolonists.LivingColonists;
 import me.bytefox.livingcolonists.llm.ChatMessage;
 import me.bytefox.livingcolonists.llm.ChatResult;
@@ -63,6 +67,8 @@ public final class TalkService {
         this.client = client;
     }
 
+    /** Pause between one player's messages to colonists. Server thread only. */
+    private final Cooldown cooldown = new Cooldown();
     /** Colonists waiting for a reply, as {@link #key}. Server thread only. */
     private final Set<Long> thinking = new HashSet<>();
     /** Colonists' lines waiting for their turn (see {@link LinePacing}). Server thread only. */
@@ -93,6 +99,7 @@ public final class TalkService {
     }
 
     public void clear() {
+        cooldown.clear();
         thinking.clear();
         pending.clear();
         colonyFreeAt.clear();
@@ -110,7 +117,7 @@ public final class TalkService {
     }
 
     public void sayPrivately(ServerPlayer player, ICitizenData citizen, String message) {
-        if (settings(player).isEmpty()) {
+        if (!admit(player, citizen.getColony()) || settings(player).isEmpty()) {
             return;
         }
         output.playerSaid(player, message, List.of(player));
@@ -123,6 +130,9 @@ public final class TalkService {
      * or three random colonists answer.
      */
     public void sayToColony(ServerPlayer player, IColony colony, String message) {
+        if (!admit(player, colony)) {
+            return;
+        }
         Optional<LlmSettings> settings = settings(player);
         if (settings.isEmpty()) {
             return;
@@ -228,6 +238,43 @@ public final class TalkService {
                 }
             }
         }
+    }
+
+    /** Whether the player may talk to this colony's colonists right now; tells them if not. */
+    private boolean admit(ServerPlayer player, IColony colony) {
+        if (!mayTalk(player, colony)) {
+            return false;
+        }
+        Optional<Long> wait = cooldown.tryUse(player.getUUID(), player.server.getTickCount(),
+                Config.COOLDOWN_SECONDS.get() * 20L);
+        if (wait.isPresent()) {
+            player.displayClientMessage(Component.translatable("livingcolonists.talk.cooldown",
+                    (wait.get() + 19) / 20), true);
+            return false;
+        }
+        return true;
+    }
+
+    /** Whether the player's rank lets them talk to the colony's colonists; tells them if not. */
+    public static boolean mayTalk(ServerPlayer player, IColony colony) {
+        if (ColonyAccess.canTalk(role(player, colony), Config.MEMBERS_ONLY.get())) {
+            return true;
+        }
+        player.sendSystemMessage(Component.translatable("livingcolonists.colony.not_member", colony.getName()));
+        return false;
+    }
+
+    public static ColonyAccess.Role role(ServerPlayer player, IColony colony) {
+        Rank rank = colony.getPermissions().getRank(player);
+        if (rank == null) {
+            return ColonyAccess.Role.OTHER;
+        }
+        return switch (rank.getId()) {
+            case IPermissions.OWNER_RANK_ID -> ColonyAccess.Role.OWNER;
+            case IPermissions.OFFICER_RANK_ID -> ColonyAccess.Role.OFFICER;
+            case IPermissions.FRIEND_RANK_ID -> ColonyAccess.Role.FRIEND;
+            default -> ColonyAccess.Role.OTHER;
+        };
     }
 
     private static Optional<LlmSettings> settings(ServerPlayer player) {

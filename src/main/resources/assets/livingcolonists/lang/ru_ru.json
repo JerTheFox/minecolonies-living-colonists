@@ -28,5 +28,9 @@
   "livingcolonists.debug.stats.model": "%s",
   "livingcolonists.debug.stats.session": "  с запуска: %s",
   "livingcolonists.debug.stats.total": "  всего: %s",
-  "livingcolonists.debug.stats.counts": "запросов %s (неудачных %s), промпт %s токенов (из кэша %s), ответ %s токенов, в среднем %s с"
+  "livingcolonists.debug.stats.counts": "запросов %s (неудачных %s), промпт %s токенов (из кэша %s), ответ %s токенов, в среднем %s с",
+  "livingcolonists.talk.cooldown": "Не так быстро: подождите %s с.",
+  "livingcolonists.colony.not_member": "Говорить с колонистами колонии %s могут только её участники.",
+  "livingcolonists.debug.profile.current": "Профиль %s: характер %s, восприятие %s, память %s",
+  "livingcolonists.debug.profile.set": "Профиль изменён на %s."
 }

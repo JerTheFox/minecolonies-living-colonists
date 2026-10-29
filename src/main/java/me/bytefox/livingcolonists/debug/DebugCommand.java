@@ -1,9 +1,14 @@
 package me.bytefox.livingcolonists.debug;
 
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeSet;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import me.bytefox.livingcolonists.Config;
+import me.bytefox.livingcolonists.behaviour.Module;
+import me.bytefox.livingcolonists.behaviour.Profile;
 import me.bytefox.livingcolonists.llm.UsageStats;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -20,7 +25,33 @@ public final class DebugCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, UsageStats stats) {
         dispatcher.register(Commands.literal("lcdebug")
                 .requires(source -> source.hasPermission(PERMISSION_LEVEL))
-                .then(Commands.literal("stats").executes(context -> showStats(context.getSource(), stats))));
+                .then(Commands.literal("stats").executes(context -> showStats(context.getSource(), stats)))
+                .then(profileCommand()));
+    }
+
+    /** {@code /lcdebug profile [minimal|light|default|immersive]}: show or change the profile. */
+    private static LiteralArgumentBuilder<CommandSourceStack> profileCommand() {
+        var command = Commands.literal("profile").executes(context -> showProfile(context.getSource()));
+        for (Profile profile : Profile.values()) {
+            command.then(Commands.literal(profile.name().toLowerCase(Locale.ROOT)).executes(context -> {
+                Config.PROFILE.set(profile);
+                Config.PROFILE.save();
+                context.getSource().sendSuccess(() -> Component.translatable("livingcolonists.debug.profile.set",
+                        profile.name()), true);
+                return showProfile(context.getSource());
+            }));
+        }
+        return command;
+    }
+
+    private static int showProfile(CommandSourceStack source) {
+        source.sendSuccess(() -> Component.translatable("livingcolonists.debug.profile.current",
+                Config.PROFILE.get().name(), level(Module.PERSONALITY), level(Module.PERCEPTION), level(Module.MEMORY)), false);
+        return 1;
+    }
+
+    private static String level(Module module) {
+        return Config.level(module).name().toLowerCase(Locale.ROOT);
     }
 
     private static int showStats(CommandSourceStack source, UsageStats stats) {
@@ -44,6 +75,6 @@ public final class DebugCommand {
     private static Component counts(UsageStats.Counts counts) {
         return Component.translatable("livingcolonists.debug.stats.counts",
                 counts.requests(), counts.failures(), counts.promptTokens(), counts.cachedTokens(),
-                counts.completionTokens(), String.format(java.util.Locale.ROOT, "%.1f", counts.averageLatencyMillis() / 1000.0));
+                counts.completionTokens(), String.format(Locale.ROOT, "%.1f", counts.averageLatencyMillis() / 1000.0));
     }
 }

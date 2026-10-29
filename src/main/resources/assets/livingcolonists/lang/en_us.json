@@ -28,5 +28,9 @@
   "livingcolonists.debug.stats.model": "%s",
   "livingcolonists.debug.stats.session": "  this run: %s",
   "livingcolonists.debug.stats.total": "  in total: %s",
-  "livingcolonists.debug.stats.counts": "%s requests (%s failed), prompt %s tokens (%s cached), reply %s tokens, %s s on average"
+  "livingcolonists.debug.stats.counts": "%s requests (%s failed), prompt %s tokens (%s cached), reply %s tokens, %s s on average",
+  "livingcolonists.talk.cooldown": "Not so fast: wait %s s.",
+  "livingcolonists.colony.not_member": "Only members of %s can talk to its colonists.",
+  "livingcolonists.debug.profile.current": "Profile %s: personality %s, perception %s, memory %s",
+  "livingcolonists.debug.profile.set": "Profile set to %s."
 }

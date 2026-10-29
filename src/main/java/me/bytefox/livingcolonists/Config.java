@@ -1,17 +1,23 @@
 package me.bytefox.livingcolonists;
 
+import java.util.List;
 import java.util.Optional;
 
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import me.bytefox.livingcolonists.behaviour.Level;
+import me.bytefox.livingcolonists.behaviour.Levels;
+import me.bytefox.livingcolonists.behaviour.Module;
+import me.bytefox.livingcolonists.behaviour.Profile;
 import me.bytefox.livingcolonists.llm.LlmEndpoint;
 import me.bytefox.livingcolonists.llm.LlmSettings;
 import me.bytefox.livingcolonists.llm.ModelRole;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 /**
- * Settings of the language model connection, in {@code config/livingcolonists-common.toml}.
- * API keys can be written here or come from environment variables; they are never logged.
+ * Settings in {@code config/livingcolonists-common.toml}: the language model connection and how
+ * colonists behave. API keys can be written here or come from environment variables; they are
+ * never logged.
  */
 public final class Config {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
@@ -92,9 +98,60 @@ public final class Config {
 
     static {
         BUILDER.pop(2);
+        BUILDER.comment("How deep colonists' personalities, knowledge and memory go, and who may talk to them")
+                .push("behaviour");
+    }
+
+    public static final ModConfigSpec.EnumValue<Profile> PROFILE = BUILDER
+            .comment("Preset for all modules below, from cheapest to most immersive (and most tokens):",
+                    "MINIMAL - orders and answers only, no character or memory; LIGHT; DEFAULT;",
+                    "IMMERSIVE - colonists remember much more and know their colony in detail.")
+            .defineEnum("profile", Profile.DEFAULT);
+
+    public static final ModConfigSpec.ConfigValue<String> PERSONALITY = levelOverride("personality",
+            "Archetypes and backgrounds of colonists");
+
+    public static final ModConfigSpec.ConfigValue<String> PERCEPTION = levelOverride("perception",
+            "What colonists know about themselves and the colony: needs, work, storage, events");
+
+    public static final ModConfigSpec.ConfigValue<String> MEMORY = levelOverride("memory",
+            "What colonists remember of conversations and promises");
+
+    public static final ModConfigSpec.IntValue COOLDOWN_SECONDS = BUILDER
+            .comment("Shortest time between two messages of one player to colonists. 0 turns it off.")
+            .defineInRange("cooldownSeconds", 3, 0, 60);
+
+    public static final ModConfigSpec.BooleanValue MEMBERS_ONLY = BUILDER
+            .comment("Only the colony's owner, officers and friends may talk to its colonists,",
+                    "and only the owner and officers may give them orders. Off: anyone inside the colony may.")
+            .define("membersOnly", true);
+
+    static {
+        BUILDER.pop();
     }
 
     static final ModConfigSpec SPEC = BUILDER.build();
+
+    private static ModConfigSpec.ConfigValue<String> levelOverride(String name, String what) {
+        return BUILDER
+                .comment(what + ".", "\"profile\" follows the profile above; off, low, default or high override it.")
+                .define(name, Levels.FROM_PROFILE, Config::isLevelOverride);
+    }
+
+    /** A null check first: NeoForge validates missing values as null, which List.of().contains() rejects. */
+    private static boolean isLevelOverride(Object value) {
+        return value instanceof String text && List.of(Levels.overrideValues()).contains(text);
+    }
+
+    /** The level a module runs at now: its override, or else the profile's. */
+    public static Level level(Module module) {
+        String override = switch (module) {
+            case PERSONALITY -> PERSONALITY.get();
+            case PERCEPTION -> PERCEPTION.get();
+            case MEMORY -> MEMORY.get();
+        };
+        return Levels.resolve(PROFILE.get(), module, override);
+    }
 
     private Config() {
     }

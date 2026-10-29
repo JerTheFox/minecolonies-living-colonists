@@ -74,7 +74,16 @@ Open `config/livingcolonists-common.toml` (it appears after the first launch), p
 
 The `[llm.fallback]` section sets up a second API used when the main one fails even after retries, for example a local model: `enabled`, `baseUrl`, `model`, `apiKey` (may stay empty for local models), `apiKeyEnv`.
 
-Server operators can see how many requests and tokens each model used with `/lcdebug stats`.
+The `[behaviour]` section sets how colonists behave:
+
+| Option | Default | Meaning |
+|---|---|---|
+| `profile` | `DEFAULT` | `MINIMAL` (orders and answers only, cheapest), `LIGHT`, `DEFAULT` or `IMMERSIVE` (colonists remember much more) |
+| `personality`, `perception`, `memory` | `profile` | override one module: `off`, `low`, `default` or `high` |
+| `cooldownSeconds` | `3` | shortest time between one player's messages to colonists |
+| `membersOnly` | `true` | only the colony's owner, officers and friends may talk to its colonists; only owners and officers may give orders |
+
+Server operators can see how many requests and tokens each model used with `/lcdebug stats`, and show or change the profile with `/lcdebug profile`.
 
 ## Usage
 

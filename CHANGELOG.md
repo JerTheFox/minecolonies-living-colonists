@@ -7,6 +7,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Profiles `MINIMAL`, `LIGHT`, `DEFAULT`, `IMMERSIVE` set how deep personalities, perception and memory go; each module can be overridden separately. `/lcdebug profile` shows or changes the profile.
+- Only a colony's owner, officers and friends can talk to its colonists (`membersOnly`, on by default).
+- A short cooldown between one player's messages to colonists (`cooldownSeconds`, 3 by default).
 - Separate `chatModel` and optional `characterModel` (for backgrounds and memory summaries; empty uses the chat model).
 - Retries after temporary failures (timeouts, rate limits, server errors) and an optional fallback API, for example a local model.
 - Token usage statistics per model, for this run and in total, saved with the world: `/lcdebug stats` (operators).

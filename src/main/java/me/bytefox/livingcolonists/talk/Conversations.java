@@ -127,6 +127,9 @@ public final class Conversations {
             player.sendSystemMessage(Component.translatable("livingcolonists.colony.outside"));
             return;
         }
+        if (!TalkService.mayTalk(player, colony)) {
+            return;
+        }
         Entry entry = entry(player);
         Speaker speaker = TalkService.speakerOf(citizen);
         entry.partner = new Partner(colony.getDimension(), colony.getID(), citizen.getId(), speaker.name(),
