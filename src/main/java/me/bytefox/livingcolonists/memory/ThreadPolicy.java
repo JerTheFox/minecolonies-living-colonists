@@ -48,6 +48,31 @@ public final class ThreadPolicy {
         return base * Math.pow(decay, Math.max(0, turns - 1));
     }
 
+    /** What the conversation is about now, which decides how readily others join in. */
+    public enum Kind {
+        /** Colonists among themselves, no player talking lately. */
+        CHATTER,
+        /** A player is talking with the colony: others join in now and then, not after every line. */
+        TALK,
+        /** A player's request was looked up or ordered: after the answer the chat mostly stays quiet. */
+        BUSINESS
+    }
+
+    /** The same, for the kind of conversation: while a player talks, others join far less. */
+    public static double continueChance(Level level, int turns, Kind kind) {
+        if (kind == Kind.CHATTER || turns >= maxTurns(level)) {
+            return continueChance(level, turns);
+        }
+        double base = kind == Kind.BUSINESS ? 0.15 : 0.3;
+        double scale = switch (level) {
+            case OFF -> 0;
+            case LOW -> 0.5;
+            case DEFAULT -> 1;
+            case HIGH -> 1.5;
+        };
+        return base * scale * Math.pow(0.5, Math.max(0, turns - 1));
+    }
+
     /** @param weight how likely this colonist speaks next, relative to the others */
     public record Candidate<T>(T id, double weight) {
     }

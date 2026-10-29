@@ -3,5 +3,6 @@ Colonists:
 {roster}
 Answer with JSON only.
 If the message names colonists or a profession (for example "builders" means every builder), answer {"to": [numbers of those colonists]}.
-If it is for everyone or for nobody in particular, answer {"to": "everyone"}.
+If it asks about something one profession looks after, it is for those colonists, at most two of them: food, meals and the restaurant for cooks and chefs; the warehouse, stock and deliveries for couriers; buildings and construction for builders; research for researchers; defence, guards and raids for guards; health and sickness for doctors; farms and crops for farmers.
+If it is for everyone or for nobody in particular, or nobody has the profession it is about, answer {"to": "everyone"}.
 The message may be in any language.

@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -21,7 +22,7 @@ public final class ItemMatch {
         record Found<T>(T value) implements Result<T> {
         }
 
-        /** Several things fit equally well; up to {@link #MAX_OPTIONS} of them, best first. */
+        /** Several things fit equally well; up to {@link #MAX_TIED} of them, best first. */
         record Ambiguous<T>(List<Candidate<T>> options) implements Result<T> {
         }
 
@@ -29,11 +30,17 @@ public final class ItemMatch {
         }
     }
 
+    /** How many fitting things a caller names back to the model. */
     public static final int MAX_OPTIONS = 5;
+    /** All sixteen colours of wool, and then some. */
+    public static final int MAX_TIED = 64;
     private static final int EXACT = 100;
     /** Below this a match is a guess, not a find. */
     private static final int ENOUGH = 60;
     private static final Set<String> STOP = Set.of("of", "the", "a", "an", "some");
+    /** The game spells the American way; players and models often don't. */
+    private static final Map<String, String> BRITISH = Map.of("grey", "gray", "colour", "color", "armour", "armor",
+            "jewellery", "jewelry");
 
     private ItemMatch() {
     }
@@ -71,7 +78,7 @@ public final class ItemMatch {
         if (top.score() == EXACT || tied.size() == 1) {
             return new Result.Found<>(top.candidate().value());
         }
-        return new Result.Ambiguous<>(tied.stream().limit(MAX_OPTIONS).map(Scored::candidate).toList());
+        return new Result.Ambiguous<>(tied.stream().limit(MAX_TIED).map(Scored::candidate).toList());
     }
 
     /**
@@ -131,7 +138,7 @@ public final class ItemMatch {
         List<String> words = new ArrayList<>();
         for (String word : text.toLowerCase(Locale.ROOT).replace('ё', 'е').split("[^\\p{L}\\p{N}]+")) {
             if (!word.isEmpty() && !STOP.contains(word)) {
-                words.add(word);
+                words.add(BRITISH.getOrDefault(word, word));
             }
         }
         return words;

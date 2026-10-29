@@ -17,7 +17,8 @@ class ItemMatchTest {
             item("minecraft:bread", "Bread", "Хлеб"),
             item("othermod:bread", "Bread", "Хлеб"),
             item("minecolonies:eggplant", "Eggplant", "Баклажан"),
-            item("minecraft:cobblestone", "Cobblestone", "Булыжник"));
+            item("minecraft:cobblestone", "Cobblestone", "Булыжник"),
+            item("minecraft:gray_wool", "Gray Wool", "Серая шерсть"));
 
     @Test
     void findsByExactName() {
@@ -31,6 +32,11 @@ class ItemMatchTest {
         assertEquals("minecraft:iron_ingot", found("iron ingots"));
         assertEquals("minecraft:cobblestone", found("булыжника"));
         assertEquals("minecolonies:eggplant", found("eggplants"));
+    }
+
+    @Test
+    void acceptsBritishSpelling() {
+        assertEquals("minecraft:gray_wool", found("grey wool"));
     }
 
     @Test

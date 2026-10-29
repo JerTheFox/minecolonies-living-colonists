@@ -88,7 +88,7 @@ public final class TalkService {
     private final MemoryService memory;
     private final BondsService bonds;
     private final ColonyTools tools;
-    private final Errands errands = new Errands();
+    private final Errands errands;
     private final ColonyThreads threads;
     private final ColonyEvents events;
     private final SpeechOutput output = new ChatSpeechOutput();
@@ -118,6 +118,7 @@ public final class TalkService {
         this.memory = memory;
         this.bonds = bonds;
         this.tools = new ColonyTools(perception);
+        this.errands = new Errands(perception);
         this.threads = new ColonyThreads(this, prompts, memory, personalities, output, typing, bonds);
         this.events = new ColonyEvents(threads);
     }

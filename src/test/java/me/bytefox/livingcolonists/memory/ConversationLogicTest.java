@@ -72,6 +72,29 @@ class ConversationLogicTest {
     }
 
     @Test
+    void othersRarelyJoinWhileAPlayerTalks() {
+        Random random = new Random(5);
+        double chatter = averageLength(Level.DEFAULT, ThreadPolicy.Kind.CHATTER, random);
+        double talk = averageLength(Level.DEFAULT, ThreadPolicy.Kind.TALK, random);
+        double business = averageLength(Level.DEFAULT, ThreadPolicy.Kind.BUSINESS, random);
+        assertTrue(business < talk && talk < chatter, business + " < " + talk + " < " + chatter);
+        assertTrue(talk < 1.5 && business < 1.25, talk + ", " + business);
+        assertEquals(0, ThreadPolicy.continueChance(Level.OFF, 1, ThreadPolicy.Kind.TALK));
+    }
+
+    private static double averageLength(Level level, ThreadPolicy.Kind kind, Random random) {
+        int total = 0;
+        for (int i = 0; i < 4000; i++) {
+            int turns = 1;
+            while (random.nextDouble() < ThreadPolicy.continueChance(level, turns, kind)) {
+                turns++;
+            }
+            total += turns;
+        }
+        return total / 4000.0;
+    }
+
+    @Test
     void speakersArePickedByWeightAndNeverTwiceInARow() {
         Random random = new Random(2);
         int chatty = 0;

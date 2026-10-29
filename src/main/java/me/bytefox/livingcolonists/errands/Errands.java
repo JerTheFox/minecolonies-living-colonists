@@ -2,6 +2,9 @@ package me.bytefox.livingcolonists.errands;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +19,7 @@ import me.bytefox.livingcolonists.LivingColonists;
 import me.bytefox.livingcolonists.behaviour.ColonyAccess;
 import me.bytefox.livingcolonists.llm.ToolCall;
 import me.bytefox.livingcolonists.llm.ToolSpec;
+import me.bytefox.livingcolonists.perception.PerceptionService;
 import me.bytefox.livingcolonists.talk.TalkService;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
@@ -33,6 +37,8 @@ import net.minecraft.server.level.ServerPlayer;
  */
 public final class Errands {
     public static final String PLAYER_WORDS = "player_words";
+    private static final int KEPT_LOOKUPS = 5;
+    private static final int MAX_LOOKUP_TEXT = 600;
     private static final DateTimeFormatter CLOCK = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     private record Ticket(Errand.Order order, String citizen, String colony) {
@@ -40,10 +46,19 @@ public final class Errands {
 
     private final Map<String, Errand> errands = new LinkedHashMap<>();
     private final OrderBook<Ticket> book = new OrderBook<>();
+    /** The latest look-ups in each colony, so everyone in a conversation knows what was looked up. */
+    private final Map<Integer, Deque<Lookup>> lookups = new HashMap<>();
+    /** Game time of the latest look-up or order in each colony. */
+    private final Map<Integer, Long> lastErrand = new HashMap<>();
 
-    public Errands() {
+    private record Lookup(long gameTime, String text) {
+    }
+
+    public Errands(PerceptionService perception) {
         ItemIndex items = new ItemIndex();
         add(new CheckStock(items));
+        ColonyLookups.all(perception).forEach(this::add);
+        add(new ResearchStatus());
         add(new UpgradeBuilding());
     }
 
@@ -62,6 +77,7 @@ public final class Errands {
     /** Runs one call for the model; the reply is JSON. */
     public String run(ToolCall call, Errand.Context context) {
         Errand errand = errands.get(call.name());
+        lastErrand.put(context.colony().getID(), context.colony().getWorld().getGameTime());
         JsonObject arguments;
         try {
             arguments = call.arguments().isBlank() ? new JsonObject() : JsonParser.parseString(call.arguments()).getAsJsonObject();
@@ -84,6 +100,13 @@ public final class Errands {
         if (result instanceof Errand.Result.Answer answer && !errand.isOrder()) {
             LivingColonists.LOGGER.info("Look-up by {}: {}{} -> {}", context.citizen().getName(), call.name(),
                     call.arguments(), answer.reply());
+            String text = context.citizen().getName() + " looked up " + call.name() + call.arguments() + ": " + answer.reply();
+            Deque<Lookup> colony = lookups.computeIfAbsent(context.colony().getID(), id -> new ArrayDeque<>());
+            colony.addLast(new Lookup(context.colony().getWorld().getGameTime(),
+                    text.length() > MAX_LOOKUP_TEXT ? text.substring(0, MAX_LOOKUP_TEXT) + "…" : text));
+            while (colony.size() > KEPT_LOOKUPS) {
+                colony.removeFirst();
+            }
         }
         return switch (result) {
             case Errand.Result.Answer answer -> answer.reply().toString();
@@ -120,7 +143,8 @@ public final class Errands {
         reply.addProperty("success", true);
         reply.addProperty("waiting_for_yes", order.summary());
         reply.addProperty("info", "The player now sees yes and no buttons for this; it happens once they agree. "
-                + "Ask them to confirm in one short line, in your own way, and don't call this again.");
+                + "Ask " + TalkService.playerName(player) + " by name to confirm, in one short line, in your own way, "
+                + "and don't call this again.");
         return reply;
     }
 
@@ -203,6 +227,17 @@ public final class Errands {
         return 1;
     }
 
+    /** Whether anything was looked up or ordered in a colony since a game time. */
+    public boolean errandSince(int colonyId, long since) {
+        return lastErrand.getOrDefault(colonyId, Long.MIN_VALUE) >= since;
+    }
+
+    /** What was looked up in a colony since a game time, oldest first. */
+    public List<String> lookups(int colonyId, long since) {
+        return lookups.getOrDefault(colonyId, new ArrayDeque<>()).stream().filter(lookup -> lookup.gameTime() >= since)
+                .map(Lookup::text).toList();
+    }
+
     /** {@code /lcdebug orders}: what was ordered lately, newest last. */
     public List<String> log() {
         return book.log();
@@ -210,6 +245,8 @@ public final class Errands {
 
     public void clear() {
         book.clear();
+        lookups.clear();
+        lastErrand.clear();
     }
 
     private void log(Errand.Context context, String tool, String what) {

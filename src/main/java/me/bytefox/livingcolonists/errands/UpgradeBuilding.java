@@ -47,7 +47,7 @@ public final class UpgradeBuilding implements Errand {
             case ItemMatch.Result.Ambiguous<IBuilding> ambiguous -> {
                 JsonObject reply = Errand.error("Several buildings fit \"" + words + "\": ask which one is meant.");
                 JsonArray options = new JsonArray();
-                ambiguous.options().forEach(option -> options.add(describe(option.value())));
+                ambiguous.options().stream().limit(ItemMatch.MAX_OPTIONS).forEach(option -> options.add(describe(option.value())));
                 reply.add("options", options);
                 yield new Result.Answer(reply);
             }
@@ -81,7 +81,7 @@ public final class UpgradeBuilding implements Errand {
         return colony.getWorkManager().getWorkOrders().values().stream().anyMatch(order -> position.equals(order.getLocation()));
     }
 
-    private static List<ItemMatch.Candidate<IBuilding>> candidates(IColony colony, String locale) {
+    static List<ItemMatch.Candidate<IBuilding>> candidates(IColony colony, String locale) {
         List<ItemMatch.Candidate<IBuilding>> candidates = new ArrayList<>();
         for (IBuilding building : colony.getServerBuildingManager().getBuildings().values()) {
             var type = building.getBuildingType();
