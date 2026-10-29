@@ -1,0 +1,7 @@
+{
+  "livingcolonists.talk.nobody": "There is no colonist close enough to talk to.",
+  "livingcolonists.talk.no_key": "Living Colonists has no API key: set the %s environment variable on the server.",
+  "livingcolonists.talk.busy": "%s is still thinking about the last thing you said.",
+  "livingcolonists.talk.failed": "%s doesn't answer. The server log has the details.",
+  "livingcolonists.job.unemployed": "Unemployed"
+}

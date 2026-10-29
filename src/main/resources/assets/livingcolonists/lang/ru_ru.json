@@ -1,0 +1,7 @@
+{
+  "livingcolonists.talk.nobody": "Рядом нет колониста, с которым можно поговорить.",
+  "livingcolonists.talk.no_key": "У Living Colonists нет API-ключа: задайте переменную окружения %s на сервере.",
+  "livingcolonists.talk.busy": "%s ещё обдумывает ваши прошлые слова.",
+  "livingcolonists.talk.failed": "%s не отвечает. Подробности — в логе сервера.",
+  "livingcolonists.job.unemployed": "Безработный"
+}

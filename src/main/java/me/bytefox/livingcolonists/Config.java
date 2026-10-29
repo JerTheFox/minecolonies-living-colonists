@@ -4,6 +4,7 @@ import java.util.Optional;
 
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import me.bytefox.livingcolonists.llm.LlmSettings;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 /**
@@ -73,5 +74,11 @@ public final class Config {
     public static Optional<String> apiKey() {
         return Optional.ofNullable(System.getenv(API_KEY_ENV.get()))
                 .filter(key -> !key.isBlank());
+    }
+
+    /** A snapshot of the current settings, or empty when there is no API key. Server thread. */
+    public static Optional<LlmSettings> llmSettings() {
+        return apiKey().map(key -> new LlmSettings(BASE_URL.get(), MODEL.get(), key, TIMEOUT_SECONDS.get(),
+                MAX_TOKENS.get(), TEMPERATURE.get(), JsonParser.parseString(EXTRA_PARAMS.get()).getAsJsonObject()));
     }
 }

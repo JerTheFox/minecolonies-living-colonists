@@ -18,6 +18,7 @@ base {
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
 repositories {
+    mavenCentral()
     maven {
         name = 'LDTTeam'
         url = 'https://ldtteam.jfrog.io/ldtteam/modding/'
@@ -81,6 +82,17 @@ dependencies {
     localRuntime("com.ldtteam:structurize:${structurize_version}") { transitive = false }
     localRuntime("com.ldtteam:blockui:${blockui_version}") { transitive = false }
     localRuntime("com.ldtteam:domum-ornamentum:${domum_ornamentum_version}:main") { transitive = false }
+
+    testImplementation platform("org.junit:junit-bom:${junit_version}")
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    // Unit tests cover plain logic and run without Minecraft on the classpath; Gson is the
+    // one game library that logic uses (same version as Minecraft 1.21.1 ships).
+    testImplementation 'com.google.code.gson:gson:2.10.1'
+}
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {

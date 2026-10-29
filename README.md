@@ -4,18 +4,18 @@
 
 A [MineColonies](https://github.com/ldtteam/minecolonies) addon for NeoForge that lets colonists talk in text chat almost like other players. They start conversations, answer you, remember what you told them and gossip about the colony with each other. The words come from a language model behind any OpenAI-compatible API: DeepSeek, Gemini, OpenRouter, or a model running on your own machine.
 
-> **Status: early development.** The project skeleton builds and loads next to MineColonies. Nothing below works yet; the feature list describes where it's going. Expect breaking changes until the first release.
+> **Status: early development.** You can already talk to a colonist with `/lc talk` (see [Usage](#usage)); the rest of this page describes where the mod is going. Expect breaking changes until the first release.
 
 ## What it should feel like
 
-You walk into your colony and see lines in chat (and, with [Comics Bubbles Chat](https://modrinth.com/mod/comics-bubbles-chat), speech bubbles over their heads):
+Colonists write in chat just like players do; hover over a name to see the profession and colony. You walk into your colony and see lines in chat (and, with [Comics Bubbles Chat](https://modrinth.com/mod/comics-bubbles-chat), speech bubbles over their heads):
 
 ```
-<John Brown · Baker> flour for two more days. Is anyone actually working the fields?
-<Clodagh Bennett · Farmer> John, look at yourself, the oven's been cold for three days
+<John Brown> flour for two more days. Is anyone actually working the fields?
+<Clodagh Bennett> John, look at yourself, the oven's been cold for three days
 ```
 
-You walk up to the baker, press a key, and the chat input shows "→ John Brown". John stops and turns to you. You ask what the oven needs, and a second or two later he answers, going by what's actually in his storage and what he remembers about you. You ask him to bring coal to the warehouse: he takes it on through the colony's own request system and reports back later. Half an hour on, he messages you himself: "You promised firewood. Where's the firewood?"
+You look at the baker and press a key: the chat opens, and a line above the input shows "→ John Brown". From now on whatever you type goes to him. You ask what the oven needs, and a second or two later he answers, going by what's actually in his storage and what he remembers about you. You ask him to bring coal to the warehouse: he takes it on through the colony's own request system and reports back later. Half an hour on, he messages you himself: "You promised firewood. Where's the firewood?"
 
 ## Planned features
 
@@ -24,7 +24,8 @@ You walk up to the baker, press a key, and the chat input shows "→ John Brown"
 - Memory of recent lines and events, plus long-term facts like "Max promised to build me a house". It is stored with the world and goes into your backups.
 - Mood sets the tone: a hungry colonist grumbles, a homeless one complains, one who just survived a raid is shaken.
 - Errands go through the colony's own systems: fetching, delivering, crafting requests and more, based on [Colonist Errands](https://github.com/Lovkar-Squid/colonist-errands).
-- You choose who you're talking to. Chat modes "Players", "Nearest colonist" (the one you're looking at, or the closest within ~8 blocks) and "Everyone nearby" (~16 blocks). A key cycles through them, an icon next to the chat input shows the current mode, and `/cm near`, `/cm all`, `/cm off` do the same.
+- Talking without commands: one key picks the colonist you're looking at as your conversation partner and opens the chat; another switches between talking to players and to all colonists nearby. Clicking a colonist's name in chat answers them.
+- Conversations are local: only players within earshot see them, and the server-wide chat stays clean.
 - Speech bubbles via Comics Bubbles Chat when it's installed, plain chat otherwise.
 - Any OpenAI-compatible provider, with the API key read from an environment variable.
 
@@ -47,25 +48,61 @@ The mod is needed on both the server and the client.
 
 ## Installation
 
-No release yet. Once there is one, it goes into the `mods` folder of the server and of every client, like any other mod. Setting up the model provider and API key will be documented here.
+No release yet. Once there is one, it goes into the `mods` folder of the server and of every client, like any other mod.
+
+## Configuration
+
+The language model is set up on the server (in single-player, on your own machine):
+
+1. Put the API key into the environment variable `LIVINGCOLONISTS_API_KEY` of the server process. The key is never written to config files.
+2. Adjust `config/livingcolonists-common.toml`, section `[llm]`:
+
+| Option | Default | Meaning |
+|---|---|---|
+| `baseUrl` | `https://api.deepseek.com` | OpenAI-compatible API base URL |
+| `model` | `deepseek-flash` | model id as the provider's `/models` lists it |
+| `apiKeyEnv` | `LIVINGCOLONISTS_API_KEY` | name of the variable holding the key |
+| `timeoutSeconds` | `30` | how long to wait for a reply |
+| `maxTokens` | `2000` | token limit per request, including the model's thinking |
+| `temperature` | `1.0` | higher is more varied |
+| `extraParams` | `{}` | extra JSON merged into each request, e.g. `{"thinking":{"type":"disabled"}}` for DeepSeek |
+
+## Usage
+
+Look at a colonist within 8 blocks (or just stand near one) and type:
+
+```
+/lc talk Hi! How are things in the colony?
+```
+
+Your line and the answer appear in chat for everyone within 32 blocks. Commands are temporary: keys for picking a conversation partner are next on the roadmap.
 
 ## Building from source
 
 You need JDK 21.
 
+For the dev runs, copy `.env.example` to `.env` and put your API key there; `runClient` and `runServer` pass it to the game.
+
 ```bash
 ./gradlew build      # jar ends up in build/libs/
 ./gradlew runClient  # development client with MineColonies, single-player world
+./gradlew test       # unit tests
 ./gradlew runServer  # local dedicated server for network testing
 ```
 
+## Translations
+
+The mod follows the game's language setting. English and Russian are included. To add a language, copy [`en_us.json`](src/main/resources/assets/livingcolonists/lang/en_us.json) to your locale code (for example `de_de.json`) in the same folder, translate the values and open a pull request. Colonists answer in the language you write to them in, whatever the client language is.
+
 ## Roadmap
 
-1. Skeleton: a command or chat prefix → a colonist → an AI reply in chat.
-2. Perception and memory, ported from Colonist Errands.
-3. Colonists speak first, with a line budget.
-4. Colonists talk to each other.
-5. Client side: speech bubbles, the addressing key and button.
+1. ✅ A command → a colonist → an AI reply in chat.
+2. Talking without commands: a key to pick your conversation partner, chat modes for players and colonists nearby.
+3. Perception and memory, ported from Colonist Errands.
+4. Errands through the colony's request system.
+5. Colonists speak first, with a line budget.
+6. Colonists talk to each other.
+7. Speech bubbles.
 
 ## About this project
 
