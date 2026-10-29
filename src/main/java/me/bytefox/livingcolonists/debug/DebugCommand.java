@@ -21,6 +21,7 @@ import me.bytefox.livingcolonists.Config;
 import me.bytefox.livingcolonists.behaviour.Module;
 import me.bytefox.livingcolonists.behaviour.Profile;
 import me.bytefox.livingcolonists.llm.UsageStats;
+import me.bytefox.livingcolonists.memory.Fact;
 import me.bytefox.livingcolonists.memory.MemoryLine;
 import me.bytefox.livingcolonists.memory.MemoryService;
 import me.bytefox.livingcolonists.perception.PerceptionService;
@@ -84,7 +85,8 @@ public final class DebugCommand {
                         .then(withColonist(Commands.literal("show"),
                                 (context, citizen) -> showMemory(context.getSource(), memory, citizen)))
                         .then(withColonist(Commands.literal("clear"),
-                                (context, citizen) -> clearMemory(context.getSource(), memory, citizen))))
+                                (context, citizen) -> clearMemory(context.getSource(), memory, citizen)))
+                        .then(Commands.literal("digest").executes(context -> digest(context.getSource(), memory))))
                 .then(Commands.literal("thread").executes(context -> showThread(context.getSource(), talk))
                         .then(Commands.literal("break").executes(context -> breakThread(context.getSource(), talk)))));
     }
@@ -196,9 +198,21 @@ public final class DebugCommand {
 
     private static int showMemory(CommandSourceStack source, MemoryService memory, ICitizenData citizen) {
         Map<String, List<MemoryLine>> talks = memory.privateTalks(citizen);
-        if (talks.isEmpty()) {
+        List<Fact> facts = memory.facts(citizen);
+        if (talks.isEmpty() && facts.isEmpty()) {
             source.sendSuccess(() -> Component.translatable("livingcolonists.debug.memory.empty", citizen.getName()), false);
             return 0;
+        }
+        if (!facts.isEmpty()) {
+            long now = citizen.getColony().getWorld().getGameTime();
+            source.sendSuccess(() -> Component.translatable("livingcolonists.debug.memory.facts", citizen.getName(),
+                    facts.size()), false);
+            for (Fact fact : facts) {
+                String line = "  [" + fact.importance() + "] " + fact.text() + " (" + (fact.isPrivate()
+                        ? "from " + fact.teller() : "colony chat") + ", " + (fact.expires() - now) / 24000 + "d left"
+                        + (fact.told() ? ", told" : "") + ")";
+                source.sendSuccess(() -> Component.literal(line), false);
+            }
         }
         talks.forEach((player, lines) -> {
             source.sendSuccess(() -> Component.translatable("livingcolonists.debug.memory.talk", citizen.getName(),
@@ -207,7 +221,13 @@ public final class DebugCommand {
                 source.sendSuccess(() -> Component.literal("  <" + line.speaker() + "> " + line.text()), false);
             }
         });
-        return talks.size();
+        return talks.size() + facts.size();
+    }
+
+    private static int digest(CommandSourceStack source, MemoryService memory) {
+        int started = memory.digest(source.getServer(), true);
+        source.sendSuccess(() -> Component.translatable("livingcolonists.debug.memory.digest", started), true);
+        return started;
     }
 
     private static int clearMemory(CommandSourceStack source, MemoryService memory, ICitizenData citizen) {

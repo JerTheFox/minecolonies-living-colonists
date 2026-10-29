@@ -51,11 +51,13 @@
   "livingcolonists.debug.prompt.none": "%s ещё никому не отвечал с запуска сервера.",
   "livingcolonists.debug.reload": "Перечитано архетипов: %s, промптов: %s.",
   "livingcolonists.debug.world_not_ready": "Мир не загружен.",
-  "livingcolonists.debug.memory.empty": "%s не помнит личных разговоров.",
+  "livingcolonists.debug.memory.empty": "%s не помнит ни личных разговоров, ни фактов.",
   "livingcolonists.debug.memory.talk": "%s и игрок %s, реплик: %s",
-  "livingcolonists.debug.memory.cleared": "%s забыл(а) личных разговоров: %s.",
+  "livingcolonists.debug.memory.cleared": "%s забыл(а) личные разговоры и факты: %s.",
   "livingcolonists.debug.thread.stopped": "Обсуждение в чате колонии остановлено.",
   "livingcolonists.debug.thread.none": "В чате колонии сейчас нет обсуждения.",
   "livingcolonists.partner.look_to_talk": "Посмотрите на колониста (до 16 блоков), чтобы поговорить с ним лично.",
-  "livingcolonists.partner.look_to_focus": "Посмотрите на колониста (до 16 блоков), чтобы выбрать его собеседником."
+  "livingcolonists.partner.look_to_focus": "Посмотрите на колониста (до 16 блоков), чтобы выбрать его собеседником.",
+  "livingcolonists.debug.memory.facts": "%s помнит фактов: %s",
+  "livingcolonists.debug.memory.digest": "Записываю разговоров: %s; факты появятся через несколько секунд."
 }

@@ -8,6 +8,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Added
 
 - Colony chat is a living conversation: whoever a message addresses answers first, then other colonists may join in, reply to each other or let the talk die down; talkative archetypes speak up more often, quiet ones rarely. How long threads run without players follows the new `conversation` level (up to about 16 lines on `high`). This replaces the two or three random answers.
+- Long memory: once a private talk or a colony conversation goes quiet, the character model writes down what the colonists who took part would remember (promises, plans, news, feelings), each fact with an importance. Facts go into their prompts and fade with age, important ones last longer; how many and how long follows the `memory` level (5 facts for up to 2 days on `low`, 15 for 7 on `default`, 60 for 30 on `high`). Facts of colonists who are gone are cleaned up once a game day.
+- Gossip: now and then a colonist passes on something another player told them in private, as hearsay, in the colony chat or in your private talk; whoever hears it in the colony chat remembers it too. What a player asked to keep secret stays secret.
+- `/lcdebug memory digest` writes down every conversation waiting to be noted right away; `memory show` lists the facts, `memory clear` forgets them too.
 - Short memory: colonists remember their recent private talks with each player (how much and how long follows the `memory` level), and the colony chat keeps its recent lines.
 - Lines come one after another with a reading pause and a typing time that grows with the length of the line.
 - `/lcdebug memory show|clear [name]`, `/lcdebug thread` and `/lcdebug thread break` (stops a colony conversation) for operators.

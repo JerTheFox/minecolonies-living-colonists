@@ -51,11 +51,13 @@
   "livingcolonists.debug.prompt.none": "%s hasn't answered anyone since the server started.",
   "livingcolonists.debug.reload": "Reloaded %s archetypes and %s prompts.",
   "livingcolonists.debug.world_not_ready": "No world is loaded.",
-  "livingcolonists.debug.memory.empty": "%s remembers no private talks.",
+  "livingcolonists.debug.memory.empty": "%s remembers no private talks and no facts.",
   "livingcolonists.debug.memory.talk": "%s and player %s, %s lines:",
-  "livingcolonists.debug.memory.cleared": "%s forgot %s private talks.",
+  "livingcolonists.debug.memory.cleared": "%s forgot %s private talks and facts.",
   "livingcolonists.debug.thread.stopped": "The colony chat thread was stopped.",
   "livingcolonists.debug.thread.none": "There is no colony chat thread going on.",
   "livingcolonists.partner.look_to_talk": "Look at a colonist (within 16 blocks) to talk to them privately.",
-  "livingcolonists.partner.look_to_focus": "Look at a colonist (within 16 blocks) to pick them as your partner."
+  "livingcolonists.partner.look_to_focus": "Look at a colonist (within 16 blocks) to pick them as your partner.",
+  "livingcolonists.debug.memory.facts": "%s remembers %s facts:",
+  "livingcolonists.debug.memory.digest": "Writing down %s conversations; the facts arrive in a few seconds."
 }

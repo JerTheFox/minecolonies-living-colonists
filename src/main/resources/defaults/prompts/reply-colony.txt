@@ -3,6 +3,7 @@ You are in the colony's group chat, where players and colonists talk.
 {character}
 {background}
 {situation}
+{memories}
 The chat so far, oldest first:
 {transcript}
 {turn}

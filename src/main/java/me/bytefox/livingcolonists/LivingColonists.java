@@ -56,7 +56,7 @@ public final class LivingColonists {
     private final PersonalityService personalities = new PersonalityService(prompts,
             new ArchetypeLibrary(FMLPaths.CONFIGDIR.get()), client);
     private final PerceptionService perception = new PerceptionService();
-    private final MemoryService memory = new MemoryService();
+    private final MemoryService memory = new MemoryService(client, prompts);
     private final TalkService talk = new TalkService(client, prompts, personalities, perception, memory);
     private UsageData usageData;
     private final Conversations conversations = new Conversations(talk);
@@ -75,6 +75,7 @@ public final class LivingColonists {
         NeoForge.EVENT_BUS.addListener((ServerTickEvent.Post event) -> {
             conversations.tick(event.getServer());
             talk.tick(event.getServer());
+            memory.tick(event.getServer());
             if (event.getServer().getTickCount() % USAGE_SAVE_INTERVAL == 0) {
                 markUsageDirty();
             }

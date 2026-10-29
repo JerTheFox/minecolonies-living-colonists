@@ -33,6 +33,7 @@ import me.bytefox.livingcolonists.llm.LlmSettings;
 import me.bytefox.livingcolonists.llm.ModelRole;
 import me.bytefox.livingcolonists.llm.ToolCall;
 import me.bytefox.livingcolonists.llm.ToolSpec;
+import me.bytefox.livingcolonists.memory.Fact;
 import me.bytefox.livingcolonists.memory.MemoryLine;
 import me.bytefox.livingcolonists.memory.MemoryService;
 import me.bytefox.livingcolonists.perception.ColonyTools;
@@ -168,6 +169,8 @@ public final class TalkService {
         }
         messages.add(ChatMessage.user(message));
         Map<String, String> values = promptValues(citizen, player);
+        Optional<Fact> rumor = memory.rumor(citizen, playerName, random);
+        rumor.ifPresent(fact -> values.put("initiative", values.get("initiative") + " " + Prompts.gossip(fact.text())));
         String prompt = Templates.render(prompts.get(PromptLibrary.REPLY_PRIVATE), values);
 
         thinking.add(key);
@@ -185,9 +188,18 @@ public final class TalkService {
                 }
                 return;
             }
+            rumor.ifPresent(fact -> told(dimension, speaker, fact));
             long at = LinePacing.slot(server.getTickCount(), earliest + LinePacing.typingTicks(text.get().length()), 0);
             pending.add(new PendingLine(at, dimension, speaker, playerId, text.get()));
         });
+    }
+
+    /** The colonist passed a fact on as gossip, so they won't retell it. */
+    void told(ResourceKey<Level> dimension, Speaker speaker, Fact fact) {
+        ICitizenData citizen = resolve(dimension, speaker.colonyId(), speaker.citizenId());
+        if (citizen != null) {
+            memory.markTold(citizen, fact);
+        }
     }
 
     /** A message to the whole colony goes into its conversation thread. */
@@ -211,6 +223,7 @@ public final class TalkService {
         values.put("colony", speaker.colony());
         values.put("time", Prompts.timeOfDay(citizen.getColony().getWorld().getDayTime()));
         values.put("situation", perception.situation(citizen));
+        values.put("memories", memory.memories(citizen));
         values.put("initiative", Prompts.initiative(random));
         if (player != null) {
             Map<String, List<String>> names = Config.playerNames();

@@ -79,6 +79,15 @@ public final class Prompts {
                 : "Answer only what the player said. Don't bring up your work, materials or needs unless the player asks about them.";
     }
 
+    /**
+     * Asks the colonist to pass on something heard in someone's private talk. Whether to gossip at
+     * all is the code's dice roll (see {@code MemoryService#rumor}).
+     */
+    public static String gossip(String fact) {
+        return "If it fits at all, also pass on a bit of gossip, as hearsay (\"they say\", \"I heard\"); you may "
+                + "keep vague who told you: " + fact;
+    }
+
     /** Whether a reply means the colonist chose to say nothing: "[silence]", or the same in other words. */
     public static boolean isSilence(String text) {
         String bare = text.replaceAll("[\\[\\]().*_\\s]", "").toLowerCase(Locale.ROOT);

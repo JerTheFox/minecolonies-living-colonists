@@ -26,6 +26,7 @@ import me.bytefox.livingcolonists.llm.ChatMessage;
 import me.bytefox.livingcolonists.llm.ChatResult;
 import me.bytefox.livingcolonists.llm.LlmClient;
 import me.bytefox.livingcolonists.llm.ModelRole;
+import me.bytefox.livingcolonists.memory.Fact;
 import me.bytefox.livingcolonists.memory.MemoryLine;
 import me.bytefox.livingcolonists.memory.MemoryService;
 import me.bytefox.livingcolonists.memory.ThreadPolicy;
@@ -213,10 +214,14 @@ public final class ColonyThreads {
                         + "others already said. People chat about more than their troubles: unless the talk is about the "
                         + "colony's problems, don't steer back to them; if you bring up something new, keep it light, like "
                         + "work, a neighbour, the weather, a plan or a joke.");
+        Optional<Fact> rumor = Optional.empty();
         if (!answeringPlayer) {
             values.put("initiative", Prompts.chatInitiative(random));
             values.put("turn", values.get("turn") + " " + Prompts.stance(contrariness(citizen), random));
+            rumor = memory.rumor(citizen, null, random);
+            rumor.ifPresent(fact -> values.put("initiative", values.get("initiative") + " " + Prompts.gossip(fact.text())));
         }
+        Optional<Fact> gossip = rumor;
         String prompt = Templates.render(prompts.get(PromptLibrary.REPLY_COLONY), values);
         List<MemoryLine> lines = memory.colonyChat(colony);
         String last = lines.isEmpty() ? "" : lines.get(lines.size() - 1).speaker() + ": " + lines.get(lines.size() - 1).text();
@@ -230,6 +235,7 @@ public final class ColonyThreads {
                 thread.addressed.clear();
                 return;
             }
+            gossip.ifPresent(fact -> talk.told(colony.getDimension(), speaker, fact));
             long now = server.getTickCount();
             long pause = THREAD_PACE * (LinePacing.gap(random) + LinePacing.typingTicks(text.get().length()));
             long at = Math.max(now, thread.lastLineTick + pause);
