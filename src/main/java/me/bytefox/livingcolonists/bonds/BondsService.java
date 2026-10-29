@@ -20,8 +20,12 @@ import java.util.stream.Collectors;
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.IColonyManager;
+import com.minecolonies.api.colony.requestsystem.request.IRequest;
+import com.minecolonies.api.colony.requestsystem.token.IToken;
+import com.minecolonies.api.colony.requestsystem.token.StandardToken;
 import com.minecolonies.api.colony.colonyEvents.descriptions.IBuildingEventDescription;
 import com.minecolonies.api.colony.colonyEvents.descriptions.IColonyEventDescription;
+import me.bytefox.livingcolonists.Citizens;
 import me.bytefox.livingcolonists.LivingColonists;
 import me.bytefox.livingcolonists.memory.Digests;
 import net.minecraft.network.chat.Component;
@@ -44,6 +48,13 @@ public final class BondsService {
     private static final int MAX_RESOLVED = 20;
     /** Longest deadline taken from a promise, in days. */
     private static final int MAX_DUE_DAYS = 60;
+    /** "I will work on it!" in a colonist's request dialog is a promise due in one Minecraft day. */
+    private static final long REQUEST_PROMISE_TICKS = DAY;
+    /** How often promised colony requests are checked, in server ticks (one second): finished ones vanish fast. */
+    private static final int REQUEST_CHECK_INTERVAL = 20;
+    private static final String BUTTON_OKAY = "com.minecolonies.coremod.gui.chat.okay";
+    private static final String BUTTON_FULFILL = "com.minecolonies.coremod.gui.chat.fulfill";
+    private static final String BUTTON_CANCEL = "com.minecolonies.coremod.gui.chat.cancel";
     /** At most one promise reminder per player in this many server ticks (ten minutes). */
     private static final long REMINDER_GAP_TICKS = 12000;
     /** A nickname-like part of a colonist's name the character model may use instead of the full name. */
@@ -56,6 +67,8 @@ public final class BondsService {
     private Reminder reminder;
     /** Server tick of each player's last reminder, so reminders don't pile up. */
     private final Map<UUID, Long> lastReminder = new HashMap<>();
+    /** The last state seen of each promised colony request, by promise id, to tell delivered from cancelled. */
+    private final Map<Long, String> requestStates = new HashMap<>();
 
     /** Starts a colonist's private reminder; returns whether it went ahead. */
     public interface Reminder {
@@ -74,6 +87,7 @@ public final class BondsService {
         data = null;
         seenEvents.clear();
         lastReminder.clear();
+        requestStates.clear();
     }
 
     // ---- what the digest of a private talk brings
@@ -116,12 +130,99 @@ public final class BondsService {
             Promise.About about = Promise.About.of(made.about());
             long due = made.days() > 0 ? now + Math.min(made.days(), MAX_DUE_DAYS) * DAY : 0;
             list.add(new Promise(data.nextId++, player, playerName, made.text(), about, now, due, Promise.Status.OPEN, 0,
-                    needUnmet(citizen, about), false));
+                    needUnmet(citizen, about), false, ""));
         }
         for (Digests.Conduct conduct : digest.conduct()) {
             note(citizen, player, conduct.kind() ? Bonds.KIND : Bonds.RUDE, conduct.note(), now);
         }
         data.setDirty();
+    }
+
+    /**
+     * A button pressed in a colonist's request dialog: "I will work on it!" becomes a promise tied
+     * to the request; "Cancel" on a promised request drops it, a breach once it is overdue.
+     */
+    public void onRequestResponse(ICitizenData citizen, IToken<?> request, String button, ServerPlayer player,
+                                  String playerName) {
+        if (data == null || !(request.getIdentifier() instanceof UUID id)) {
+            return;
+        }
+        long now = now(citizen.getColony());
+        String requestId = id.toString();
+        Promise existing = promises(citizen).stream().filter(p -> p.isOpen() && requestId.equals(p.requestId()))
+                .findFirst().orElse(null);
+        switch (button) {
+            case BUTTON_OKAY -> {
+                if (existing != null) {
+                    return;
+                }
+                List<Promise> list = data.promises.computeIfAbsent(key(citizen), k -> new ArrayList<>());
+                if (list.stream().filter(Promise::isOpen).count() >= MAX_OPEN) {
+                    return;
+                }
+                IRequest<?> asked = request(citizen.getColony(), request);
+                String what = asked == null ? "what they asked for" : asked.getShortDisplayString().getString();
+                String text = playerName + " promised to bring " + citizen.getName() + " " + what + ".";
+                list.add(new Promise(data.nextId++, player.getUUID(), playerName, text, Promise.About.SUPPLY, now,
+                        now + REQUEST_PROMISE_TICKS, Promise.Status.OPEN, 0, false, false, requestId));
+                data.playerNames.put(player.getUUID(), playerName);
+                data.setDirty();
+                player.displayClientMessage(Component.translatable("livingcolonists.promise.made", citizen.getName()),
+                        true);
+                LivingColonists.LOGGER.info("{} wrote down a promise from the request dialog: {}", citizen.getName(), text);
+            }
+            case BUTTON_FULFILL -> {
+                if (existing != null) {
+                    resolve(citizen, existing.id(), Promise.Status.KEPT, now);
+                }
+            }
+            case BUTTON_CANCEL -> {
+                if (existing != null) {
+                    resolve(citizen, existing.id(), Bonds.cancelledByMaker(existing, now), now);
+                }
+            }
+            default -> {
+            }
+        }
+    }
+
+    /** Promises tied to colony requests close when the request is delivered or cancelled. */
+    private void watchRequests(MinecraftServer server) {
+        for (Map.Entry<String, List<Promise>> entry : List.copyOf(data.promises.entrySet())) {
+            String[] parts = entry.getKey().split(":");
+            IColony colony = Citizens.colony(Integer.parseInt(parts[0]));
+            ICitizenData citizen = colony == null ? null : colony.getCitizenManager().getCivilian(Integer.parseInt(parts[1]));
+            if (citizen == null) {
+                continue;
+            }
+            for (Promise promise : List.copyOf(entry.getValue())) {
+                if (!promise.isOpen() || promise.requestId().isEmpty()) {
+                    continue;
+                }
+                IRequest<?> request = request(colony, new StandardToken(UUID.fromString(promise.requestId())));
+                String state = request == null ? null : request.getState().name();
+                var outcome = Bonds.requestOutcome(state, requestStates.get(promise.id()));
+                if (outcome.isEmpty()) {
+                    requestStates.put(promise.id(), state);
+                    continue;
+                }
+                requestStates.remove(promise.id());
+                if (outcome.get() == Promise.Status.KEPT) {
+                    keptByItself(server, citizen, promise, "the request was delivered");
+                } else {
+                    resolve(citizen, promise.id(), outcome.get(), now(colony));
+                }
+            }
+        }
+    }
+
+    /** The colony request for a token, or null once the request manager forgot it. */
+    private static IRequest<?> request(IColony colony, IToken<?> token) {
+        try {
+            return colony.getRequestManager().getRequestForToken(token);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     // ---- prompt text
@@ -176,7 +277,13 @@ public final class BondsService {
 
     /** Notices promises that came true or lapsed. Server tick. */
     public void tick(MinecraftServer server) {
-        if (data == null || server.getTickCount() % CHECK_INTERVAL != 0) {
+        if (data == null) {
+            return;
+        }
+        if (server.getTickCount() % REQUEST_CHECK_INTERVAL == 0) {
+            watchRequests(server);
+        }
+        if (server.getTickCount() % CHECK_INTERVAL != 0) {
             return;
         }
         for (IColony colony : IColonyManager.getInstance().getAllColonies()) {

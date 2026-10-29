@@ -45,7 +45,7 @@ public final class BondsData extends SavedData {
                 list.add(new Promise(p.getLong("id"), p.getUUID("maker"), p.getString("makerName"), p.getString("text"),
                         Promise.About.of(p.getString("about")), p.getLong("made"), p.getLong("due"),
                         status(p.getString("status")), p.getLong("resolved"), p.getBoolean("needSeen"),
-                        p.getBoolean("reminded")));
+                        p.getBoolean("reminded"), p.getString("request")));
             }
             data.promises.put(key, list);
         }
@@ -101,6 +101,7 @@ public final class BondsData extends SavedData {
                 p.putLong("resolved", promise.resolved());
                 p.putBoolean("needSeen", promise.needSeen());
                 p.putBoolean("reminded", promise.reminded());
+                p.putString("request", promise.requestId());
                 entries.add(p);
             }
             promiseTag.put(key, entries);

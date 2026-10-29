@@ -17,7 +17,7 @@ class BondsLogicTest {
     private static final UUID ANNA = UUID.fromString("00000000-0000-0000-0000-000000000002");
 
     private static Promise promise(long id, UUID maker, String name, String text, long made, long due) {
-        return new Promise(id, maker, name, text, Promise.About.GENERAL, made, due, Promise.Status.OPEN, 0, false, false);
+        return new Promise(id, maker, name, text, Promise.About.GENERAL, made, due, Promise.Status.OPEN, 0, false, false, "");
     }
 
     @Test
@@ -74,6 +74,25 @@ class BondsLogicTest {
     }
 
     @Test
+    void aRequestThatWasDeliveredKeepsThePromiseAndOneCancelledDropsIt() {
+        assertEquals(Optional.empty(), Bonds.requestOutcome("ASSIGNED", "CREATED"));
+        assertEquals(Optional.of(Promise.Status.KEPT), Bonds.requestOutcome("COMPLETED", "IN_PROGRESS"));
+        assertEquals(Optional.of(Promise.Status.KEPT), Bonds.requestOutcome("RECEIVED", "COMPLETED"));
+        assertEquals(Optional.of(Promise.Status.CANCELLED), Bonds.requestOutcome("CANCELLED", "ASSIGNED"));
+        assertEquals(Optional.of(Promise.Status.CANCELLED), Bonds.requestOutcome("FAILED", "IN_PROGRESS"));
+        // Gone from the request manager: delivered, unless the last state seen was a cancellation.
+        assertEquals(Optional.of(Promise.Status.KEPT), Bonds.requestOutcome(null, "IN_PROGRESS"));
+        assertEquals(Optional.of(Promise.Status.CANCELLED), Bonds.requestOutcome(null, "OVERRULED"));
+    }
+
+    @Test
+    void cancellingAPromisedRequestIsOnlyABreachOnceItIsOverdue() {
+        Promise due = promise(1, MAX, "Max", "a pickaxe", 0, DAY);
+        assertEquals(Promise.Status.CANCELLED, Bonds.cancelledByMaker(due, DAY));
+        assertEquals(Promise.Status.BROKEN, Bonds.cancelledByMaker(due, DAY + 1));
+    }
+
+    @Test
     void topicsAreReadLeniently() {
         assertEquals(Promise.About.HOUSING, Promise.About.of("Housing"));
         assertEquals(Promise.About.GENERAL, Promise.About.of("something else"));
@@ -119,9 +138,9 @@ class BondsLogicTest {
                 promise(1, MAX, "Max", "Max promised to bring bread.", 0, DAY),
                 promise(2, ANNA, "Anna", "Anna promised a new hoe.", 0, 0),
                 new Promise(3, MAX, "Max", "Max promised a house.", Promise.About.HOUSING, 0, 0, Promise.Status.KEPT,
-                        2 * DAY, false, false),
+                        2 * DAY, false, false, ""),
                 new Promise(4, MAX, "Max", "Max promised fish.", Promise.About.FOOD, 0, 0, Promise.Status.BROKEN,
-                        0, false, false));
+                        0, false, false, ""));
         String block = Bonds.promisesBlock(promises, 2 * DAY + 10);
         assertEquals("""
                 Promises players made to you:

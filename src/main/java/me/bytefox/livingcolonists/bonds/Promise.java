@@ -20,9 +20,10 @@ import java.util.UUID;
  * @param resolved world game time it was kept, broken or cancelled
  * @param needSeen the need it is about (no home, no job, sick) was seen unmet, so meeting it now counts as keeping it
  * @param reminded the colonist already reminded the maker of it after it became overdue
+ * @param requestId the colony request it was made for ("I will work on it!"), as the request token's UUID; empty if none
  */
 public record Promise(long id, UUID maker, String makerName, String text, About about, long made, long due,
-                      Status status, long resolved, boolean needSeen, boolean reminded) {
+                      Status status, long resolved, boolean needSeen, boolean reminded, String requestId) {
 
     public enum Status {
         OPEN, KEPT, BROKEN, CANCELLED
@@ -51,14 +52,14 @@ public record Promise(long id, UUID maker, String makerName, String text, About 
     }
 
     public Promise resolve(Status to, long now) {
-        return new Promise(id, maker, makerName, text, about, made, due, to, now, needSeen, reminded);
+        return new Promise(id, maker, makerName, text, about, made, due, to, now, needSeen, reminded, requestId);
     }
 
     public Promise withNeedSeen() {
-        return new Promise(id, maker, makerName, text, about, made, due, status, resolved, true, reminded);
+        return new Promise(id, maker, makerName, text, about, made, due, status, resolved, true, reminded, requestId);
     }
 
     public Promise withReminded() {
-        return new Promise(id, maker, makerName, text, about, made, due, status, resolved, needSeen, true);
+        return new Promise(id, maker, makerName, text, about, made, due, status, resolved, needSeen, true, requestId);
     }
 }

@@ -17,6 +17,10 @@ description='''
 MineColonies colonists talk in text chat almost like players: they write first, reply, remember conversations and gossip about the colony. Replies come from any OpenAI-compatible LLM API.
 '''
 
+# Reads which button a player pressed in a colonist's request dialog (see CitizenDataMixin).
+[[mixins]]
+    config="${mod_id}.mixins.json"
+
 [[dependencies.${mod_id}]]
     modId="neoforge"
     type="required"

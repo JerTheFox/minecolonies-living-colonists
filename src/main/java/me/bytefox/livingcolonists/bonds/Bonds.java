@@ -191,6 +191,33 @@ public final class Bonds {
         return String.join(" ", parts);
     }
 
+    /** Request states (MineColonies {@code RequestState}) that mean the colonist got what was asked for. */
+    private static final Set<String> DELIVERED = Set.of("RESOLVED", "FOLLOWUP_IN_PROGRESS", "COMPLETED", "FINALIZING",
+            "RECEIVED");
+    /** Request states that mean it won't be delivered. */
+    private static final Set<String> DROPPED = Set.of("CANCELLED", "FAILED", "OVERRULED");
+
+    /**
+     * What became of a promise tied to a colony request, from the request's state now ({@code null}
+     * once the request manager forgot it) and the last state seen. A request gone without a
+     * cancellation was delivered: finished requests are cleaned up quickly.
+     */
+    public static Optional<Promise.Status> requestOutcome(String state, String lastSeen) {
+        String known = state != null ? state : lastSeen;
+        if (known != null && DROPPED.contains(known)) {
+            return Optional.of(Promise.Status.CANCELLED);
+        }
+        if (state == null || DELIVERED.contains(state)) {
+            return Optional.of(Promise.Status.KEPT);
+        }
+        return Optional.empty();
+    }
+
+    /** The maker cancelled the request they promised to fulfil: fine while it's not due, a breach once it is. */
+    public static Promise.Status cancelledByMaker(Promise promise, long now) {
+        return promise.due() > 0 && now > promise.due() ? Promise.Status.BROKEN : Promise.Status.CANCELLED;
+    }
+
     /**
      * How likely a colonist disagrees with someone they have a history with: more with those they
      * dislike, less with friends.

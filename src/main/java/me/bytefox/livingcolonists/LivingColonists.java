@@ -13,6 +13,7 @@ import me.bytefox.livingcolonists.llm.LlmClient;
 import me.bytefox.livingcolonists.llm.UsageStats;
 import me.bytefox.livingcolonists.bonds.BondsData;
 import me.bytefox.livingcolonists.bonds.BondsService;
+import me.bytefox.livingcolonists.bonds.RequestResponses;
 import me.bytefox.livingcolonists.memory.MemoryData;
 import me.bytefox.livingcolonists.memory.MemoryService;
 import me.bytefox.livingcolonists.perception.PerceptionService;
@@ -77,6 +78,8 @@ public final class LivingColonists {
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
         client.limitDailyTokens(() -> Config.SPEC.isLoaded() ? Config.TOKENS_PER_DAY.get() : 0);
         bonds.setReminder(talk::remindPromise);
+        RequestResponses.listen((citizen, request, button, player) ->
+                bonds.onRequestResponse(citizen, request, button, player, TalkService.playerName(player)));
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::registerPayloads);
 

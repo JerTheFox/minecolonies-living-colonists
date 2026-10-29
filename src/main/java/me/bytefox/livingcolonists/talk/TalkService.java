@@ -322,7 +322,7 @@ public final class TalkService {
     }
 
     /** The name colonists know this player by. */
-    static String playerName(ServerPlayer player) {
+    public static String playerName(ServerPlayer player) {
         return PlayerNames.name(player.getGameProfile().getName(), Config.playerNames());
     }
 

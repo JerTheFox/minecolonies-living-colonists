@@ -7,6 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- "I will work on it!" in a colonist's request dialog (a builder asking for a pickaxe) is a promise due in one Minecraft day: kept when the request is delivered, by anyone; dropped without blame if the colony cancels it; cancelling it yourself counts as breaking it only once it is overdue. A small read-only mixin into MineColonies' citizen data notes the button, since MineColonies sends no event for it.
 - Colonists talk like ordinary people rather than eager helpers: short lines, no forced cheer, praise or a question at the end of every line; each colonist has a mood for the day (calm, tired, irritable, distracted, bored, gloomy or in a good mood), worse moods more often when they are unhappy.
 - Newborns stay out of conversations for a day unless named, and children talk like children.
 - `/lcdebug relations [name|all]` shows how colonists get along with each other.
