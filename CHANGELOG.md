@@ -16,6 +16,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Colonists talk like ordinary people rather than eager helpers: short lines, no forced cheer, praise or a question at the end of every line; each colonist has a mood for the day (calm, tired, irritable, distracted, bored, gloomy or in a good mood), worse moods more often when they are unhappy.
 - Newborns stay out of conversations for a day unless named, and children talk like children.
 - `/lcdebug relations [name|all]` shows how colonists get along with each other.
+- The reply language is decided by code: the alphabet of the player's message (names don't count), with the game locale saying which language of that alphabet, so an English question gets an English answer even when the colonist's notes are in Russian. Short messages ("ok") keep the language of the talk; a Latin-alphabet language other than English is still left to the model.
+- The colony chat finds whom a message addresses by code before asking the model: names in any grammatical case ("Джону" finds Джон), Latin names written in Cyrillic and back ("Адаир" finds Adair), a surname nobody else has, several names at once, and professions in the words of the game's own translations plus everyday ones ("строители", "guards", "повар"). Messages plainly for everyone ("всем привет") skip the routing request too. Fewer requests and about a second faster.
 - "Idris is typing..." while a colonist writes a line you will see, shown after a reading pause; the dots jump in a small wave now and then.
 - Colonists' names are shown in their colony's color; the arrow and addressee of private lines too.
 - Colony and private lines are written to the server log, like player chat.

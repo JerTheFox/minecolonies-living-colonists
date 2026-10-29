@@ -192,6 +192,7 @@ public final class TalkService {
         }
         messages.add(ChatMessage.user(message));
         Map<String, String> values = promptValues(citizen, player);
+        values.put("language", replyLanguage(citizen, player, speaker, history, message));
         Optional<Fact> rumor = memory.rumor(citizen, playerName, random);
         rumor.ifPresent(fact -> values.put("initiative", values.get("initiative") + " " + Prompts.gossip(fact.text())));
         String prompt = Templates.render(prompts.get(PromptLibrary.REPLY_PRIVATE), values);
@@ -241,7 +242,8 @@ public final class TalkService {
         Map<String, String> values = promptValues(citizen, player);
         values.put("initiative", "You write to " + playerName + " first, unprompted, to remind them of a promise that is "
                 + "overdue now: \"" + promise.text() + "\". Say it in your own way and mood, in one or two sentences. "
-                + "Write in the language of the game locale " + player.clientInformation().language() + ".");
+                + "Write in " + Languages.ofLocale(player.clientInformation().language()) + ".");
+        values.put("language", Languages.ofLocale(player.clientInformation().language()));
         String prompt = Templates.render(prompts.get(PromptLibrary.REPLY_PRIVATE), values);
         thinking.add(key);
         MinecraftServer server = player.server;
@@ -484,6 +486,25 @@ public final class TalkService {
             }
         }
         return best;
+    }
+
+    /**
+     * The language of a private reply, by code: from the player's message, or for a short one from
+     * their message before it; when the code can't tell, the template's own wording leaves it to the
+     * model.
+     */
+    private static String replyLanguage(ICitizenData citizen, ServerPlayer player, Speaker speaker,
+                                        List<MemoryLine> history, String message) {
+        String locale = player.clientInformation().language();
+        List<String> names = citizen.getColony().getCitizenManager().getCitizens().stream().map(ICitizenData::getName).toList();
+        Optional<String> before = Optional.empty();
+        for (int i = history.size() - 1; i >= 0; i--) {
+            if (!history.get(i).speaker().equals(speaker.name())) {
+                before = Languages.reply(history.get(i).text(), locale, names, Optional.empty());
+                break;
+            }
+        }
+        return Languages.reply(message, locale, names, before).orElse("the language of the player's last message");
     }
 
     /** The game locale most of these players use, like {@code ru_ru}; English when there is nobody. */

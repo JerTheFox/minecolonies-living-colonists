@@ -3,6 +3,7 @@ package me.bytefox.livingcolonists.talk;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
@@ -79,6 +80,7 @@ public final class ColonyThreads {
     private final Typing typing;
     private final BondsService bonds;
     private final Random random = new Random();
+    private final JobNames jobNames = new JobNames();
     private long currentTick;
     private final Map<Integer, Thread> threads = new HashMap<>();
     /** Colonists who don't join conversations unless named, until a server tick: newborns. Key as {@link TalkService#key}. */
@@ -100,7 +102,7 @@ public final class ColonyThreads {
         final Set<Integer> participants = new HashSet<>();
         /** A colony event the next line opens the thread with, if any. */
         String opening;
-        /** The game locale an event thread is written in, from the players around. */
+        /** The language the thread is in, like "Russian"; null leaves it to the model. */
         String language;
         long lastEventTick = Long.MIN_VALUE / 2;
         /** World game time the conversation began; earlier chat lines are only context. */
@@ -191,7 +193,7 @@ public final class ColonyThreads {
         thread.lastLineTick = now;
         thread.lastEventTick = now;
         thread.opening = what;
-        thread.language = TalkService.language(audience);
+        thread.language = Languages.ofLocale(TalkService.language(audience));
         preferred.stream().limit(1).forEach(thread.addressed::add);
         LivingColonists.LOGGER.info("Colony {} talks about: {}", colony.getName(), what);
         nextTurn(server, colony, thread, thread.version);
@@ -221,9 +223,19 @@ public final class ColonyThreads {
             player.sendSystemMessage(Component.translatable("livingcolonists.talk.nobody"));
             return;
         }
-        OptionalInt named = Addressing.mentioned(message, citizens.stream().map(ICitizenData::getName).toList());
-        if (named.isPresent()) {
-            thread.addressed.add(citizens.get(named.getAsInt()).getId());
+        String locale = player.clientInformation().language();
+        List<String> names = citizens.stream().map(ICitizenData::getName).toList();
+        thread.language = Languages.reply(message, locale, names, Optional.ofNullable(thread.language)).orElse(null);
+        List<Integer> byJob = new ArrayList<>(Addressing.byJob(message,
+                citizens.stream().map(citizen -> jobNames.of(citizen, locale)).toList()));
+        Collections.shuffle(byJob, random);
+        List<Integer> chosen = new ArrayList<>(Addressing.allMentioned(message, names));
+        byJob.stream().filter(index -> !chosen.contains(index)).forEach(chosen::add);
+        if (!chosen.isEmpty() || Addressing.toEveryone(message)) {
+            List<Integer> picked = chosen.stream().limit(MAX_ADDRESSED).toList();
+            picked.forEach(index -> thread.addressed.add(citizens.get(index).getId()));
+            LivingColonists.LOGGER.info("Colony {} message is for {}, found by code; reply in {}", colony.getName(),
+                    picked.isEmpty() ? "everyone" : picked.stream().map(names::get).toList(), thread.language);
             nextTurn(server, colony, thread, version);
             return;
         }
@@ -250,8 +262,12 @@ public final class ColonyThreads {
                         return;
                     }
                     if (result instanceof ChatResult.Reply reply) {
-                        ColonyRouter.parse(reply.text(), ids.size()).stream().distinct().limit(MAX_ADDRESSED)
-                                .forEach(index -> thread.addressed.add(ids.get(index)));
+                        List<Integer> picked = ColonyRouter.parse(reply.text(), ids.size()).stream().distinct()
+                                .limit(MAX_ADDRESSED).toList();
+                        picked.forEach(index -> thread.addressed.add(ids.get(index)));
+                        LivingColonists.LOGGER.info("Colony {} message is for {}, found by the model; reply in {}",
+                                colony.getName(), picked.isEmpty() ? "everyone"
+                                        : picked.stream().map(index -> roster.get(index).name()).toList(), thread.language);
                     } else if (result instanceof ChatResult.Failure failure) {
                         LivingColonists.LOGGER.warn("Could not work out whom a colony message addresses: {}", failure.reason());
                     }
@@ -282,6 +298,7 @@ public final class ColonyThreads {
         ServerPlayer player = thread.lastPlayer == null ? null : server.getPlayerList().getPlayer(thread.lastPlayer);
         Map<String, String> values = talk.promptValues(citizen, player);
         values.put("transcript", transcriptText(colony, thread));
+        values.put("language", thread.language != null ? thread.language : "the language of the latest chat lines");
         String along = bonds.colonistBlock(citizen, chatPeople(colony, thread));
         if (!along.isEmpty()) {
             values.put("bonds", values.get("bonds").isEmpty() ? along : values.get("bonds") + "\n" + along);
@@ -295,8 +312,7 @@ public final class ColonyThreads {
                         + "has already come up several times: move on.");
         if (opening != null) {
             values.put("turn", "Something just happened in the colony: " + opening + " Bring it up in the colony chat "
-                    + "in your own way, as someone who just heard of it. Write in the language of the game locale "
-                    + thread.language + ".");
+                    + "in your own way, as someone who just heard of it. Write in " + thread.language + ".");
         }
         Optional<Fact> rumor = Optional.empty();
         if (!answeringPlayer && opening == null) {
