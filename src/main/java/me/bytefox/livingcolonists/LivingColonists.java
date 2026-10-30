@@ -14,6 +14,8 @@ import me.bytefox.livingcolonists.debug.UsageData;
 import me.bytefox.livingcolonists.llm.LlmClient;
 import me.bytefox.livingcolonists.llm.UsageStats;
 import me.bytefox.livingcolonists.bonds.BondsData;
+import me.bytefox.livingcolonists.errands.GuardTally;
+import me.bytefox.livingcolonists.errands.NotesData;
 import me.bytefox.livingcolonists.bonds.BondsService;
 import me.bytefox.livingcolonists.bonds.RequestResponses;
 import me.bytefox.livingcolonists.memory.MemoryData;
@@ -43,6 +45,7 @@ import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.ServerChatEvent;
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
@@ -105,6 +108,8 @@ public final class LivingColonists {
                     memory, bonds);
         });
         NeoForge.EVENT_BUS.addListener(this::onServerChat);
+        NeoForge.EVENT_BUS.addListener((LivingDeathEvent event) -> talk.errands().tally().onDeath(event.getEntity(),
+                event.getSource().getEntity()));
         NeoForge.EVENT_BUS.addListener((ServerTickEvent.Post event) -> {
             conversations.tick(event.getServer());
             talk.tick(event.getServer());
@@ -128,11 +133,19 @@ public final class LivingColonists {
                     .computeIfAbsent(MemoryData.factory(), MemoryData.NAME));
             bonds.attach(event.getServer().overworld().getDataStorage()
                     .computeIfAbsent(BondsData.factory(), BondsData.NAME));
+            talk.errands().notes().attach(event.getServer().overworld().getDataStorage()
+                    .computeIfAbsent(NotesData.factory(), NotesData.NAME));
+            talk.errands().warmUp();
+            talk.errands().tally().attach(event.getServer().overworld().getDataStorage()
+                    .computeIfAbsent(GuardTally.Data.factory(), GuardTally.Data.NAME));
             usage.clearSession();
             usageData = event.getServer().overworld().getDataStorage()
                     .computeIfAbsent(UsageData.factory(usage), UsageData.NAME);
         });
-        NeoForge.EVENT_BUS.addListener((ServerStoppingEvent event) -> markUsageDirty());
+        NeoForge.EVENT_BUS.addListener((ServerStoppingEvent event) -> {
+            talk.errands().beforeStop();
+            markUsageDirty();
+        });
         NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent event) ->
                 conversations.forget(event.getEntity().getUUID()));
         NeoForge.EVENT_BUS.addListener((ServerStoppedEvent event) -> {
@@ -142,12 +155,16 @@ public final class LivingColonists {
             personalities.detach();
             memory.detach();
             bonds.detach();
+            talk.errands().notes().detach();
+            talk.errands().tally().detach();
         });
     }
 
     /** Drops everything the mod keeps about the colonists whose key matches. */
     private void forget(Predicate<String> key) {
         personalities.forget(key);
+        talk.errands().notes().forget(key);
+        talk.errands().tally().forget(key);
         memory.forget(key);
         bonds.forget(key);
     }

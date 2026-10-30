@@ -192,5 +192,22 @@
   "livingcolonists.order.sort.ask": "sort the warehouse?",
   "livingcolonists.order.sort.done": "the warehouse is sorted.",
   "livingcolonists.order.home.ask": "move %s into the %s?",
-  "livingcolonists.order.home.done": "%s now lives in the %s."
+  "livingcolonists.order.home.done": "%s now lives in the %s.",
+  "livingcolonists.note.mail": "%s passes on a message from %s: %s",
+  "livingcolonists.note.reminder": "%s reminds you, as %s asked: %s",
+  "livingcolonists.order.fetch.ask": "have a courier bring you %s × %s from the warehouse?",
+  "livingcolonists.order.deliver.ask": "have a courier take %s × %s from the warehouse to the %s?",
+  "livingcolonists.order.fetch.done": "it's on the couriers' board; the first free courier takes it.",
+  "livingcolonists.courier.none": "%s found no %s in the warehouse.",
+  "livingcolonists.courier.brought": "%s brought you %s × %s.%s",
+  "livingcolonists.courier.stocked": "%s took %s × %s to the %s.",
+  "livingcolonists.order.guard.follow": "guards of %s towers escort you?",
+  "livingcolonists.order.guard.defend": "guards of %s towers come and hold your spot?",
+  "livingcolonists.order.guard.alert": "red alert: guards of %s towers to their posts?",
+  "livingcolonists.order.guard.done": "%s towers are on it; \"stand down\" or /lc undo sends them back.",
+  "livingcolonists.order.guard.unsupported": "no tower here can do that.",
+  "livingcolonists.order.patrol.ask": "add this spot to the tower's patrol route?",
+  "livingcolonists.order.patrol.done": "the spot is on the patrol route.",
+  "livingcolonists.order.rank": "Your colony rank no longer lets you give that order.",
+  "livingcolonists.courier.gave_up": "%s couldn't get the %s to you; a courier keeps what they carry and puts it away."
 }

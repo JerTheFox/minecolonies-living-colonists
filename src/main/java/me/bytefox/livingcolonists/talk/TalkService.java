@@ -43,6 +43,7 @@ import me.bytefox.livingcolonists.memory.MemoryLine;
 import me.bytefox.livingcolonists.memory.MemoryService;
 import me.bytefox.livingcolonists.errands.Errand;
 import me.bytefox.livingcolonists.errands.Errands;
+import me.bytefox.livingcolonists.errands.Notes;
 import me.bytefox.livingcolonists.perception.ColonyTools;
 import me.bytefox.livingcolonists.perception.PerceptionService;
 import me.bytefox.livingcolonists.personality.PersonalityService;
@@ -118,7 +119,7 @@ public final class TalkService {
         this.memory = memory;
         this.bonds = bonds;
         this.tools = new ColonyTools(perception);
-        this.errands = new Errands(perception);
+        this.errands = new Errands(perception, this::writeFirst);
         this.threads = new ColonyThreads(this, prompts, memory, personalities, output, typing, bonds);
         this.events = new ColonyEvents(threads);
     }
@@ -241,23 +242,39 @@ public final class TalkService {
      * is in the colony. Returns whether the reminder went ahead.
      */
     public boolean remindPromise(ServerPlayer player, ICitizenData citizen, Promise promise) {
+        return writeFirst(player, citizen, "to remind them of a promise that is overdue now: \"" + promise.text()
+                + "\". Say it in your own way and mood, in one or two sentences.", true, null) == Notes.Delivery.SENT;
+    }
+
+    /**
+     * A colonist writes to a player first, in private, for a reason the prompt gives (a reminder, a
+     * message passed on).
+     *
+     * @param inColonyOnly only while the player is inside the colony
+     * @param failed        runs if the model gave no line after all; may be null
+     */
+    public Notes.Delivery writeFirst(ServerPlayer player, ICitizenData citizen, String purpose, boolean inColonyOnly,
+                                     Runnable failed) {
         IColony colony = citizen.getColony();
         Speaker speaker = speakerOf(citizen);
         long key = key(speaker.colonyId(), speaker.citizenId());
         if (Config.level(Module.CONVERSATION) == me.bytefox.livingcolonists.behaviour.Level.OFF
-                || !isInside(player, colony) || thinking.contains(key) || client.overDailyLimit()
-                || Config.llmSettings(ModelRole.CHAT).isEmpty()) {
-            return false;
+                || client.overDailyLimit() || Config.llmSettings(ModelRole.CHAT).isEmpty()) {
+            return Notes.Delivery.NEVER;
+        }
+        boolean inside = isInside(player, colony);
+        if (inColonyOnly && !inside || thinking.contains(key)) {
+            return Notes.Delivery.LATER;
         }
         String playerName = playerName(player);
         List<ChatMessage> messages = new ArrayList<>();
         for (MemoryLine line : memory.privateTalk(citizen, player.getUUID())) {
             messages.add(line.speaker().equals(speaker.name()) ? ChatMessage.assistant(line.text()) : ChatMessage.user(line.text()));
         }
-        messages.add(ChatMessage.user("[" + playerName + " is in the colony. You write to them first.]"));
+        messages.add(ChatMessage.user("[" + playerName + (inside ? " is in the colony" : " is away from the colony")
+                + ". You write to them first.]"));
         Map<String, String> values = promptValues(citizen, player);
-        values.put("initiative", "You write to " + playerName + " first, unprompted, to remind them of a promise that is "
-                + "overdue now: \"" + promise.text() + "\". Say it in your own way and mood, in one or two sentences. "
+        values.put("initiative", "You write to " + playerName + " first, unprompted, " + purpose + " "
                 + "Write in " + Languages.ofLocale(player.clientInformation().language()) + ".");
         values.put("language", Languages.ofLocale(player.clientInformation().language()));
         String prompt = Templates.render(prompts.get(PromptLibrary.REPLY_PRIVATE), values);
@@ -272,12 +289,15 @@ public final class TalkService {
             Optional<String> text = lineOf(speaker, result);
             if (text.isEmpty()) {
                 typing.stop(server, speaker);
+                if (failed != null && server.getPlayerList().getPlayer(playerId) != null) {
+                    failed.run();
+                }
                 return;
             }
             long at = LinePacing.slot(server.getTickCount(), earliest + LinePacing.typingTicks(text.get().length()), 0);
             pending.add(new PendingLine(at, dimension, speaker, playerId, text.get()));
         });
-        return true;
+        return Notes.Delivery.SENT;
     }
 
     /** The colonist passed a fact on as gossip, so they won't retell it. */
@@ -365,7 +385,7 @@ public final class TalkService {
         List<ToolSpec> offered = new ArrayList<>();
         if (asker != null && Config.toolsEnabled()) {
             offered.addAll(tools.specs());
-            offered.addAll(errands.specs());
+            offered.addAll(errands.specs(citizen));
         }
         converse(settings.get().withMinTokens(REPLY_TOKENS), messages, offered, 0, server, citizen.getColony().getDimension(), speaker,
                 asker, new StringBuilder(), done);

@@ -192,5 +192,22 @@
   "livingcolonists.order.sort.ask": "отсортировать склад?",
   "livingcolonists.order.sort.done": "склад отсортирован.",
   "livingcolonists.order.home.ask": "переселить %s в «%s»?",
-  "livingcolonists.order.home.done": "%s теперь живёт в «%s»."
+  "livingcolonists.order.home.done": "%s теперь живёт в «%s».",
+  "livingcolonists.note.mail": "%s передаёт сообщение от %s: %s",
+  "livingcolonists.note.reminder": "%s напоминает, как просил %s: %s",
+  "livingcolonists.order.fetch.ask": "курьер принесёт тебе %s × «%s» со склада?",
+  "livingcolonists.order.deliver.ask": "курьер отнесёт %s × «%s» со склада в «%s»?",
+  "livingcolonists.order.fetch.done": "записано на доску курьеров, возьмёт первый свободный.",
+  "livingcolonists.courier.none": "%s не нашёл на складе «%s».",
+  "livingcolonists.courier.brought": "%s принёс тебе %s × «%s».%s",
+  "livingcolonists.courier.stocked": "%s отнёс %s × «%s» в «%s».",
+  "livingcolonists.order.guard.follow": "стража (башен: %s) будет тебя сопровождать?",
+  "livingcolonists.order.guard.defend": "стража (башен: %s) придёт и встанет здесь?",
+  "livingcolonists.order.guard.alert": "тревога: стража (башен: %s) по постам?",
+  "livingcolonists.order.guard.done": "башен на задании: %s; «отбой» или /lc undo вернёт их.",
+  "livingcolonists.order.guard.unsupported": "ни одна башня так не умеет.",
+  "livingcolonists.order.patrol.ask": "добавить это место в маршрут патруля башни?",
+  "livingcolonists.order.patrol.done": "место добавлено в маршрут патруля.",
+  "livingcolonists.order.rank": "Твой ранг в колонии больше не позволяет отдавать этот приказ.",
+  "livingcolonists.courier.gave_up": "%s не смог доставить «%s»; что нёс, курьер уберёт на склад сам."
 }

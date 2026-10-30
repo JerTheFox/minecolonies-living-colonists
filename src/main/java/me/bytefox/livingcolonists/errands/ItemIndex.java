@@ -1,12 +1,14 @@
 package me.bytefox.livingcolonists.errands;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
+import me.bytefox.livingcolonists.LivingColonists;
 import me.bytefox.livingcolonists.talk.Translations;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -15,10 +17,23 @@ import net.minecraft.world.item.Items;
 
 /**
  * Every item of the game with its names: the server's English, and the Russian and the player's
- * own language where the item's mod ships them. Built once per language set, on the server thread.
+ * own language where the item's mod ships them. Built once per locale: the common ones in the
+ * background at server start, others on first use.
  */
 public final class ItemIndex {
-    private final Map<String, List<ItemMatch.Candidate<Item>>> byLocale = new HashMap<>();
+    private final Map<String, List<ItemMatch.Candidate<Item>>> byLocale = new ConcurrentHashMap<>();
+
+    /**
+     * Builds the index for a locale in the background, so the first look-up doesn't stall the server
+     * reading the language files of hundreds of mods. The item registry is frozen by then, and the
+     * language files are only read.
+     */
+    public void warmUp(String locale) {
+        CompletableFuture.runAsync(() -> candidates(locale)).exceptionally(e -> {
+            LivingColonists.LOGGER.warn("Could not prepare the item names for {}: {}", locale, e.toString());
+            return null;
+        });
+    }
 
     public ItemMatch.Result<Item> find(String words, String locale) {
         return ItemMatch.find(words, candidates(locale));

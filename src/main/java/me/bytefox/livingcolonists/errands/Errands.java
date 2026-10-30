@@ -16,6 +16,10 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import com.minecolonies.api.colony.ICitizenData;
+import com.minecolonies.api.colony.IColony;
+import com.minecolonies.api.colony.buildings.IBuilding;
+import com.minecolonies.core.colony.buildings.AbstractBuildingGuards;
 import me.bytefox.livingcolonists.Config;
 import me.bytefox.livingcolonists.LivingColonists;
 import me.bytefox.livingcolonists.behaviour.ColonyAccess;
@@ -46,12 +50,18 @@ public final class Errands {
     private static final int MAX_LOOKUP_TEXT = 600;
     private static final DateTimeFormatter CLOCK = DateTimeFormatter.ofPattern("HH:mm:ss");
 
-    private record Ticket(Errand.Order order, String citizen, String colony) {
+    private record Ticket(Errand.Order order, String citizen, String colony, IColony where) {
     }
 
     private final Map<String, Errand> errands = new LinkedHashMap<>();
     private final OrderBook<Ticket> book = new OrderBook<>();
     private final NotifyWhen notify;
+    private final Notes notes;
+    private final ItemIndex items;
+    private final Walks walks = new Walks();
+    private final Couriers couriers;
+    private final GuardTally tally = new GuardTally();
+    private final Guards guards;
     /** Yes and no buttons waiting for the colonist's line that asks for them. */
     private final List<Question> questions = new ArrayList<>();
 
@@ -65,8 +75,10 @@ public final class Errands {
     private record Lookup(long gameTime, String text) {
     }
 
-    public Errands(PerceptionService perception) {
-        ItemIndex items = new ItemIndex();
+    public Errands(PerceptionService perception, Notes.Writer writer) {
+        items = new ItemIndex();
+        notes = new Notes(writer);
+        notes.errands().forEach(this::add);
         notify = new NotifyWhen(items);
         add(new CheckStock(items));
         ColonyLookups.all(perception).forEach(this::add);
@@ -79,6 +91,11 @@ public final class Errands {
         add(new FarmerPlant(items));
         add(new StartResearch());
         HouseOrders.all(items).forEach(this::add);
+        WalkErrands.all(walks).forEach(this::add);
+        couriers = new Couriers(walks, items);
+        couriers.errands().forEach(this::add);
+        guards = new Guards(tally);
+        guards.errands().forEach(this::add);
         add(notify);
     }
 
@@ -86,8 +103,34 @@ public final class Errands {
         errands.put(errand.name(), errand);
     }
 
-    public List<ToolSpec> specs() {
-        return errands.values().stream().map(Errand::spec).toList();
+    /**
+     * The functions worth offering this colonist: guard orders only where there are towers, courier
+     * jobs only with a courier, a farmer's only to a farmer. Fewer functions keep requests smaller
+     * and the model's choice clearer.
+     */
+    public List<ToolSpec> specs(ICitizenData citizen) {
+        IColony colony = citizen.getColony();
+        boolean towers = colony.getServerBuildingManager().getBuildings().values().stream()
+                .anyMatch(b -> b instanceof AbstractBuildingGuards);
+        boolean couriers = colony.getCitizenManager().getCitizens().stream()
+                .anyMatch(c -> c.getJob() != null && c.getJob().getJobRegistryEntry().getKey().getPath().equals("deliveryman"));
+        IBuilding work = citizen.getWorkBuilding();
+        Map<String, Boolean> offered = Map.ofEntries(
+                Map.entry("farmer_plant", work != null && work.getBuildingType().getRegistryName().getPath().equals("farmer")),
+                Map.entry("patrol_here", work instanceof AbstractBuildingGuards),
+                Map.entry("guard_me", towers), Map.entry("defend_here", towers), Map.entry("red_alert", towers),
+                Map.entry("stand_down", towers), Map.entry("guard_gear", towers), Map.entry("arm_guards", towers),
+                Map.entry("guard_leaderboard", towers),
+                Map.entry("fetch_item", couriers), Map.entry("deliver_item", couriers), Map.entry("courier_board", couriers),
+                Map.entry("start_research", has(colony, "university")), Map.entry("research_status", has(colony, "university")),
+                Map.entry("add_to_menu", has(colony, "cook")),
+                Map.entry("sort_warehouse", has(colony, "warehouse")), Map.entry("check_stock", has(colony, "warehouse")));
+        return errands.values().stream().filter(errand -> offered.getOrDefault(errand.name(), true)).map(Errand::spec).toList();
+    }
+
+    private static boolean has(IColony colony, String path) {
+        return colony.getServerBuildingManager().getBuildings().values().stream()
+                .anyMatch(b -> b.getBuildingType().getRegistryName().getPath().equals(path));
     }
 
     public boolean handles(String tool) {
@@ -158,7 +201,8 @@ public final class Errands {
     private JsonObject propose(Errand.Context context, Errand.Order order) {
         ServerPlayer player = context.player();
         long now = player.server.getTickCount();
-        book.propose(player.getUUID(), new Ticket(order, context.citizen().getName(), context.colony().getName()), now);
+        book.propose(player.getUUID(), new Ticket(order, context.citizen().getName(), context.colony().getName(),
+                context.colony()), now);
         log(context, order.tool(), "asked: " + order.summary());
         // The buttons come right after the colonist's own line asking for a yes, not before it.
         questions.add(new Question(context.colony().getID(), context.citizen().getId(), player.getUUID(),
@@ -208,6 +252,11 @@ public final class Errands {
             return 0;
         }
         Errand.Order order = ticket.get().order();
+        if (!ColonyAccess.canGiveOrders(TalkService.role(player, ticket.get().where()), Config.MEMBERS_ONLY.get())) {
+            log(ticket.get(), player, "refused at the yes: rank");
+            player.sendSystemMessage(Component.translatable("livingcolonists.order.rank").withStyle(ChatFormatting.RED));
+            return 0;
+        }
         Errand.Outcome outcome;
         try {
             outcome = order.execute().apply(player);
@@ -269,22 +318,51 @@ public final class Errands {
 
     /** Once a second: the watches for things colonists were asked to tell about, and late buttons. */
     public void tick(MinecraftServer server) {
+        notes.tick(server);
+        walks.tick(server);
+        couriers.tick(server);
+        guards.tick(server);
         if (server.getTickCount() % 20 == 0) {
             notify.tick(server);
             long now = server.getTickCount();
-            questions.removeIf(question -> question.showBy() <= now && show(server, question));
+            questions.removeIf(question -> question.showBy() <= now && show(server, question, book));
         }
+    }
+
+    /**
+     * Before the world is saved on shutdown: towers on a duty from a player go back to their own,
+     * or they would keep following or holding a spot after a restart with nobody to stand them down.
+     */
+    public void beforeStop() {
+        guards.clear();
+    }
+
+    /** At server start: item names get ready in the background for the common locales. */
+    public void warmUp() {
+        items.warmUp("ru_ru");
+        items.warmUp("en_us");
+    }
+
+    /** The guards' kills, kept with the world. */
+    public GuardTally tally() {
+        return tally;
+    }
+
+    /** Messages and reminders, kept with the world. */
+    public Notes notes() {
+        return notes;
     }
 
     /** A colonist's line went out: the buttons it asks the player to press come right after it. */
     public void afterLine(MinecraftServer server, int colonyId, int citizenId) {
         questions.removeIf(question -> question.colonyId() == colonyId && question.citizenId() == citizenId
-                && show(server, question));
+                && show(server, question, book));
     }
 
-    private static boolean show(MinecraftServer server, Question question) {
+    /** Shows the buttons, unless the order was answered or ran out meanwhile: stale buttons would only confuse. */
+    private static boolean show(MinecraftServer server, Question question, OrderBook<?> book) {
         ServerPlayer player = server.getPlayerList().getPlayer(question.player());
-        if (player != null) {
+        if (player != null && book.pending(question.player(), server.getTickCount()).isPresent()) {
             player.sendSystemMessage(question.text());
         }
         return true;
@@ -293,6 +371,9 @@ public final class Errands {
     public void clear() {
         notify.clear();
         questions.clear();
+        walks.clear();
+        couriers.clear();
+        guards.clear();
         book.clear();
         lookups.clear();
         lastErrand.clear();
@@ -320,6 +401,13 @@ public final class Errands {
             parameters.put(parameter, parameterDescription);
         }
         return spec(name, description, parameters);
+    }
+
+    /** An order that happens at once, without a yes: its parameters and the player's own words. */
+    static ToolSpec commandSpec(String name, String description, Map<String, String> parameters) {
+        Map<String, String> all = new LinkedHashMap<>(parameters);
+        all.put(PLAYER_WORDS, "The player's own words asking for this, quoted exactly from their message");
+        return spec(name, description + " Only when the player asks for it themselves.", all);
     }
 
     /** An order: its parameters, and the player's own words asking for it. */
