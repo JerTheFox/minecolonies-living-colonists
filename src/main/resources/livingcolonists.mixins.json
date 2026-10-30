@@ -1,5 +1,5 @@
 {
-  "required": true,
+  "required": false,
   "minVersion": "0.8",
   "package": "me.bytefox.livingcolonists.mixin",
   "compatibilityLevel": "JAVA_21",
@@ -8,6 +8,6 @@
     "RequestInteractionAccessor"
   ],
   "injectors": {
-    "defaultRequire": 1
+    "defaultRequire": 0
   }
 }

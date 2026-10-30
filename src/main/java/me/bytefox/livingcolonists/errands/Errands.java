@@ -164,7 +164,7 @@ public final class Errands {
         Errand.Result result;
         try {
             result = errand.run(context, arguments);
-        } catch (RuntimeException e) {
+        } catch (RuntimeException | LinkageError e) {
             LivingColonists.LOGGER.warn("Errand {} failed", call.name(), e);
             return Errand.error("That couldn't be done right now.").toString();
         }
@@ -271,7 +271,7 @@ public final class Errands {
         Errand.Outcome outcome;
         try {
             outcome = order.execute().apply(player);
-        } catch (RuntimeException e) {
+        } catch (RuntimeException | LinkageError e) {
             LivingColonists.LOGGER.warn("Order {} failed", order.tool(), e);
             outcome = new Errand.Outcome(false, Component.translatable("livingcolonists.order.failed"), null);
         }

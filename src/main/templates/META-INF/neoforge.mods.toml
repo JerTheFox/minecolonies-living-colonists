@@ -39,6 +39,6 @@ MineColonies colonists talk in text chat almost like players: they write first, 
 [[dependencies.${mod_id}]]
     modId="minecolonies"
     type="required"
-    versionRange="[${minecolonies_version}]"
+    versionRange="${minecolonies_range}"
     ordering="AFTER"
     side="BOTH"
