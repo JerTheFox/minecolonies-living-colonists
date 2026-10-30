@@ -68,7 +68,7 @@ Or edit the file by hand: open `config/livingcolonists-common.toml` (it appears 
 | `apiKeyEnv` | `LIVINGCOLONISTS_API_KEY` | environment variable read when `apiKey` is empty |
 | `timeoutSeconds` | `30` | how long to wait for a reply |
 | `retries` | `3` | retries after timeouts, lost connections, rate limits and server errors |
-| `useTools` | `true` | let colonists look up colony data through function calling; turn off if your provider doesn't support tools |
+| `useTools` | `true` | let colonists look things up and take orders through function calling; turn off if your provider doesn't support tools |
 | `maxTokens` | `2000` | token limit per request, including the model's thinking |
 | `temperature` | `1.0` | higher is more varied |
 | `extraParams` | `{}` | extra JSON merged into each request, e.g. `{"thinking":{"type":"disabled"}}` for DeepSeek |
@@ -79,7 +79,7 @@ The `[behaviour]` section sets how colonists behave:
 
 | Option | Default | Meaning |
 |---|---|---|
-| `profile` | `DEFAULT` | `MINIMAL` (orders and answers only, cheapest), `LIGHT`, `DEFAULT` or `IMMERSIVE` (colonists remember much more) |
+| `profile` | `DEFAULT` | `MINIMAL` (the colony run by chat: plain answers, look-ups and orders, no character, memory or chatter; cheapest), `LIGHT`, `DEFAULT` or `IMMERSIVE` (colonists remember much more) |
 | `personality`, `perception`, `memory`, `conversation`, `initiative` | `profile` | override one module: `off`, `low`, `default` or `high`; `conversation` sets how long colony chats run on their own, `initiative` how often colonists write to you first |
 | `cooldownSeconds` | `3` | shortest time between one player's messages to colonists |
 | `playerNames` | empty | what colonists call players instead of nicknames, e.g. `["Steve42=Steven,Steve,Stevie"]`, most common form first |

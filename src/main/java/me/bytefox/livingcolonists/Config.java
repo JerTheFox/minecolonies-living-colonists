@@ -75,9 +75,9 @@ public final class Config {
 
     public static final ModConfigSpec.BooleanValue USE_TOOLS = BUILDER
             .translation("livingcolonists.configuration.useTools")
-            .comment("On: colonists can look up colony data while answering (another colonist, who fits a job best, a",
-                    "colony overview) through function calling; needs the default perception level or higher. Turn off if",
-                    "your provider doesn't support tools. Default on.")
+            .comment("On: colonists look things up and take orders through function calling (stock, buildings, research,",
+                    "jobs, crafting, couriers, guards and more); needs perception above off. Turn off if your provider",
+                    "doesn't support tools. Default on.")
             .define("useTools", true);
 
     public static final ModConfigSpec.IntValue MAX_TOKENS = BUILDER
@@ -138,8 +138,8 @@ public final class Config {
 
     public static final ModConfigSpec.EnumValue<Profile> PROFILE = BUILDER
             .translation("livingcolonists.configuration.profile")
-            .comment("How deep colonists go, and how many tokens they spend. MINIMAL: orders and answers only, no",
-                    "character or memory, cheapest. LIGHT: a short character and memory. DEFAULT: the balance. IMMERSIVE:",
+            .comment("How deep colonists go, and how many tokens they spend. MINIMAL: the colony run by chat, plain",
+                    "answers, look-ups and orders, no character, memory or chatter, cheapest. LIGHT: a short character and memory. DEFAULT: the balance. IMMERSIVE:",
                     "detailed knowledge, long memory, long colony chats, the most tokens. Personality, perception, memory",
                     "and conversation and initiative can override parts of it. Default: DEFAULT.")
             .defineEnum("profile", Profile.DEFAULT);
@@ -237,9 +237,12 @@ public final class Config {
         return PlayerNames.parse(PLAYER_NAMES.get());
     }
 
-    /** Colony functions are offered from the default perception level up, unless turned off. */
+    /**
+     * Colony functions (look-ups and orders) are offered unless turned off or perception is off: they
+     * read the colony themselves, whatever the prompt shows. So MINIMAL runs the colony by chat.
+     */
     public static boolean toolsEnabled() {
-        return USE_TOOLS.get() && level(Module.PERCEPTION).compareTo(Level.DEFAULT) >= 0;
+        return USE_TOOLS.get() && level(Module.PERCEPTION) != Level.OFF;
     }
 
     /** The level a module runs at now: its override, or else the profile's. */

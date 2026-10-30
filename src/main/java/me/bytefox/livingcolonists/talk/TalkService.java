@@ -75,6 +75,9 @@ public final class TalkService {
      * usual 2000 and cut the line off mid-word.
      */
     private static final int REPLY_TOKENS = 4000;
+    /** Who a colonist is when personalities are off: a plain hand for running the colony by chat. */
+    private static final String PLAIN = "You are businesslike: you answer what you are asked, plainly and briefly, and "
+            + "see to what the colony's owner and officers ask without fuss. No small talk, jokes or worries of your own.";
     /** How many of the player's latest lines an order is checked against. */
     private static final int RECENT_PLAYER_LINES = 6;
     /** How far away a colonist can be addressed with the command, in blocks. */
@@ -359,7 +362,10 @@ public final class TalkService {
         MinecraftServer server = citizen.getColony().getWorld().getServer();
         Map<String, String> values = new HashMap<>(personalities.promptValues(citizen, server));
         values.put("name", speaker.name());
-        values.put("character", (values.getOrDefault("character", "") + "\nHow you talk: " + Prompts.voice(speaker.name())).strip());
+        // Without personalities (the MINIMAL profile) colonists are a plain way to run the colony by chat.
+        boolean plain = Config.level(Module.PERSONALITY) == me.bytefox.livingcolonists.behaviour.Level.OFF;
+        values.put("character", plain ? PLAIN
+                : (values.getOrDefault("character", "") + "\nHow you talk: " + Prompts.voice(speaker.name())).strip());
         if (citizen.isChild()) {
             values.put("character", (values.getOrDefault("character", "") + "\nYou are still a child: talk like one, "
                     + "simply and in short sentences, about the things children care about.").strip());
@@ -367,11 +373,11 @@ public final class TalkService {
         values.put("job", speaker.job());
         values.put("colony", speaker.colony());
         values.put("time", Prompts.timeOfDay(citizen.getColony().getWorld().getDayTime()));
-        values.put("mood", Prompts.mood(citizen.getId(), citizen.getColony().getWorld().getDayTime() / 24000,
-                happiness(citizen)));
+        values.put("mood", plain ? "calm and busy with your work" : Prompts.mood(citizen.getId(),
+                citizen.getColony().getWorld().getDayTime() / 24000, happiness(citizen)));
         values.put("situation", perception.situation(citizen));
         values.put("memories", memory.memories(citizen));
-        values.put("initiative", Prompts.initiative(random));
+        values.put("initiative", plain ? "Answer only what the player said." : Prompts.initiative(random));
         if (player != null) {
             Map<String, List<String>> names = Config.playerNames();
             values.put("player", PlayerNames.name(player.getGameProfile().getName(), names));
