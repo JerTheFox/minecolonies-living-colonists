@@ -4,9 +4,9 @@
 
 A [MineColonies](https://github.com/ldtteam/minecolonies) addon for NeoForge that lets colonists talk in text chat almost like other players. They start conversations, answer you, remember what you told them and gossip about the colony with each other. The words come from a language model behind any OpenAI-compatible API: DeepSeek, Gemini, OpenRouter, or a model running on your own machine.
 
-> **Status: early development.** You can already talk to colonists (see [Usage](#usage)); the rest of this page describes where the mod is going. Expect breaking changes until the first release.
+> **Status: first release, 0.1.0.** Everything below works, but it has only just started being played on a live server. Expect rough edges, and please report them in [Issues](https://github.com/JerTheFox/minecolonies-living-colonists/issues).
 
-## What it should feel like
+## What it feels like
 
 Colonists write in chat just like players do; hover over a name to see the profession and colony. You walk into your colony and see lines in chat and speech bubbles over their heads:
 
@@ -15,11 +15,11 @@ Colonists write in chat just like players do; hover over a name to see the profe
 <Clodagh Bennett> John, look at yourself, the oven's been cold for three days
 ```
 
-You look at the baker and press a key: the chat opens, and a line above the input shows "→ John Brown". From now on whatever you type goes to him. You ask what the oven needs, and a second or two later he answers, going by what's actually in his storage and what he remembers about you. You ask him to bring coal to the warehouse: he takes it on through the colony's own request system and reports back later. Half an hour on, he messages you himself: "You promised firewood. Where's the firewood?"
+You look at the baker and press a key: the chat opens, and a line above the input shows "→ John Brown". From now on whatever you type goes to him. You ask what the oven needs, and a second or two later he answers, going by what's actually in his storage and what he remembers about you. You ask a courier to bring coal from the warehouse to the bakery: the courier asks you to confirm, walks to the warehouse, takes the coal and carries it over. Half an hour on, he messages you himself: "You promised firewood. Where's the firewood?"
 
-## Planned features
+## Features
 
-- Colonists speak first, reply and talk among themselves, but only while a player is nearby, so an empty server spends no tokens.
+- Colonists speak first, reply and talk among themselves, but only while a player is in the colony, so an empty server spends no tokens.
 - They know their situation from MineColonies itself: job, hunger, housing, happiness, time of day, weather, who is around, raids, construction, new citizens.
 - Memory of recent lines and events, plus long-term facts like "Max promised to build me a house". It is stored with the world and goes into your backups.
 - Mood sets the tone: a hungry colonist grumbles, a homeless one complains, one who just survived a raid is shaken.
@@ -46,7 +46,7 @@ Versions are pinned exactly. MineColonies addons break across MineColonies build
 | BlockUI | 1.0.209 |
 | Domum Ornamentum | 1.0.236 |
 
-The mod is needed on both the server and the client.
+The mod is needed on the server and on every player's client. A client without it can still join and talk to colonists through `/lc` commands, without the keys, the chat switch, speech bubbles or the settings screen.
 
 ## Installation
 
@@ -70,7 +70,7 @@ Or edit the file by hand: open `config/livingcolonists-common.toml` (it appears 
 | `useTools` | `true` | let colonists look things up and take orders through function calling; turn off if your provider doesn't support tools |
 | `maxTokens` | `2000` | token limit per request, including the model's thinking |
 | `temperature` | `1.0` | higher is more varied |
-| `extraParams` | `{}` | extra JSON merged into each request, e.g. `{"thinking":{"type":"disabled"}}` for DeepSeek |
+| `extraParams` | `{}` | extra JSON merged into each request, e.g. `{"top_p": 0.9}`; better not to turn off the model's thinking: without it colonists make up facts |
 
 The `[llm.fallback]` section sets up a second API used when the main one fails even after retries, for example a local model: `enabled`, `baseUrl`, `model`, `apiKey` (may stay empty for local models), `apiKeyEnv`.
 
@@ -96,7 +96,7 @@ Every colonist gets an archetype (grumbler, chatterbox, quiet one, gossip, workh
 
 Archetypes live in `config/livingcolonists/archetypes/` as JSON files: `name`, `prompt` (how the colonist behaves), `weight` (how common), `talkativeness` (0 to 1) and `contrariness` (0 to 1, how often they disagree) and `skills` (skill name to affinity, e.g. `{"Strength": 0.6, "Intelligence": -0.4}`). Add a file to add an archetype, delete one to remove it; delete the folder to get the defaults back.
 
-Colonists also know their situation from MineColonies: their job and what work they can't do, home, hunger and food, health and sickness, happiness and its causes, what their workplace waits for, the weather, the colony, a raid, and how their family and coworkers are doing. The `perception` level sets how much of it they know. From the `default` level on, colonists can also look things up while answering: facts about another colonist, who fits a profession best by its skills, and an overview of the colony. Ask "who would make a good builder?" and the answer comes from the real skills, not a guess.
+Colonists also know their situation from MineColonies: their job and what work they can't do, home, hunger and food, health and sickness, happiness and its causes, what their workplace waits for, the weather, the colony, a raid, and how their family and coworkers are doing. The `perception` level sets how much of it they know. Unless `perception` is `off`, colonists can also look things up while answering: facts about another colonist, who fits a profession best by its skills, and an overview of the colony. Ask "who would make a good builder?" and the answer comes from the real skills, not a guess.
 
 Colonists remember. Recent lines of each private talk and of the colony chat go back to the model as they are. Once a conversation goes quiet, the character model writes down what the colonists who took part would remember a few days later: a promise, a plan, news, how someone felt. Every fact gets an importance; trivia fades in a day or two, big news lasts much longer. The `memory` level sets how many facts a colonist keeps and for how long. Now and then a colonist passes on, as gossip, something another player told them in private; what you asked to keep secret, they keep.
 
@@ -191,7 +191,7 @@ This mod stands on other people's work:
 
 - **[MineColonies](https://github.com/ldtteam/minecolonies)** by LDT Team — the colony simulator this is an addon for, along with [Structurize](https://github.com/ldtteam/Structurize), [BlockUI](https://github.com/ldtteam/BlockUI) and [Domum Ornamentum](https://github.com/ldtteam/Domum-Ornamentum).
 - **[Colonist Errands](https://github.com/Lovkar-Squid/colonist-errands)** by Lovkar (GPL-3.0-or-later) — the main code donor: errands through the colony's systems, reading citizen state, promises and relations with players. Ported files keep their original copyright notice and say where they came from.
-- **[Talking Colonists](https://github.com/talking-colonists/talking-colonists)** by sshcrack ([CurseForge](https://www.curseforge.com/minecraft/mc-mods/talking-colonists-minecolonies-addon)) — voice conversations with colonists through Gemini Live. Ideas borrowed from it: a colonist stopping and turning to you when you talk, the budget for unprompted lines, rumors spreading through the colony, complaints that escalate. Its code is under the CoFH "Don't Be a Jerk" license, so nothing is copied verbatim; borrowed ideas link back to their source.
+- **[Talking Colonists](https://github.com/talking-colonists/talking-colonists)** by sshcrack ([CurseForge](https://www.curseforge.com/minecraft/mc-mods/talking-colonists-minecolonies-addon)) — voice conversations with colonists through Gemini Live. Ideas borrowed from it: the budget for unprompted lines, rumors spreading through the colony, complaints that escalate. Its code is under the CoFH "Don't Be a Jerk" license, so nothing is copied verbatim; borrowed ideas link back to their source.
 - **[ColonyChat](https://www.curseforge.com/minecraft/mc-mods/colonychat)** — an earlier take on LLM chat for MineColonies (Forge 1.20.1). Ideas and lessons learned only, no code.
 - **[NeoForge](https://neoforged.net)** and its [ModDevGradle MDK](https://github.com/NeoForgeMDKs/MDK-1.21.1-ModDevGradle), which the project skeleton comes from.
 
