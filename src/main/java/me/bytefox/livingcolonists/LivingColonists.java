@@ -29,9 +29,12 @@ import me.bytefox.livingcolonists.network.ConversationAction;
 import me.bytefox.livingcolonists.network.ConversationState;
 import me.bytefox.livingcolonists.network.SettingsRequest;
 import me.bytefox.livingcolonists.network.SettingsState;
+import me.bytefox.livingcolonists.network.ChatTyping;
+import me.bytefox.livingcolonists.network.SpeechBubble;
 import me.bytefox.livingcolonists.network.TypingState;
 import me.bytefox.livingcolonists.settings.SettingsHandler;
 import me.bytefox.livingcolonists.settings.SettingsService;
+import me.bytefox.livingcolonists.talk.Bubbles;
 import me.bytefox.livingcolonists.talk.Conversations;
 import me.bytefox.livingcolonists.talk.InitiativeData;
 import me.bytefox.livingcolonists.talk.TalkCommand;
@@ -209,6 +212,14 @@ public final class LivingColonists {
                 (payload, context) -> me.bytefox.livingcolonists.client.settings.ClientSettings.apply(payload));
         registrar.playToClient(TypingState.TYPE, TypingState.STREAM_CODEC,
                 (payload, context) -> me.bytefox.livingcolonists.client.TypingIndicator.apply(payload));
+        registrar.playToClient(SpeechBubble.TYPE, SpeechBubble.STREAM_CODEC,
+                (payload, context) -> me.bytefox.livingcolonists.client.SpeechBubbles.apply(payload));
+        registrar.playToServer(ChatTyping.TYPE, ChatTyping.STREAM_CODEC, (payload, context) -> {
+            ServerPlayer player = (ServerPlayer) context.player();
+            if (Config.PLAYER_BUBBLES.get()) {
+                Bubbles.typing(player, payload.typing(), player.server.getPlayerList().getPlayers());
+            }
+        });
     }
 
     /**
@@ -218,6 +229,10 @@ public final class LivingColonists {
     private void onServerChat(ServerChatEvent event) {
         ServerPlayer player = event.getPlayer();
         if (!conversations.wantsChat(player)) {
+            if (Config.PLAYER_BUBBLES.get()) {
+                String said = event.getRawText();
+                player.server.execute(() -> Bubbles.line(player, said, player.server.getPlayerList().getPlayers()));
+            }
             return;
         }
         event.setCanceled(true);

@@ -456,7 +456,8 @@ public final class ColonyThreads {
             rumor = memory.rumor(citizen, null, random);
             rumor.ifPresent(fact -> values.put("initiative", values.get("initiative") + " " + Prompts.gossip(fact.text())));
         }
-        if (opening == null) {
+        // Nobody opens a talk with a bare reaction or a bare question: the dice shape only the lines after.
+        if (opening == null && chatter == null) {
             String form = Prompts.form(random, answeringPlayer);
             if (!form.isEmpty()) {
                 values.put("turn", values.get("turn") + " " + form);

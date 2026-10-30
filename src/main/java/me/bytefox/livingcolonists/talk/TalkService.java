@@ -98,7 +98,7 @@ public final class TalkService {
     private final Map<UUID, Long> lastMessage = new HashMap<>();
     private final ColonyThreads threads;
     private final ColonyEvents events;
-    private final SpeechOutput output = new ChatSpeechOutput();
+    private final SpeechOutput output = new BubbleSpeechOutput(new ChatSpeechOutput());
     private final Typing typing = new Typing();
     private final Random random = new Random();
 

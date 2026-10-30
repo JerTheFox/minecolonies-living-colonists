@@ -1,5 +1,6 @@
 package me.bytefox.livingcolonists.talk;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -7,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import me.bytefox.livingcolonists.Config;
 import me.bytefox.livingcolonists.network.TypingState;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -73,11 +75,18 @@ public final class Typing {
         Speaker speaker = entry.speaker();
         TypingState state = new TypingState(TalkService.key(speaker.colonyId(), speaker.citizenId()), speaker.name(),
                 speaker.color() == null ? -1 : speaker.color().getId(), on);
+        List<ServerPlayer> players = new ArrayList<>();
         for (UUID id : entry.audience()) {
             ServerPlayer player = server.getPlayerList().getPlayer(id);
-            if (player != null && player.connection.hasChannel(TypingState.TYPE)) {
-                PacketDistributor.sendToPlayer(player, state);
+            if (player != null) {
+                players.add(player);
+                if (player.connection.hasChannel(TypingState.TYPE)) {
+                    PacketDistributor.sendToPlayer(player, state);
+                }
             }
+        }
+        if (Config.SPEECH_BUBBLES.get()) {
+            Bubbles.colonist(speaker.colonyId(), speaker.citizenId()).ifPresent(entity -> Bubbles.typing(entity, on, players));
         }
     }
 }

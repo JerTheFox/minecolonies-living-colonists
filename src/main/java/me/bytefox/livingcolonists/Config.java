@@ -170,6 +170,23 @@ public final class Config {
             "profile: as the profile says. off: never. low: about every half hour. default: about every 12",
             "minutes. high: about every 6 minutes.");
 
+    public static final ModConfigSpec.BooleanValue SPEECH_BUBBLES = BUILDER
+            .translation("livingcolonists.configuration.speechBubbles")
+            .comment("On: colonists' lines also show as speech bubbles over their heads, and dots while they type, for",
+                    "players with the mod; the chat line stays. Private lines bubble only for their player. Default on.")
+            .define("speechBubbles", true);
+
+    public static final ModConfigSpec.BooleanValue PLAYER_BUBBLES = BUILDER
+            .translation("livingcolonists.configuration.playerBubbles")
+            .comment("On: players get speech bubbles too, for their chat and colony chat lines, and dots while they type.",
+                    "Only players with the mod see bubbles. Default off.")
+            .define("playerBubbles", false);
+
+    public static final ModConfigSpec.IntValue BUBBLE_RANGE = BUILDER
+            .translation("livingcolonists.configuration.bubbleRange")
+            .comment("How far away, in blocks, speech bubbles are seen. From 8 to 64, default 24.")
+            .defineInRange("bubbleRange", 24, 8, 64);
+
     public static final ModConfigSpec.IntValue COOLDOWN_SECONDS = BUILDER
             .translation("livingcolonists.configuration.cooldownSeconds")
             .comment("Shortest time between two messages of one player to colonists, in seconds; guards against spam. 0",

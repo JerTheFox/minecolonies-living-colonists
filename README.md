@@ -8,7 +8,7 @@ A [MineColonies](https://github.com/ldtteam/minecolonies) addon for NeoForge tha
 
 ## What it should feel like
 
-Colonists write in chat just like players do; hover over a name to see the profession and colony. You walk into your colony and see lines in chat (and, with [Comics Bubbles Chat](https://modrinth.com/mod/comics-bubbles-chat), speech bubbles over their heads):
+Colonists write in chat just like players do; hover over a name to see the profession and colony. You walk into your colony and see lines in chat and speech bubbles over their heads:
 
 ```
 <John Brown> flour for two more days. Is anyone actually working the fields?
@@ -25,7 +25,7 @@ You look at the baker and press a key: the chat opens, and a line above the inpu
 - Mood sets the tone: a hungry colonist grumbles, a homeless one complains, one who just survived a raid is shaken.
 - Errands go through the colony's own systems: fetching, delivering, crafting requests and more, based on [Colonist Errands](https://github.com/Lovkar-Squid/colonist-errands).
 - Talk to the whole colony or to one colonist privately; colonists understand names and professions in any language.
-- Speech bubbles via Comics Bubbles Chat when it's installed, plain chat otherwise.
+- Speech bubbles over colonists' heads: white pixel comic bubbles, faint behind walls nearby, with bouncing dots while they type; optionally over players too. Players without the mod see the plain chat.
 - Every colonist gets a personality: an archetype picked mostly from their MineColonies skills, with a dash of chance, and a short background written once by the model. Archetypes and prompts are plain files you can edit, add or delete.
 - Memory profiles from *minimal* (just orders and answers, cheapest) to *immersive* (colonists remember much more), with old memories fading out.
 - Only colony members (owner, officers, friends) can talk to colonists; only owners and officers can give orders. Can be turned off.
@@ -45,7 +45,6 @@ Versions are pinned exactly. MineColonies addons break across MineColonies build
 | Structurize | 1.0.835 |
 | BlockUI | 1.0.209 |
 | Domum Ornamentum | 1.0.236 |
-| Comics Bubbles Chat | 1.4.0, optional |
 
 The mod is needed on both the server and the client.
 
@@ -81,6 +80,9 @@ The `[behaviour]` section sets how colonists behave:
 |---|---|---|
 | `profile` | `DEFAULT` | `MINIMAL` (the colony run by chat: plain answers, look-ups and orders, no character, memory or chatter; cheapest), `LIGHT`, `DEFAULT` or `IMMERSIVE` (colonists remember much more) |
 | `personality`, `perception`, `memory`, `conversation`, `initiative` | `profile` | override one module: `off`, `low`, `default` or `high`; `conversation` sets how long colony chats run on their own, `initiative` how often colonists write to you first |
+| `speechBubbles` | `true` | colonists' lines also as speech bubbles over their heads, with dots while they type |
+| `playerBubbles` | `false` | speech bubbles and typing dots over players too |
+| `bubbleRange` | `24` | how far away bubbles are seen, in blocks |
 | `cooldownSeconds` | `3` | shortest time between one player's messages to colonists |
 | `playerNames` | empty | what colonists call players instead of nicknames, e.g. `["Steve42=Steven,Steve,Stevie"]`, most common form first |
 | `colonyChatAnywhere` | `false` | colony members read and write their colony's chat from anywhere, not only inside its borders |
@@ -189,7 +191,6 @@ This mod stands on other people's work:
 - **[Colonist Errands](https://github.com/Lovkar-Squid/colonist-errands)** by Lovkar (GPL-3.0-or-later) — the main code donor: errands through the colony's systems, reading citizen state, promises and relations with players. Ported files keep their original copyright notice and say where they came from.
 - **[Talking Colonists](https://github.com/talking-colonists/talking-colonists)** by sshcrack ([CurseForge](https://www.curseforge.com/minecraft/mc-mods/talking-colonists-minecolonies-addon)) — voice conversations with colonists through Gemini Live. Ideas borrowed from it: a colonist stopping and turning to you when you talk, the budget for unprompted lines, rumors spreading through the colony, complaints that escalate. Its code is under the CoFH "Don't Be a Jerk" license, so nothing is copied verbatim; borrowed ideas link back to their source.
 - **[ColonyChat](https://www.curseforge.com/minecraft/mc-mods/colonychat)** — an earlier take on LLM chat for MineColonies (Forge 1.20.1). Ideas and lessons learned only, no code.
-- **[Comics Bubbles Chat](https://github.com/Thomas7520/ComicsBubblesChat)** by Thomas7520 ([Modrinth](https://modrinth.com/mod/comics-bubbles-chat)) — planned optional integration for speech bubbles. None of its code or assets are included.
 - **[NeoForge](https://neoforged.net)** and its [ModDevGradle MDK](https://github.com/NeoForgeMDKs/MDK-1.21.1-ModDevGradle), which the project skeleton comes from.
 
 ## License
