@@ -17,6 +17,7 @@ import com.minecolonies.api.tileentities.AbstractTileEntityRack;
 import com.minecolonies.core.colony.eventhooks.citizenEvents.CitizenDiedEvent;
 import me.bytefox.livingcolonists.llm.ToolSpec;
 import me.bytefox.livingcolonists.perception.ColonistFacts;
+import me.bytefox.livingcolonists.perception.ItemNames;
 import me.bytefox.livingcolonists.perception.PerceptionService;
 import me.bytefox.livingcolonists.talk.Addressing;
 import net.minecraft.core.BlockPos;
@@ -128,7 +129,7 @@ public final class ColonyLookups {
         JsonArray orders = new JsonArray();
         for (IServerWorkOrder order : colony.getWorkManager().getWorkOrders().values()) {
             JsonObject entry = new JsonObject();
-            entry.addProperty("what", order.getDisplayName().getString());
+            entry.addProperty("what", ItemNames.named(order.getDisplayName()));
             entry.addProperty("kind", order.getWorkOrderType().name().toLowerCase());
             entry.addProperty("to_level", order.getTargetLevel());
             entry.addProperty("builder", builderOf(colony, order));
@@ -231,7 +232,7 @@ public final class ColonyLookups {
             case ItemMatch.Result.Found<IBuilding> found -> {
                 BlockPos at = found.value().getPosition();
                 JsonObject reply = ok();
-                reply.addProperty("building", Component.translatable(found.value().getBuildingType().getTranslationKey()).getString());
+                reply.addProperty("building", ItemNames.named(Component.translatable(found.value().getBuildingType().getTranslationKey())));
                 reply.addProperty("where", Compass.way(at.getX() - from.getX(), at.getZ() - from.getZ()));
                 yield reply;
             }

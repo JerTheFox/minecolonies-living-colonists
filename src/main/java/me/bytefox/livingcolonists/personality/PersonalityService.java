@@ -95,6 +95,8 @@ public final class PersonalityService {
         boolean grewUp = personality.child() && !citizen.isChild() && !personality.bio().isEmpty();
         if (wantsBio && (personality.bio().isEmpty() || grewUp)) {
             writeBio(citizen, server, false);
+        } else if (wantsBio && personality.voice().isEmpty()) {
+            writeVoice(citizen, server);
         }
         return Optional.of(personality);
     }
@@ -111,6 +113,11 @@ public final class PersonalityService {
             if (!personality.bio().isEmpty() && level != Level.LOW) {
                 values.put("background", Templates.render(prompts.get(PromptLibrary.BACKGROUND),
                         Map.of("bio", personality.bio())));
+            }
+            if (!personality.voice().isEmpty() && level != Level.LOW) {
+                // An archetype's description makes every grumbler sound alike; a few lines of their own set them apart.
+                values.put("character", values.get("character") + "\nHow you sound, for your manner only (never repeat "
+                        + "these lines or their words): " + String.join(" / ", personality.voice().split("\n")));
             }
         });
         return values;
@@ -169,6 +176,33 @@ public final class PersonalityService {
                     }
                 }));
         return true;
+    }
+
+    /** Asks the character model for a few lines in the colonist's voice, from their background. */
+    private void writeVoice(ICitizenData citizen, MinecraftServer server) {
+        String key = key(citizen) + ":voice";
+        Personality personality = data == null ? null : data.get(key(citizen));
+        Optional<LlmSettings> settings = Config.llmSettings(ModelRole.CHARACTER);
+        if (personality == null || personality.bio().isEmpty() || settings.isEmpty() || !writing.add(key)) {
+            return;
+        }
+        Map<String, String> values = bioValues(citizen, personality, citizen.isChild());
+        values.put("bio", personality.bio());
+        String prompt = Templates.render(prompts.get(PromptLibrary.VOICE), values);
+        String citizenKey = key(citizen);
+        String bio = personality.bio();
+        client.complete(settings.get().withMinTokens(BIO_TOKENS), List.of(ChatMessage.user(prompt)))
+                .thenAccept(result -> server.execute(() -> {
+                    writing.remove(key);
+                    if (data == null || !(result instanceof ChatResult.Reply reply)) {
+                        return;
+                    }
+                    Personality current = data.get(citizenKey);
+                    String voice = Prompts.voiceLines(reply.text());
+                    if (current != null && current.bio().equals(bio) && !voice.isEmpty()) {
+                        data.put(citizenKey, current.withVoice(voice));
+                    }
+                }));
     }
 
     private Map<String, String> bioValues(ICitizenData citizen, Personality personality, boolean child) {

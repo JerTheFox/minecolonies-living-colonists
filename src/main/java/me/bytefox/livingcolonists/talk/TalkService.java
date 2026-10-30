@@ -111,6 +111,10 @@ public final class TalkService {
     /** Private replies waiting for their typing pause (see {@link LinePacing}). Server thread only. */
     private final PriorityQueue<PendingLine> pending = new PriorityQueue<>(Comparator.comparingLong(PendingLine::tick));
 
+    /** Private lines each player got from colonists lately, newest last: what a colonist's own line mustn't repeat. */
+    private final Map<UUID, java.util.Deque<String>> heard = new HashMap<>();
+    private static final int HEARD_LINES = 8;
+
     private record PendingLine(long tick, ResourceKey<Level> dimension, Speaker speaker, UUID playerId, String text) {
     }
 
@@ -176,6 +180,11 @@ public final class TalkService {
             typing.stop(server, line.speaker());
             if (citizen != null && player != null) {
                 output.colonistWhispered(line.speaker(), player, line.text());
+                java.util.Deque<String> lines = heard.computeIfAbsent(player.getUUID(), id -> new java.util.ArrayDeque<>());
+                lines.addLast(line.text());
+                while (lines.size() > HEARD_LINES) {
+                    lines.removeFirst();
+                }
                 errands.afterLine(server, line.speaker().colonyId(), line.speaker().citizenId());
                 memory.rememberPrivate(citizen, player.getUUID(), line.speaker().name(), line.text());
             }
@@ -312,7 +321,8 @@ public final class TalkService {
         ResourceKey<Level> dimension = colony.getDimension();
         long earliest = server.getTickCount() + LinePacing.gap(random);
         typing.start(server, speaker, List.of(player), earliest);
-        generate(citizen, prompt, messages, null, server, result -> {
+        generateFresh(citizen, prompt, messages, null, server, List.copyOf(heard.getOrDefault(playerId, new java.util.ArrayDeque<>())),
+                result -> {
             thinking.remove(key);
             Optional<String> text = lineOf(speaker, result);
             if (text.isEmpty()) {
@@ -407,6 +417,43 @@ public final class TalkService {
      * @param withTools offer the colony functions, if they are enabled
      */
     /** @param asker the player the colonist answers, who may get look-ups and orders; null for none */
+    /**
+     * {@link #generate}, for a line the colonist says on their own (no player to answer, no tools):
+     * a line that goes round in circles ({@link Repeats}) gets one more try, told what was wrong, and
+     * is dropped if it still does. Models told not to repeat themselves still do; code catches it.
+     *
+     * @param recent the latest lines heard where it will be said, newest last
+     */
+    void generateFresh(ICitizenData citizen, String prompt, List<ChatMessage> conversation, UUID asker,
+                       MinecraftServer server, List<String> recent, Consumer<ChatResult> done) {
+        if (asker != null || recent.isEmpty()) {
+            generate(citizen, prompt, conversation, asker, server, done);
+            return;
+        }
+        List<String> names = new ArrayList<>(citizen.getColony().getCitizenManager().getCitizens().stream()
+                .map(ICitizenData::getName).toList());
+        server.getPlayerList().getPlayers().forEach(player -> names.add(playerName(player)));
+        String name = citizen.getName();
+        generate(citizen, prompt, conversation, null, server, result -> {
+            Optional<String> problem = result instanceof ChatResult.Reply reply && !reply.text().isBlank()
+                    ? Repeats.problem(reply.text(), recent, names, true) : Optional.empty();
+            if (problem.isEmpty()) {
+                done.accept(result);
+                return;
+            }
+            LivingColonists.LOGGER.info("{}'s line went round in circles ({}), asking again", name, problem.get());
+            generate(citizen, prompt + "\nYour first try was no good: " + problem.get() + ". Say something different, "
+                    + "on another subject if need be, or answer [silence].", conversation, null, server, second -> {
+                if (second instanceof ChatResult.Reply reply && Repeats.problem(reply.text(), recent, names, true).isPresent()) {
+                    LivingColonists.LOGGER.info("{}'s second try went round in circles too, said nothing", name);
+                    done.accept(new ChatResult.Reply("[silence]", reply.usage()));
+                    return;
+                }
+                done.accept(second);
+            });
+        });
+    }
+
     void generate(ICitizenData citizen, String prompt, List<ChatMessage> conversation, UUID asker,
                   MinecraftServer server, Consumer<ChatResult> done) {
         Optional<LlmSettings> settings = Config.llmSettings(ModelRole.CHAT);

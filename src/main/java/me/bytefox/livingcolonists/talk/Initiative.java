@@ -266,6 +266,25 @@ final class Initiative {
                 topics.add(new InitiativePolicy.Topic(InitiativePolicy.Kind.NEWS, key, fact.text(), 0));
             }
         });
+        // A personal goal comes up now and then, and once, gladly, when it came true; never in ordinary replies.
+        Goals.current(data, citizen, random).ifPresent(goal -> {
+            if (goal.doneAt() > 0 && !goal.told()) {
+                topics.add(new InitiativePolicy.Topic(InitiativePolicy.Kind.GOAL, "goal:done", Goals.done(goal, citizen), 0));
+            } else if (goal.doneAt() == 0 && fresh(prefix + "goal", gameTime)) {
+                topics.add(new InitiativePolicy.Topic(InitiativePolicy.Kind.SMALL_TALK, "goal",
+                        "something you hope for: " + Goals.hope(goal, citizen), 0));
+            }
+        });
+        // Something the colonist really did today, as code saw it: a true thing to talk about.
+        List<me.bytefox.livingcolonists.perception.DiaryBook.Entry> day = perception.diary(citizen, 3);
+        if (!day.isEmpty()) {
+            String doing = day.get(random.nextInt(day.size())).doing();
+            String key = "day:" + Integer.toHexString(doing.hashCode());
+            if (fresh(prefix + key, gameTime)) {
+                topics.add(new InitiativePolicy.Topic(InitiativePolicy.Kind.SMALL_TALK, key,
+                        "something from your day: you " + doing, 0));
+            }
+        }
         List<String> fresh = Prompts.TOPICS.stream().filter(t -> fresh(prefix + "topic:" + t, gameTime)).toList();
         if (!fresh.isEmpty()) {
             String chosen = fresh.get(random.nextInt(fresh.size()));
@@ -321,6 +340,8 @@ final class Initiative {
             case COMPLAINT -> InitiativePolicy.complaint(topic.text(), topic.raised());
             case FOLLOW_UP -> "to ask, briefly, how something they told you turned out: " + topic.text() + ".";
             case NEWS -> "to pass on a bit of news you heard, as hearsay: " + topic.text() + ".";
+            case GOAL -> "to tell them, glad, that " + topic.text() + ". If they had a hand in it, thank them in "
+                    + "your own way.";
             case SMALL_TALK -> "for no particular reason, to chat a little about " + topic.text() + "."
                     + (longApart ? " You haven't talked with them for a while." : "");
         };
@@ -331,6 +352,9 @@ final class Initiative {
         String prefix = colonistKey(citizen, player) + ":";
         lastByColonist.put(colonistKey(citizen, player), now);
         lastSpoke.put(citizenKey(citizen), now);
+        if (topic.kind() == InitiativePolicy.Kind.GOAL) {
+            Goals.told(data, citizen);
+        }
         if (topic.kind() == InitiativePolicy.Kind.COMPLAINT) {
             lastComplained.put(citizenKey(citizen), now);
             raisedToPlayer.put(playerKey(citizen, player, topic.key()), now);

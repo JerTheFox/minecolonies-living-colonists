@@ -71,7 +71,7 @@ public final class Couriers {
 
         String describe() {
             return count + " " + ItemNames.of(new ItemStack(item)) + " for "
-                    + (target == null ? playerName : "the " + Component.translatable(target.getBuildingType().getTranslationKey()).getString())
+                    + (target == null ? playerName : "the " + ItemNames.named(Component.translatable(target.getBuildingType().getTranslationKey())))
                     + (stage == Stage.WAITING ? " (waiting for a courier)" : " (" + courier.getName() + " is on it)");
         }
     }

@@ -16,6 +16,7 @@ import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.buildings.IBuilding;
 import me.bytefox.livingcolonists.llm.ToolSpec;
+import me.bytefox.livingcolonists.perception.ItemNames;
 import me.bytefox.livingcolonists.talk.Addressing;
 import me.bytefox.livingcolonists.talk.JobNames;
 import net.minecraft.core.BlockPos;
@@ -128,7 +129,7 @@ public final class WalkErrands {
             return Errand.notFound("single building in the colony", words);
         }
         return self(walks, context, Walks.Kind.TO_POS, building.getPosition(), 5, 1,
-                "to the " + Component.translatable(building.getBuildingType().getTranslationKey()).getString());
+                "to the " + ItemNames.named(Component.translatable(building.getBuildingType().getTranslationKey())));
     }
 
     private static ICitizenData colonist(IColony colony, String name) {
@@ -212,7 +213,7 @@ public final class WalkErrands {
                 return Errand.error("There is nobody and no single building called \"" + to + "\" to lead the player to.");
             }
             target = building.getPosition();
-            what = "to the " + Component.translatable(building.getBuildingType().getTranslationKey()).getString();
+            what = "to the " + ItemNames.named(Component.translatable(building.getBuildingType().getTranslationKey()));
         }
         return self(walks, context, Walks.Kind.LEAD, target, 5, 0, what);
     }

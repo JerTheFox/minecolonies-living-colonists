@@ -47,7 +47,7 @@ public final class PersonalityData extends SavedData {
         for (String key : tag.getAllKeys()) {
             CompoundTag entry = tag.getCompound(key);
             data.personalities.put(key, new Personality(entry.getString("archetype"), entry.getString("bio"),
-                    entry.getBoolean("child")));
+                    entry.getBoolean("child"), entry.getString("voice")));
         }
         return data;
     }
@@ -59,6 +59,7 @@ public final class PersonalityData extends SavedData {
             entry.putString("archetype", personality.archetype());
             entry.putString("bio", personality.bio());
             entry.putBoolean("child", personality.child());
+            entry.putString("voice", personality.voice());
             tag.put(key, entry);
         });
         return tag;

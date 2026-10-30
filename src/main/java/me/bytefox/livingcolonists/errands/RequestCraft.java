@@ -86,7 +86,7 @@ public final class RequestCraft implements Errand {
                     .noneMatch(module -> module.getFirstRecipe(one) != null)) {
                 continue;
             }
-            String name = Component.translatable(building.getBuildingType().getTranslationKey()).getString();
+            String name = ItemNames.named(Component.translatable(building.getBuildingType().getTranslationKey()));
             var workers = building.getAllAssignedCitizen();
             if (workers.isEmpty()) {
                 idle = idle == null ? name : idle;

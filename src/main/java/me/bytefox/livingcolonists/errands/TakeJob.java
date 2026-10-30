@@ -21,6 +21,7 @@ import com.minecolonies.api.colony.buildings.HiringMode;
 import com.minecolonies.api.colony.buildings.IBuilding;
 import com.minecolonies.core.colony.buildings.modules.WorkerBuildingModule;
 import me.bytefox.livingcolonists.llm.ToolSpec;
+import me.bytefox.livingcolonists.perception.ItemNames;
 import me.bytefox.livingcolonists.talk.JobNames;
 import net.minecraft.network.chat.Component;
 
@@ -146,7 +147,7 @@ public final class TakeJob implements Errand {
     }
 
     private static String describe(Position position) {
-        return "the " + Component.translatable(position.building().getBuildingType().getTranslationKey()).getString()
+        return "the " + ItemNames.named(Component.translatable(position.building().getBuildingType().getTranslationKey()))
                 + " (" + position.module().getJobDisplayName() + ", " + position.module().getAssignedCitizen().size()
                 + " of " + position.module().getModuleMax() + " positions taken)";
     }

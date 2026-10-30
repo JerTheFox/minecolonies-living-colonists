@@ -10,6 +10,9 @@ import java.util.TreeMap;
 import me.bytefox.livingcolonists.network.ItemNamesReply;
 import me.bytefox.livingcolonists.network.ItemNamesRequest;
 import me.bytefox.livingcolonists.talk.Languages;
+import me.bytefox.livingcolonists.talk.Translations;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -58,6 +61,25 @@ public final class ItemNames {
                 if (wanted.size() < MAX_WANTED) {
                     wanted.add(key);
                 }
+            }
+        }
+        return ItemNameText.withTranslations(english, known);
+    }
+
+    /**
+     * A MineColonies name (a building, a work order) with its names in the players' other languages.
+     * Those come from MineColonies' own translations in its jar, which the server has.
+     */
+    public static String named(Component name) {
+        String english = name.getString();
+        if (!(name.getContents() instanceof TranslatableContents translatable)) {
+            return english;
+        }
+        Map<String, String> known = new TreeMap<>();
+        for (String locale : locales) {
+            String local = Translations.of("minecolonies", locale).get(translatable.getKey());
+            if (local != null && !local.isBlank()) {
+                known.put(Languages.ofLocale(locale), local);
             }
         }
         return ItemNameText.withTranslations(english, known);

@@ -1,0 +1,6 @@
+{name} is a {job} in a Minecraft MineColonies colony.
+Character: {archetype}
+Background: {bio}
+Write four short lines {name} might say in the colony's chat on an ordinary day, each on a line of its own: one about work, one about a neighbour, one about food or the weather, one in reply to something someone said.
+In English, each under twelve words, in {name}'s own manner of speaking: their word choice, rhythm and temper. Ordinary things only: no events, no names, no catchphrases, nothing they would say the same way twice.
+Plain lines only: no quotes, no numbers, no names in front.

@@ -110,7 +110,8 @@ public final class InitiativePolicy {
     /** A colonist who complained to anyone within this long leans toward other topics. */
     public static final long COMPLAINED_LATELY = 2 * 60 * MINUTE;
 
-    public enum Kind { COMPLAINT, FOLLOW_UP, NEWS, SMALL_TALK }
+    /** GOAL: something the colonist hoped for came true. */
+    public enum Kind { COMPLAINT, FOLLOW_UP, NEWS, SMALL_TALK, GOAL }
 
     /**
      * Something a colonist could bring up.
@@ -141,6 +142,7 @@ public final class InitiativePolicy {
                 case FOLLOW_UP -> 2;
                 case NEWS -> 1;
                 case SMALL_TALK -> 1;
+                case GOAL -> 3;
             };
             if (topic.kind() != Kind.COMPLAINT) {
                 weight *= rapport <= PlayerNames.COLD ? 0.2 : rapport >= PlayerNames.CLOSE ? 1.5 : 1;
@@ -159,6 +161,24 @@ public final class InitiativePolicy {
             }
         }
         return Optional.of(topics.get(topics.size() - 1));
+    }
+
+    /** What a colonist hopes for, in words: {@code place} names the building for a {@code place:} goal. */
+    public static String goalHope(String kind, int level, String place) {
+        return switch (kind.contains(":") ? "place" : kind) {
+            case "home" -> "a better home: your house grown to level " + level;
+            case "work" -> "your workplace, the " + place + ", improved to level " + level;
+            default -> "the colony getting " + place;
+        };
+    }
+
+    /** The same goal, come true. */
+    public static String goalDone(String kind, int level, String place) {
+        return switch (kind.contains(":") ? "place" : kind) {
+            case "home" -> "your house was improved to level " + level + ", as you had hoped";
+            case "work" -> "your workplace, the " + place + ", was improved to level " + level + ", as you had hoped";
+            default -> "the colony got " + place + ", as you had hoped";
+        };
     }
 
     /** After this many unanswered mentions a colonist gives up on a problem with this player. */

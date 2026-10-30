@@ -159,4 +159,10 @@ class PromptsTest {
         assertEquals("No dots here", Prompts.firstSentences("No dots here", 2));
         assertEquals("v1.5 is out. Yes!", Prompts.firstSentences("v1.5 is out. Yes! Great.", 2));
     }
+
+    @Test
+    void voiceLinesAreCleanedAndCapped() {
+        assertEquals("Boards came crooked.\nBread's dry.", Prompts.voiceLines("1. Boards came crooked.\n- \"Bread's dry.\"\n"));
+        assertEquals(4, Prompts.voiceLines("a1\nb2\nc3\nd4\ne5").split("\n").length);
+    }
 }

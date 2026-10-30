@@ -121,4 +121,25 @@ class InitiativePolicyTest {
         assertTrue(InitiativePolicy.complaint("no home", 3).contains("won't bother"));
         assertEquals(InitiativePolicy.complaint("no home", 3), InitiativePolicy.complaint("no home", 9));
     }
+
+    @Test
+    void aGoalReadsAsAHopeAndThenAsComeTrue() {
+        assertEquals("a better home: your house grown to level 2", InitiativePolicy.goalHope("home", 2, "workplace"));
+        assertEquals("the colony getting a tavern", InitiativePolicy.goalHope("place:tavern", 0, "a tavern"));
+        assertEquals("your workplace, the Bakery, was improved to level 3, as you had hoped",
+                InitiativePolicy.goalDone("work", 3, "Bakery"));
+    }
+
+    @Test
+    void aGoalComeTrueOutweighsSmallTalk() {
+        List<InitiativePolicy.Topic> topics = List.of(
+                new InitiativePolicy.Topic(InitiativePolicy.Kind.GOAL, "goal:done", "the colony got a tavern", 0),
+                new InitiativePolicy.Topic(InitiativePolicy.Kind.SMALL_TALK, "topic:x", "x", 0));
+        Random random = new Random(3);
+        int goal = 0;
+        for (int i = 0; i < 1000; i++) {
+            goal += InitiativePolicy.pick(topics, 0, random).orElseThrow().kind() == InitiativePolicy.Kind.GOAL ? 1 : 0;
+        }
+        assertTrue(goal > 650, String.valueOf(goal));
+    }
 }

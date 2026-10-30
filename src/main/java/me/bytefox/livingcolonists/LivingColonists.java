@@ -125,6 +125,7 @@ public final class LivingColonists {
             talk.tick(event.getServer());
             memory.tick(event.getServer());
             ItemNames.tick(event.getServer());
+            perception.tick(event.getServer());
             bonds.tick(event.getServer());
             if (event.getServer().getTickCount() % GONE_CHECK_INTERVAL == 0) {
                 forget(Citizens::isGone);
@@ -168,6 +169,7 @@ public final class LivingColonists {
             personalities.detach();
             memory.detach();
             ItemNames.clear();
+            perception.clear();
             bonds.detach();
             talk.errands().notes().detach();
             talk.errands().tally().detach();
@@ -183,6 +185,7 @@ public final class LivingColonists {
         talk.forgetInitiative(key);
         memory.forget(key);
         bonds.forget(key);
+        perception.forget(key);
     }
 
     /** A deleted colony's id may go to a new colony: nothing of the old one may carry over. */

@@ -11,6 +11,7 @@ import com.google.gson.JsonObject;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.buildings.IBuilding;
 import me.bytefox.livingcolonists.llm.ToolSpec;
+import me.bytefox.livingcolonists.perception.ItemNames;
 import me.bytefox.livingcolonists.talk.Translations;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -107,7 +108,8 @@ public final class UpgradeBuilding implements Errand {
 
     private static String describe(IBuilding building) {
         BlockPos pos = building.getPosition();
-        return "the " + displayName(building) + " (level " + building.getBuildingLevel() + ", at " + pos.getX() + " "
+        return "the " + ItemNames.named(Component.translatable(building.getBuildingType().getTranslationKey())) + " (level "
+                + building.getBuildingLevel() + ", at " + pos.getX() + " "
                 + pos.getY() + " " + pos.getZ() + ")";
     }
 }

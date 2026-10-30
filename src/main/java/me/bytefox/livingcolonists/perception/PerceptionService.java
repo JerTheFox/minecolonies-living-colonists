@@ -3,6 +3,7 @@ package me.bytefox.livingcolonists.perception;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -10,9 +11,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
+import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.colony.buildings.IBuilding;
 import com.minecolonies.api.colony.requestsystem.manager.IRequestManager;
 import com.minecolonies.api.colony.requestsystem.request.IRequest;
@@ -22,6 +25,7 @@ import com.minecolonies.api.colony.requestsystem.resolver.player.IPlayerRequestR
 import com.minecolonies.api.colony.requestsystem.resolver.retrying.IRetryingRequestResolver;
 import com.minecolonies.api.colony.requestsystem.token.IToken;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
+import com.minecolonies.api.entity.citizen.VisibleCitizenStatus;
 import com.minecolonies.api.entity.citizen.happiness.IHappinessModifier;
 import com.minecolonies.api.util.FoodUtils;
 import com.minecolonies.api.util.Tuple;
@@ -38,6 +42,8 @@ import me.bytefox.livingcolonists.behaviour.Level;
 import me.bytefox.livingcolonists.behaviour.Module;
 import me.bytefox.livingcolonists.talk.Prompts;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 
 /**
  * Collects {@link ColonistFacts} from MineColonies. Server thread only. Every part is read on its
@@ -72,10 +78,98 @@ public final class PerceptionService {
     /** Missing building materials listed at most, the largest shortfalls first. */
     private static final int MAX_MATERIALS = 8;
 
+    /** How often what colonists are doing is noted, in ticks (thirty seconds). */
+    private static final int DIARY_INTERVAL = 600;
+    /** Diary entries shown in a reply prompt. */
+    private static final int DIARY_SHOWN = 3;
+    /** Each colonist's day as code saw it, by {@code colonyId:citizenId}; not saved, a day is short. */
+    private final Map<String, DiaryBook> diaries = new HashMap<>();
+
     /** The {@code {situation}} block for a reply prompt, at the configured perception level. */
     public String situation(ICitizenData citizen) {
         Level level = Config.level(Module.PERCEPTION);
-        return level == Level.OFF ? "" : Situation.render(facts(citizen), level);
+        if (level == Level.OFF) {
+            return "";
+        }
+        String text = Situation.render(facts(citizen), level);
+        List<DiaryBook.Entry> day = diary(citizen, DIARY_SHOWN);
+        // Real things the colonist did, so they have something true to tell instead of making it up.
+        return day.isEmpty() ? text : text + "\nYour day so far, as background (bring it up only if asked or if it fits): "
+                + DiaryBook.text(day) + ".";
+    }
+
+    /** The colonist's latest doings of the last game day, oldest first. */
+    public List<DiaryBook.Entry> diary(ICitizenData citizen, int count) {
+        DiaryBook book = diaries.get(citizen.getColony().getID() + ":" + citizen.getId());
+        return book == null ? List.of() : book.latest(citizen.getColony().getWorld().getGameTime(), count);
+    }
+
+    /** Notes what each loaded colonist is doing now. Server tick. */
+    public void tick(MinecraftServer server) {
+        if (server.getTickCount() % DIARY_INTERVAL != 0) {
+            return;
+        }
+        for (IColony colony : IColonyManager.getInstance().getAllColonies()) {
+            if (colony.getWorld() == null) {
+                continue;
+            }
+            long gameTime = colony.getWorld().getGameTime();
+            long dayTime = colony.getWorld().getDayTime();
+            for (ICitizenData citizen : colony.getCitizenManager().getCitizens()) {
+                if (citizen.getEntity().isEmpty()) {
+                    continue;
+                }
+                String doing;
+                try {
+                    doing = doing(citizen);
+                } catch (RuntimeException e) {
+                    doing = null;
+                }
+                if (doing != null) {
+                    diaries.computeIfAbsent(colony.getID() + ":" + citizen.getId(), key -> new DiaryBook())
+                            .note(gameTime, dayTime, doing);
+                }
+            }
+        }
+    }
+
+    public void forget(Predicate<String> key) {
+        diaries.keySet().removeIf(key);
+    }
+
+    public void clear() {
+        diaries.clear();
+    }
+
+    /** What the colonist is doing, as MineColonies shows it over their head. */
+    private static String doing(ICitizenData citizen) {
+        VisibleCitizenStatus status = citizen.getStatus();
+        IBuilding work = citizen.getWorkBuilding();
+        if (status == VisibleCitizenStatus.WORKING && work != null) {
+            return "worked at the " + ItemNames.named(Component.translatable(work.getBuildingType().getTranslationKey()));
+        }
+        if (status == VisibleCitizenStatus.SLEEP) {
+            return citizen.getHomeBuilding() != null ? "slept at home" : "slept outside, with no bed of your own";
+        }
+        if (status == VisibleCitizenStatus.EAT) {
+            return "had a meal";
+        }
+        if (status == VisibleCitizenStatus.SICK) {
+            return "lay ill";
+        }
+        if (status == VisibleCitizenStatus.BAD_WEATHER) {
+            return "sheltered from the bad weather";
+        }
+        if (status == VisibleCitizenStatus.RAIDED) {
+            return "hid from the raiders";
+        }
+        if (status == VisibleCitizenStatus.MOURNING) {
+            return "mourned someone who died";
+        }
+        if (status == VisibleCitizenStatus.HOUSE) {
+            return "spent some time at home";
+        }
+        return work == null && !citizen.isChild() ? "had no work to do" : null;
     }
 
     public ColonistFacts facts(ICitizenData citizen) {
@@ -333,7 +427,7 @@ public final class PerceptionService {
             return;
         }
         var order = builder.getWorkOrder();
-        String project = order.getDisplayName().getString() + ", level " + order.getTargetLevel();
+        String project = ItemNames.named(order.getDisplayName()) + ", level " + order.getTargetLevel();
         List<Map.Entry<Integer, String>> lacking = new ArrayList<>();
         int onTheWay = 0;
         for (BuildingBuilderResource resource : builder.getNeededResources().values()) {

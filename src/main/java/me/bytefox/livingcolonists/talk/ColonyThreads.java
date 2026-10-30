@@ -66,6 +66,8 @@ public final class ColonyThreads {
     /** Colonists talking among themselves go slower still, so a player can get a word in. */
     private static final double CHATTER_PACE = 3;
     /** The most sentences a line in the colony chat keeps. */
+    /** Colony chat lines a colonist's own line is checked against, so the chat doesn't go round in circles. */
+    private static final int RECENT_LINES = 8;
     private static final int MAX_SENTENCES = 2;
     /** A player who wrote within this many ticks (a minute) is talking with the colony right now. */
     private static final long ACTIVE_TICKS = 60 * 20;
@@ -496,8 +498,9 @@ public final class ColonyThreads {
             }
             values.put("memories", memories);
             String prompt = Templates.render(prompts.get(PromptLibrary.REPLY_COLONY), values);
-            talk.generate(citizen, prompt, List.of(ChatMessage.user(last)), answeringPlayer ? thread.lastPlayer : null,
-                    server, result -> {
+            List<String> recent = lines.stream().skip(Math.max(0, lines.size() - RECENT_LINES)).map(MemoryLine::text).toList();
+            talk.generateFresh(citizen, prompt, List.of(ChatMessage.user(last)), answeringPlayer ? thread.lastPlayer : null,
+                    server, recent, result -> {
                 if (thread.version != version) {
                     return;
                 }

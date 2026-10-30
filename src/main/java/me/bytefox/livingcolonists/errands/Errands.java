@@ -89,6 +89,7 @@ public final class Errands {
         add(new CheckStock(items));
         ColonyLookups.all(perception).forEach(this::add);
         add(new ResearchStatus());
+        add(new Handbook());
         add(new UpgradeBuilding());
         add(new TakeJob());
         add(new RequestCraft(items));

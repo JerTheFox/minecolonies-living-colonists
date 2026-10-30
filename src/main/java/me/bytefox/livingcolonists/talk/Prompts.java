@@ -175,6 +175,21 @@ public final class Prompts {
         return MOODS[1];
     }
 
+    /** The model's sample lines in a colonist's voice: at most four, one per line, without numbers or quotes. */
+    public static String voiceLines(String text) {
+        List<String> lines = new java.util.ArrayList<>();
+        for (String line : text.split("\\R")) {
+            String clean = line.replaceFirst("^\\s*(?:[-*•]|\\d+[.)])\\s*", "").strip();
+            if (clean.length() >= 2 && (clean.startsWith("\"") && clean.endsWith("\"") || clean.startsWith("«") && clean.endsWith("»"))) {
+                clean = clean.substring(1, clean.length() - 1).strip();
+            }
+            if (!clean.isEmpty() && clean.length() <= 120 && lines.size() < 4) {
+                lines.add(clean);
+            }
+        }
+        return String.join("\n", lines);
+    }
+
     /** Whether a reply means the colonist chose to say nothing: "[silence]", or the same in other words. */
     public static boolean isSilence(String text) {
         String bare = text.replaceAll("[\\[\\]().*_\\s]", "").toLowerCase(Locale.ROOT);

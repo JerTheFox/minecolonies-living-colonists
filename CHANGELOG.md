@@ -7,11 +7,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Colonists' day as it really went: the mod notes what each colonist did (worked, slept at home or outside, ate, sheltered, hid from a raid, had no work), which they can talk about and bring up on their own.
+- Personal goals: each colonist hopes for one thing that can come true (their house or workplace a level up, the colony getting a hospital, tavern, restaurant, library, university or school); mentioned now and then, not in ordinary replies, and told gladly once it comes true.
+- A voice of their own: a few sample lines written once from each colonist's background (`voice.txt`), so two grumblers don't sound alike.
+- A handbook of MineColonies' mechanics (food, storage, requests, building, housing, jobs, happiness, sickness, research, defence, growth) that colonists look up (`colony_how`) instead of guessing how the colony works.
 - Optional embeddings (`[embeddings]` in the config, OpenRouter with `baai/bge-m3` by default): with a key, colonists recall the remembered facts a talk touches by meaning, in any language, not only by the words in common. Vectors are kept in the server's memory, not in the world.
 
 ### Changed
 
 - The mod is now needed on every player's client too: a client without it can't join (the game says what is missing). The commands `/lc talk` and `/lc mode`, kept for clients without the mod, are gone; `/lc yes`, `/lc no`, `/lc undo` and `/lc lock` stay.
+- A colonist's own line that says again what was said lately, or comes back once more to something going round (a knee, nowhere to sleep), is asked for again, and dropped if it still does.
+- Building names come in the players' languages too, from MineColonies' own translations.
 - Colonists are told the names of the items they talk about in the players' languages, which the players' clients supply (a dedicated server knows only the English names of vanilla items), so the model no longer makes up its own translations.
 
 - With a shader pack (Iris), speech bubbles are drawn on the screen over the speaker's head, so the shaders no longer dim or hide them.
