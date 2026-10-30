@@ -32,6 +32,7 @@ import me.bytefox.livingcolonists.Citizens;
 import me.bytefox.livingcolonists.LivingColonists;
 import me.bytefox.livingcolonists.memory.Digests;
 import me.bytefox.livingcolonists.memory.PlayerMarks;
+import me.bytefox.livingcolonists.perception.ItemNames;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -201,7 +202,8 @@ public final class BondsService {
                 }
                 IRequest<?> asked = request(citizen.getColony(), request);
                 String what = asked == null ? "what they asked for"
-                        : Bonds.requestedThing(asked.getShortDisplayString().getString());
+                        : Bonds.requestedThing(asked.getDisplayStacks().isEmpty() ? asked.getShortDisplayString().getString()
+                        : ItemNames.in(asked.getShortDisplayString().getString(), asked.getDisplayStacks().get(0)));
                 String text = PlayerMarks.mark(player.getUUID(), playerName, playerName) + " promised to bring "
                         + citizen.getName() + " " + what + ".";
                 list.add(new Promise(data.nextId++, player.getUUID(), playerName, text, worth(asked), Promise.About.SUPPLY, now,

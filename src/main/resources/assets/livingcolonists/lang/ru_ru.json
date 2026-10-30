@@ -22,7 +22,6 @@
   "livingcolonists.indicator.partner": "→ %s (%s) ✕",
 
   "livingcolonists.chat.click_to_answer": "Нажмите, чтобы поговорить лично",
-  "livingcolonists.client.no_server_mod": "На сервере нет Living Colonists.",
   "livingcolonists.job.unemployed": "Безработный",
 
   "livingcolonists.debug.stats.empty": "Запросов к модели ещё не было.",

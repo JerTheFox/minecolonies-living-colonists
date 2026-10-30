@@ -11,6 +11,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- The mod is now needed on every player's client too: a client without it can't join (the game says what is missing). The commands `/lc talk` and `/lc mode`, kept for clients without the mod, are gone; `/lc yes`, `/lc no`, `/lc undo` and `/lc lock` stay.
+- Colonists are told the names of the items they talk about in the players' languages, which the players' clients supply (a dedicated server knows only the English names of vanilla items), so the model no longer makes up its own translations.
+
 - With a shader pack (Iris), speech bubbles are drawn on the screen over the speaker's head, so the shaders no longer dim or hide them.
 - Nobody joins in right after a look-up or an order, and colonists don't argue with facts from the colony's records.
 - One homeless colonist telling a player is enough for a while: others don't raise the same problem to them in turn, and unhappiness about having no home no longer counts as a second complaint.

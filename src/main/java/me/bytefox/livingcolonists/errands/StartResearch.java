@@ -17,6 +17,7 @@ import com.minecolonies.api.research.IGlobalResearchTree;
 import com.minecolonies.api.research.ILocalResearchTree;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingUniversity;
 import me.bytefox.livingcolonists.llm.ToolSpec;
+import me.bytefox.livingcolonists.perception.ItemNames;
 import me.bytefox.livingcolonists.talk.Translations;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -85,7 +86,7 @@ public final class StartResearch implements Errand {
         for (SizedIngredient ingredient : research.getCostList()) {
             var items = ingredient.getItems();
             if (items.length > 0) {
-                cost.add(ingredient.count() + " " + items[0].getHoverName().getString());
+                cost.add(ingredient.count() + " " + ItemNames.of(items[0]));
             }
         }
         String costText = cost.isEmpty() ? "-" : String.join(", ", cost);

@@ -80,8 +80,6 @@ public final class TalkService {
             + "see to what the colony's owner and officers ask without fuss. No small talk, jokes or worries of your own.";
     /** How many of the player's latest lines an order is checked against. */
     private static final int RECENT_PLAYER_LINES = 6;
-    /** How far away a colonist can be addressed with the command, in blocks. */
-    private static final double TALK_RANGE = 16.0;
     /** How far from the line of sight a colonist still counts as looked at. */
     private static final double TARGET_RADIUS = 0.8;
 
@@ -206,17 +204,6 @@ public final class TalkService {
         errands.clear();
         initiative.clear();
         lastMessage.clear();
-    }
-
-    /** {@code /lc talk}: a private word with the colonist under the crosshair or the nearest one. */
-    public int talk(ServerPlayer player, String message) {
-        Optional<AbstractEntityCitizen> listener = findListener(player, TALK_RANGE, false);
-        if (listener.isEmpty()) {
-            player.sendSystemMessage(Component.translatable("livingcolonists.talk.nobody"));
-            return 0;
-        }
-        sayPrivately(player, listener.get().getCitizenData(), message);
-        return 1;
     }
 
     /** A player's private message to one colonist; the colonist remembers the talk. */

@@ -33,8 +33,7 @@ public final class Bubbles {
     private static void send(Entity speaker, SpeechBubble bubble, Collection<ServerPlayer> recipients) {
         double range = Config.BUBBLE_RANGE.get();
         for (ServerPlayer player : recipients) {
-            if (player.level() == speaker.level() && player.distanceToSqr(speaker) <= range * range
-                    && player.connection.hasChannel(SpeechBubble.TYPE)) {
+            if (player.level() == speaker.level() && player.distanceToSqr(speaker) <= range * range) {
                 PacketDistributor.sendToPlayer(player, bubble);
             }
         }

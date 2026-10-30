@@ -133,7 +133,7 @@ public final class SpeechBubbles {
     public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
         var connection = minecraft.getConnection();
-        if (connection == null || !connection.hasChannel(ChatTyping.TYPE)) {
+        if (connection == null) {
             return;
         }
         boolean typing = false;

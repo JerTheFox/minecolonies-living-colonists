@@ -6,7 +6,6 @@ import me.bytefox.livingcolonists.talk.ChatMode;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.multiplayer.ClientPacketListener;
-import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 /** The client's copy of its conversation state, and the way to ask the server to change it. */
@@ -41,10 +40,6 @@ public final class ClientConversation {
         if (connection == null || minecraft.player == null) {
             return;
         }
-        if (connection.hasChannel(ConversationAction.TYPE)) {
-            PacketDistributor.sendToServer(new ConversationAction(action));
-        } else {
-            minecraft.player.displayClientMessage(Component.translatable("livingcolonists.client.no_server_mod"), true);
-        }
+        PacketDistributor.sendToServer(new ConversationAction(action));
     }
 }

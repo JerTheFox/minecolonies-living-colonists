@@ -19,6 +19,7 @@ import com.minecolonies.api.colony.requestsystem.request.RequestState;
 import com.minecolonies.api.colony.requestsystem.requestable.Stack;
 import com.minecolonies.api.colony.requestsystem.token.IToken;
 import me.bytefox.livingcolonists.llm.ToolSpec;
+import me.bytefox.livingcolonists.perception.ItemNames;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -95,7 +96,7 @@ public final class RequestCraft implements Errand {
             crafter = worker.getName() + " at the " + name;
             break;
         }
-        String itemName = one.getHoverName().getString();
+        String itemName = ItemNames.of(one);
         if (crafter == null) {
             return new Result.Answer(Errand.error(idle != null
                     ? "The " + idle + " has the recipe for " + itemName + " but nobody works there, so it would never be made."

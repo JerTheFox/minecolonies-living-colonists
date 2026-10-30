@@ -239,7 +239,11 @@ public final class PerceptionService {
 
     private static String describe(IRequest<?> request) {
         String text = request.getShortDisplayString().getString();
-        return text.contains(" ") ? text : "something for work";
+        if (!text.contains(" ")) {
+            return "something for work";
+        }
+        // With the item's name in the players' languages, so the model doesn't make one up.
+        return request.getDisplayStacks().isEmpty() ? text : ItemNames.in(text, request.getDisplayStacks().get(0));
     }
 
     /**

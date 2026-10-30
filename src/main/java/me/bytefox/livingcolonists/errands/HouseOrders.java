@@ -11,6 +11,7 @@ import com.minecolonies.api.inventory.api.CombinedItemHandler;
 import com.minecolonies.core.colony.buildings.modules.LivingBuildingModule;
 import com.minecolonies.core.colony.buildings.modules.RestaurantMenuModule;
 import me.bytefox.livingcolonists.llm.ToolSpec;
+import me.bytefox.livingcolonists.perception.ItemNames;
 import me.bytefox.livingcolonists.talk.Addressing;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
@@ -76,10 +77,10 @@ public final class HouseOrders {
             }
             ItemStack dish = new ItemStack(found.value());
             if (dish.get(DataComponents.FOOD) == null) {
-                return new Result.Answer(Errand.error(dish.getHoverName().getString() + " isn't food."));
+                return new Result.Answer(Errand.error(ItemNames.of(dish) + " isn't food."));
             }
             if (menu.getMenu().stream().anyMatch(item -> item.getItem() == found.value())) {
-                return new Result.Answer(Errand.error(dish.getHoverName().getString() + " is already on the menu."));
+                return new Result.Answer(Errand.error(ItemNames.of(dish) + " is already on the menu."));
             }
             Component name = dish.getHoverName();
             return new Result.Proposal(new Order(name(), "put " + name.getString() + " on the restaurant's menu",

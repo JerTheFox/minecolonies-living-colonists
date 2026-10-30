@@ -64,9 +64,6 @@ public final class SettingsHandler {
     }
 
     private void send(ServerPlayer player, boolean canEdit, String message, List<String> models) {
-        if (player.connection.hasChannel(SettingsState.TYPE)) {
-            PacketDistributor.sendToPlayer(player,
-                    new SettingsState(canEdit, service.values(), service.usage(), message, models));
-        }
+        PacketDistributor.sendToPlayer(player, new SettingsState(canEdit, service.values(), service.usage(), message, models));
     }
 }

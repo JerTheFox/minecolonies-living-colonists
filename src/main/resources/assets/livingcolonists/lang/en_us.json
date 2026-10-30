@@ -22,7 +22,6 @@
   "livingcolonists.indicator.partner": "→ %s (%s) ✕",
 
   "livingcolonists.chat.click_to_answer": "Click to talk to them privately",
-  "livingcolonists.client.no_server_mod": "The server doesn't have Living Colonists.",
   "livingcolonists.job.unemployed": "Unemployed",
 
   "livingcolonists.debug.stats.empty": "No requests to the language model yet.",

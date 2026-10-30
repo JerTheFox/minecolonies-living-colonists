@@ -22,6 +22,7 @@ import com.minecolonies.api.colony.buildings.IBuilding;
 import com.minecolonies.api.tileentities.AbstractTileEntityRack;
 import me.bytefox.livingcolonists.LivingColonists;
 import me.bytefox.livingcolonists.llm.ToolSpec;
+import me.bytefox.livingcolonists.perception.ItemNames;
 import me.bytefox.livingcolonists.talk.TalkService;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -69,7 +70,7 @@ public final class Couriers {
         }
 
         String describe() {
-            return count + " " + new ItemStack(item).getHoverName().getString() + " for "
+            return count + " " + ItemNames.of(new ItemStack(item)) + " for "
                     + (target == null ? playerName : "the " + Component.translatable(target.getBuildingType().getTranslationKey()).getString())
                     + (stage == Stage.WAITING ? " (waiting for a courier)" : " (" + courier.getName() + " is on it)");
         }

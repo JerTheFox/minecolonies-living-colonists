@@ -25,7 +25,7 @@ You look at the baker and press a key: the chat opens, and a line above the inpu
 - Mood sets the tone: a hungry colonist grumbles, a homeless one complains, one who just survived a raid is shaken.
 - Errands go through the colony's own systems: fetching, delivering, crafting requests and more, based on [Colonist Errands](https://github.com/Lovkar-Squid/colonist-errands).
 - Talk to the whole colony or to one colonist privately; colonists understand names and professions in any language.
-- Speech bubbles over colonists' heads: white pixel comic bubbles, faint behind walls nearby, with bouncing dots while they type; optionally over players too. Players without the mod see the plain chat.
+- Speech bubbles over colonists' heads: white pixel comic bubbles, faint behind walls nearby, with bouncing dots while they type; optionally over players too.
 - Every colonist gets a personality: an archetype picked mostly from their MineColonies skills, with a dash of chance, and a short background written once by the model. Archetypes and prompts are plain files you can edit, add or delete.
 - Memory profiles from *minimal* (just orders and answers, cheapest) to *immersive* (colonists remember much more), with old memories fading out.
 - Only colony members (owner, officers, friends) can talk to colonists; only owners and officers can give orders. Can be turned off.
@@ -46,7 +46,7 @@ Versions are pinned exactly. MineColonies addons break across MineColonies build
 | BlockUI | 1.0.209 |
 | Domum Ornamentum | 1.0.236 |
 
-The mod is needed on the server and on every player's client. A client without it can still join and talk to colonists through `/lc` commands, without the keys, the chat switch, speech bubbles or the settings screen.
+The mod is needed on the server and on every player's client: a client without it can't join, and the game says what is missing.
 
 ## Installation
 
@@ -147,7 +147,7 @@ Colonists also write to you first now and then, privately, at uneven times, whil
 
 Colonists can also look things up and take orders: ask "how much iron do we have?" or "Idris, upgrade the bakery". They know the stock, the food, what is being built, the research, who is unhappy, who died, whether the guards are armed, what the colony needs from you, and where someone or something is; they can take a job, order a craft, build or upgrade a building and move it up the builders' queue, arm the guards, plant a field, start a research, add a dish to the restaurant's menu, sort the warehouse, move into another home, tell you when they find something, pass a message on to another player when they come to the colony, and remind you of something later. They come over, follow you, wait, go somewhere, gather, go home or lead you the way; couriers bring you things from the warehouse or take them to a building; guards escort you, hold your spot, go on alert, patrol a spot, stand down, and keep a tally of their kills. Look-ups answer at once. Orders come only from the colony's owner and officers (a friend gets turned down), only from your own words, and wait for your yes: a question with *Yes* and *No* buttons shows in chat, and a short "yes" or "no" in chat works too. `/lc undo` takes your last order back where it can be taken back.
 
-Commands do the same for clients without the mod: `/lc talk <message>`, `/lc lock`, `/lc mode [players|colony]`, `/lc yes`, `/lc no`, `/lc undo`.
+The chat's buttons run commands you can also type: `/lc yes` and `/lc no` answer a colonist's order question, `/lc undo` takes your last order back, and `/lc lock` starts a private talk with the colonist you look at.
 
 ## Building from source
 

@@ -31,6 +31,9 @@ import me.bytefox.livingcolonists.network.ConversationState;
 import me.bytefox.livingcolonists.network.SettingsRequest;
 import me.bytefox.livingcolonists.network.SettingsState;
 import me.bytefox.livingcolonists.network.ChatTyping;
+import me.bytefox.livingcolonists.network.ItemNamesReply;
+import me.bytefox.livingcolonists.network.ItemNamesRequest;
+import me.bytefox.livingcolonists.perception.ItemNames;
 import me.bytefox.livingcolonists.network.SpeechBubble;
 import me.bytefox.livingcolonists.network.TypingState;
 import me.bytefox.livingcolonists.settings.SettingsHandler;
@@ -121,6 +124,7 @@ public final class LivingColonists {
             conversations.tick(event.getServer());
             talk.tick(event.getServer());
             memory.tick(event.getServer());
+            ItemNames.tick(event.getServer());
             bonds.tick(event.getServer());
             if (event.getServer().getTickCount() % GONE_CHECK_INTERVAL == 0) {
                 forget(Citizens::isGone);
@@ -163,6 +167,7 @@ public final class LivingColonists {
             usageData = null;
             personalities.detach();
             memory.detach();
+            ItemNames.clear();
             bonds.detach();
             talk.errands().notes().detach();
             talk.errands().tally().detach();
@@ -202,11 +207,11 @@ public final class LivingColonists {
     }
 
     /**
-     * Optional channels: a client without the mod can still join and use the commands. The
-     * client-bound handler is a lambda so the client class is only loaded on the client.
+     * The mod is needed on both sides: a client without it can't join, and NeoForge tells the player
+     * what is missing. The client-bound handlers are lambdas so client classes load only on the client.
      */
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar("1").optional();
+        PayloadRegistrar registrar = event.registrar("2");
         registrar.playToServer(ConversationAction.TYPE, ConversationAction.STREAM_CODEC,
                 (payload, context) -> conversations.onAction((ServerPlayer) context.player(), payload.action()));
         registrar.playToClient(ConversationState.TYPE, ConversationState.STREAM_CODEC,
@@ -219,6 +224,10 @@ public final class LivingColonists {
                 (payload, context) -> me.bytefox.livingcolonists.client.TypingIndicator.apply(payload));
         registrar.playToClient(SpeechBubble.TYPE, SpeechBubble.STREAM_CODEC,
                 (payload, context) -> me.bytefox.livingcolonists.client.SpeechBubbles.apply(payload));
+        registrar.playToClient(ItemNamesRequest.TYPE, ItemNamesRequest.STREAM_CODEC,
+                (payload, context) -> me.bytefox.livingcolonists.client.ItemNamesClient.apply(payload));
+        registrar.playToServer(ItemNamesReply.TYPE, ItemNamesReply.STREAM_CODEC,
+                (payload, context) -> ItemNames.received((ServerPlayer) context.player(), payload));
         registrar.playToServer(ChatTyping.TYPE, ChatTyping.STREAM_CODEC, (payload, context) -> {
             ServerPlayer player = (ServerPlayer) context.player();
             if (Config.PLAYER_BUBBLES.get()) {

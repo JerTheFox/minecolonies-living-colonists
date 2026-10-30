@@ -14,7 +14,6 @@ import me.bytefox.livingcolonists.network.SettingsRequest;
 import me.bytefox.livingcolonists.network.SettingsState;
 import me.bytefox.livingcolonists.settings.SettingsService;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
@@ -51,17 +50,9 @@ public final class ClientSettings {
         return Minecraft.getInstance().getConnection() != null;
     }
 
-    /** Whether the server we're on has the mod; meaningless in the main menu. */
-    static boolean serverHasMod() {
-        ClientPacketListener connection = Minecraft.getInstance().getConnection();
-        return connection != null && connection.hasChannel(SettingsRequest.TYPE);
-    }
-
     static void request(SettingsRequest.Action action, Map<String, String> changes) {
         if (remote()) {
-            if (serverHasMod()) {
-                PacketDistributor.sendToServer(new SettingsRequest(action, changes));
-            }
+            PacketDistributor.sendToServer(new SettingsRequest(action, changes));
             return;
         }
         SettingsService service = local();

@@ -17,6 +17,7 @@ import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.buildings.IBuilding;
 import com.minecolonies.core.colony.buildingextensions.FarmField;
 import me.bytefox.livingcolonists.llm.ToolSpec;
+import me.bytefox.livingcolonists.perception.ItemNames;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
@@ -75,7 +76,7 @@ public final class FarmerPlant implements Errand {
         Component question = before.isEmpty() ? Component.translatable("livingcolonists.order.plant.ask", seedName)
                 : Component.translatable("livingcolonists.order.plant.replace", before.getHoverName(), seedName);
         return new Result.Proposal(new Order(name(), "set a field at " + field.getPosition().toShortString() + " to "
-                + seedName.getString() + (before.isEmpty() ? "" : " instead of " + before.getHoverName().getString()), question,
+                + ItemNames.of(new ItemStack(seed)) + (before.isEmpty() ? "" : " instead of " + ItemNames.of(before)), question,
                 player -> {
             field.setSeed(new ItemStack(seed));
             colony.getServerBuildingManager().markBuildingExtensionsDirty();

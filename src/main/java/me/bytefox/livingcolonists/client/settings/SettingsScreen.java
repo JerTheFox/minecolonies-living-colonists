@@ -62,15 +62,11 @@ public final class SettingsScreen extends Screen {
     protected void init() {
         ClientSettings.opened(this);
         if (state == null) {
-            if (ClientSettings.remote() && !ClientSettings.serverHasMod()) {
-                status = Component.translatable("livingcolonists.client.no_server_mod").withStyle(ChatFormatting.RED);
-            } else {
-                status = Component.translatable("livingcolonists.settings.loading");
-                // From the main menu the answer comes back at once, while this screen is still being built.
-                initializing = true;
-                ClientSettings.request(SettingsRequest.Action.OPEN, Map.of());
-                initializing = false;
-            }
+            status = Component.translatable("livingcolonists.settings.loading");
+            // From the main menu the answer comes back at once, while this screen is still being built.
+            initializing = true;
+            ClientSettings.request(SettingsRequest.Action.OPEN, Map.of());
+            initializing = false;
         }
         int tabWidth = Math.min(100, (width - 20) / Page.values().length);
         int x = (width - tabWidth * Page.values().length) / 2;

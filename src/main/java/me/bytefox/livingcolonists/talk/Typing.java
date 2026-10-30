@@ -17,7 +17,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 /**
  * "Idris is typing…" for the players who will see the line. It shows once the colonist has had
  * time to read what was said, not at once, and goes away when the line is out or dropped.
- * Clients without the mod see nothing. Server thread only.
+ * Server thread only.
  */
 public final class Typing {
     private record Entry(Speaker speaker, List<UUID> audience, long startTick, boolean shown) {
@@ -80,9 +80,7 @@ public final class Typing {
             ServerPlayer player = server.getPlayerList().getPlayer(id);
             if (player != null) {
                 players.add(player);
-                if (player.connection.hasChannel(TypingState.TYPE)) {
-                    PacketDistributor.sendToPlayer(player, state);
-                }
+                PacketDistributor.sendToPlayer(player, state);
             }
         }
         if (Config.SPEECH_BUBBLES.get()) {

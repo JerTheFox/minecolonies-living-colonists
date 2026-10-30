@@ -239,11 +239,9 @@ public final class Conversations {
     }
 
     private static void sync(ServerPlayer player, Entry entry, boolean openChat) {
-        if (player.connection.hasChannel(ConversationState.TYPE)) {
-            Partner partner = entry.partner;
-            PacketDistributor.sendToPlayer(player, new ConversationState(entry.mode,
-                    partner == null ? "" : partner.name(), partner == null ? "" : partner.jobKey(), openChat,
-                    Boolean.TRUE.equals(entry.member)));
-        }
+        Partner partner = entry.partner;
+        PacketDistributor.sendToPlayer(player, new ConversationState(entry.mode,
+                partner == null ? "" : partner.name(), partner == null ? "" : partner.jobKey(), openChat,
+                Boolean.TRUE.equals(entry.member)));
     }
 }
