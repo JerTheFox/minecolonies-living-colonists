@@ -4,7 +4,7 @@
 
 A [MineColonies](https://github.com/ldtteam/minecolonies) addon for NeoForge that lets colonists talk in text chat almost like other players. They start conversations, answer you, remember what you told them and gossip about the colony with each other. The words come from a language model behind any OpenAI-compatible API: DeepSeek, Gemini, OpenRouter, or a model running on your own machine.
 
-> **Status: 0.2.1.** Everything below works and is being played on a live server. Expect rough edges, and please report them in [Issues](https://github.com/JerTheFox/minecolonies-living-colonists/issues).
+> **Status: 0.2.2.** Everything below works and is being played on a live server. Expect rough edges, and please report them in [Issues](https://github.com/JerTheFox/minecolonies-living-colonists/issues).
 
 ## What it feels like
 
@@ -34,17 +34,17 @@ You look at the baker and press a key: the chat opens, and a line above the inpu
 
 ## Requirements
 
-Versions are pinned exactly. MineColonies addons break across MineColonies builds, so other versions are not supported.
+The mod works with MineColonies 1.1.1405 and newer 1.1.x builds for Minecraft 1.21.1; it is checked on 1.1.1405 and 1.1.1406. MineColonies changes between builds, so a much newer one may lose a feature now and then (the mod skips what it can't read instead of crashing); please report it in Issues.
 
 | | Version |
 |---|---|
 | Minecraft | 1.21.1 |
 | NeoForge | 21.1.264 |
 | Java | 21 |
-| MineColonies | 1.1.1405 |
-| Structurize | 1.0.835 |
-| BlockUI | 1.0.209 |
-| Domum Ornamentum | 1.0.236 |
+| MineColonies | 1.1.1405 or newer 1.1.x (checked: 1.1.1405, 1.1.1406) |
+| Structurize | as your MineColonies needs (1.0.832 or newer) |
+| BlockUI | as your MineColonies needs (1.0.199 or newer) |
+| Domum Ornamentum | as your MineColonies needs (1.0.223 or newer) |
 
 The mod is needed on the server and on every player's client: a client without it can't join, and the game says what is missing.
 
@@ -181,7 +181,7 @@ The mod follows the game's language setting. English and Russian are included. T
 
 Since 0.1.0: memory that keeps players by account and recalls what a talk touches (optionally by meaning, with embeddings), colonists' real day, personal goals and voices of their own, a handbook of the colony's mechanics, names in the players' language, speech bubbles that work with shaders.
 
-Next: playing 0.2.1 on a live server and fixing what comes up; then deadlines read by code and gifts noticed in a colonist's inventory.
+Next: playing 0.2.2 on a live server and fixing what comes up; then deadlines read by code and gifts noticed in a colonist's inventory.
 
 ## About this project
 

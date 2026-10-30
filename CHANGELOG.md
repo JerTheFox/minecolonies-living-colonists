@@ -5,6 +5,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-10-31
+
+### Changed
+
+- No longer pinned to one MineColonies build: works with MineColonies 1.1.1405 and newer 1.1.x builds for 1.21.1 (checked on 1.1.1405 and 1.1.1406). If a newer MineColonies changes what the mod reads, the mod skips that part (a colonist's promises from dialogs, an order that can't be carried out) instead of crashing.
+
 ### Fixed
 
 - A colonist remembers passing a message on or reminding someone, so they no longer tell the sender it hasn't been passed on yet.
@@ -186,7 +192,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A colony conversation that ended while a reply was still on its way no longer comes back to life.
 - Old conversations that are fully written down no longer pile up in the world's data.
 
-[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/JerTheFox/minecolonies-living-colonists/releases/tag/v0.1.0
