@@ -113,6 +113,8 @@ public final class ColonyThreads {
         long lastLineTick;
         UUID lastPlayer;
         final Deque<Integer> addressed = new ArrayDeque<>();
+        /** Colonists the player's latest message was for: each of them answers the player, functions and all. */
+        final Set<Integer> askedByPlayer = new HashSet<>();
         final Set<Integer> participants = new HashSet<>();
         /** Topics the dice already turned this thread to. */
         final Set<String> topics = new HashSet<>();
@@ -181,6 +183,7 @@ public final class ColonyThreads {
         }
         thread.version++;
         thread.addressed.clear();
+        thread.askedByPlayer.clear();
         typing.stopColony(colony.getWorld().getServer(), colony.getID());
         return true;
     }
@@ -219,6 +222,7 @@ public final class ColonyThreads {
         thread.startTime = colony.getWorld().getGameTime();
         thread.colonistTurns = 0;
         thread.addressed.clear();
+        thread.askedByPlayer.clear();
         thread.participants.clear();
         thread.topics.clear();
         thread.lines.clear();
@@ -285,6 +289,7 @@ public final class ColonyThreads {
         thread.startTime = colony.getWorld().getGameTime();
         thread.colonistTurns = 0;
         thread.addressed.clear();
+        thread.askedByPlayer.clear();
         thread.participants.clear();
         thread.lastSpeaker = -1;
         thread.lastPlayer = null;
@@ -322,6 +327,7 @@ public final class ColonyThreads {
         thread.lines.clear();
         thread.chatter = null;
         thread.addressed.clear();
+        thread.askedByPlayer.clear();
         thread.lastSpeaker = -1;
         thread.lastPlayer = player.getUUID();
         thread.playerTick = server.getTickCount();
@@ -346,6 +352,7 @@ public final class ColonyThreads {
         if (!chosen.isEmpty() || Addressing.toEveryone(message) && !message.contains("?")) {
             List<Integer> picked = chosen.stream().limit(MAX_ADDRESSED).toList();
             picked.forEach(index -> thread.addressed.add(citizens.get(index).getId()));
+            thread.askedByPlayer.addAll(thread.addressed);
             LivingColonists.LOGGER.info("Colony {} message is for {}, found by code; reply in {}", colony.getName(),
                     picked.isEmpty() ? "everyone" : picked.stream().map(names::get).toList(), thread.language);
             nextTurn(server, colony, thread, version);
@@ -377,6 +384,7 @@ public final class ColonyThreads {
                         List<Integer> picked = ColonyRouter.parse(reply.text(), ids.size()).stream().distinct()
                                 .limit(MAX_ADDRESSED).toList();
                         picked.forEach(index -> thread.addressed.add(ids.get(index)));
+                        thread.askedByPlayer.addAll(thread.addressed);
                         if (picked.isEmpty() && !Addressing.toEveryone(message) && ids.contains(thread.lastAnswerer)) {
                             // "And the lime one?" goes on with whoever answered the last question.
                             thread.addressed.add(thread.lastAnswerer);
@@ -412,7 +420,9 @@ public final class ColonyThreads {
         thread.opening = null;
         String chatter = thread.chatter;
         thread.chatter = null;
-        boolean answeringPlayer = thread.colonistTurns == 0 && opening == null && chatter == null;
+        // Not only the first: "the unemployed, come to me" is for each of them, and each needs the functions to come.
+        boolean answeringPlayer = opening == null && chatter == null
+                && (thread.askedByPlayer.remove(next) | thread.colonistTurns == 0);
         ServerPlayer player = thread.lastPlayer == null ? null : server.getPlayerList().getPlayer(thread.lastPlayer);
         Map<String, String> values = talk.promptValues(citizen, player);
         // A colonist starting a chat of their own starts fresh: lines of an old talk only pull them back to it.
@@ -484,7 +494,9 @@ public final class ColonyThreads {
         }
         Optional<Fact> gossip = rumor;
         List<MemoryLine> lines = memory.colonyChat(colony);
+        // A colonist starting a talk of their own answers nothing: the last line of an old talk would pull them back to it.
         String last = opening != null ? "[Colony news: " + opening + "]"
+                : chatter != null ? "[You start a new conversation in the colony chat.]"
                 : lines.isEmpty() ? "" : lines.get(lines.size() - 1).speaker() + ": " + lines.get(lines.size() - 1).text();
         Speaker speaker = TalkService.speakerOf(citizen);
         // The colonist first reads what was said, then types: others see "typing" from the end of the reading pause.
@@ -498,7 +510,11 @@ public final class ColonyThreads {
             }
             values.put("memories", memories);
             String prompt = Templates.render(prompts.get(PromptLibrary.REPLY_COLONY), values);
-            List<String> recent = lines.stream().skip(Math.max(0, lines.size() - RECENT_LINES)).map(MemoryLine::text).toList();
+            // Colonists' lines only: answering a player in their own words is no repeat.
+            Set<String> colonists = colony.getCitizenManager().getCitizens().stream().map(ICitizenData::getName)
+                    .collect(Collectors.toSet());
+            List<String> recent = lines.stream().skip(Math.max(0, lines.size() - RECENT_LINES))
+                    .filter(line -> colonists.contains(line.speaker())).map(MemoryLine::text).toList();
             talk.generateFresh(citizen, prompt, List.of(ChatMessage.user(last)), answeringPlayer ? thread.lastPlayer : null,
                     server, recent, result -> {
                 if (thread.version != version) {
@@ -515,6 +531,7 @@ public final class ColonyThreads {
                         return;
                     }
                     thread.addressed.clear();
+                    thread.askedByPlayer.clear();
                     return;
                 }
                 gossip.ifPresent(fact -> talk.told(colony.getDimension(), speaker, fact));
@@ -552,6 +569,7 @@ public final class ColonyThreads {
         // Questions asked by name could chain forever: the safety stop holds for them too.
         if (thread.colonistTurns >= ThreadPolicy.hardCap(Config.level(Module.CONVERSATION))) {
             thread.addressed.clear();
+            thread.askedByPlayer.clear();
             return;
         }
         List<String> others = colony.getCitizenManager().getCitizens().stream()

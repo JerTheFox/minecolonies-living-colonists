@@ -44,6 +44,7 @@ import me.bytefox.livingcolonists.talk.Prompts;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * Collects {@link ColonistFacts} from MineColonies. Server thread only. Every part is read on its
@@ -82,6 +83,8 @@ public final class PerceptionService {
     private static final int DIARY_INTERVAL = 600;
     /** Diary entries shown in a reply prompt. */
     private static final int DIARY_SHOWN = 3;
+    /** Materials of each construction as first seen, for "how much is used"; not saved. */
+    private final BuildLedger ledger = new BuildLedger();
     /** Each colonist's day as code saw it, by {@code colonyId:citizenId}; not saved, a day is short. */
     private final Map<String, DiaryBook> diaries = new HashMap<>();
 
@@ -101,7 +104,8 @@ public final class PerceptionService {
     /** The colonist's latest doings of the last game day, oldest first. */
     public List<DiaryBook.Entry> diary(ICitizenData citizen, int count) {
         DiaryBook book = diaries.get(citizen.getColony().getID() + ":" + citizen.getId());
-        return book == null ? List.of() : book.latest(citizen.getColony().getWorld().getGameTime(), count);
+        return book == null || citizen.getColony().getWorld() == null ? List.of()
+                : book.latest(citizen.getColony().getWorld().getGameTime(), count);
     }
 
     /** Notes what each loaded colonist is doing now. Server tick. */
@@ -206,7 +210,7 @@ public final class PerceptionService {
             facts.unhappyAbout(unhappyAbout(citizen));
         });
         safely("requests", () -> requests(citizen, facts));
-        safely("construction", () -> construction(citizen, facts));
+        safely("construction", () -> construction(citizen, facts, ledger));
         safely("work", () -> facts.workNotes(workNotes(citizen)));
         safely("weather", () -> {
             var world = colony.getWorld();
@@ -333,11 +337,14 @@ public final class PerceptionService {
 
     private static String describe(IRequest<?> request) {
         String text = request.getShortDisplayString().getString();
-        if (!text.contains(" ")) {
-            return "something for work";
+        List<ItemStack> stacks = request.getDisplayStacks();
+        // A one-word request is still a request ("Pickaxe" for a tool); only a blank one or a raw translation key
+        // tells nothing, and then the item itself is named, if there is one.
+        if (text.isBlank() || !text.contains(" ") && text.contains(".")) {
+            return stacks.isEmpty() ? "something for work" : ItemNames.of(stacks.get(0));
         }
         // With the item's name in the players' languages, so the model doesn't make one up.
-        return request.getDisplayStacks().isEmpty() ? text : ItemNames.in(text, request.getDisplayStacks().get(0));
+        return stacks.isEmpty() ? text : ItemNames.in(text, stacks.get(0));
     }
 
     /**
@@ -422,12 +429,26 @@ public final class PerceptionService {
     }
 
     /** What a builder is building and which materials it still lacks, as the builder's hut tracks them. */
-    private static void construction(ICitizenData citizen, ColonistFacts.Builder facts) {
+    private static void construction(ICitizenData citizen, ColonistFacts.Builder facts, BuildLedger ledger) {
         if (!(citizen.getWorkBuilding() instanceof AbstractBuildingStructureBuilder builder) || !builder.hasWorkOrder()) {
             return;
         }
         var order = builder.getWorkOrder();
-        String project = ItemNames.named(order.getDisplayName()) + ", level " + order.getTargetLevel();
+        String key = citizen.getColony().getID() + ":" + order.getLocation().toShortString() + ":" + order.getTargetLevel();
+        List<BuildLedger.Material> materials = new ArrayList<>();
+        for (BuildingBuilderResource resource : builder.getNeededResources().values()) {
+            materials.add(new BuildLedger.Material(resource.getName(), resource.getAmount(), resource.getAvailable(),
+                    resource.getAmountInDelivery()));
+        }
+        // What the resource scroll shows: how far along it is, what is used, at hand and on the way.
+        List<String> ledgerLines = ledger.lines(key, materials, MAX_MATERIALS);
+        int used = ledger.percentUsed(key, materials);
+        var progress = builder.getProgress();
+        String stage = progress == null || progress.getB() == null ? ""
+                : ", stage: " + progress.getB().name().toLowerCase(Locale.ROOT).replace('_', ' ');
+        String project = ItemNames.named(order.getDisplayName()) + ", level " + order.getTargetLevel() + stage
+                + (used > 0 ? ", about " + used + "% of the materials used" : "");
+        facts.materialLedger(ledgerLines);
         List<Map.Entry<Integer, String>> lacking = new ArrayList<>();
         int onTheWay = 0;
         for (BuildingBuilderResource resource : builder.getNeededResources().values()) {

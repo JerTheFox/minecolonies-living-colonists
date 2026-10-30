@@ -280,7 +280,7 @@ public final class TalkService {
      */
     public boolean remindPromise(ServerPlayer player, ICitizenData citizen, Promise promise) {
         return writeFirst(player, citizen, "to remind them of a promise that is overdue now: \"" + promise.text()
-                + "\". Say it in your own way and mood, in one or two sentences.", true, null) == Notes.Delivery.SENT;
+                + "\". Say it in your own way and mood, in one or two sentences.", true, null, false) == Notes.Delivery.SENT;
     }
 
     /**
@@ -289,9 +289,11 @@ public final class TalkService {
      *
      * @param inColonyOnly only while the player is inside the colony
      * @param failed        runs if the model gave no line after all; may be null
+     * @param ownTopic      something the colonist brings up of their own accord, checked against going round in
+     *                      circles; false for a message passed on or a reminder, which must say what it was asked to
      */
     public Notes.Delivery writeFirst(ServerPlayer player, ICitizenData citizen, String purpose, boolean inColonyOnly,
-                                     Runnable failed) {
+                                     Runnable failed, boolean ownTopic) {
         IColony colony = citizen.getColony();
         Speaker speaker = speakerOf(citizen);
         long key = key(speaker.colonyId(), speaker.citizenId());
@@ -321,7 +323,8 @@ public final class TalkService {
         ResourceKey<Level> dimension = colony.getDimension();
         long earliest = server.getTickCount() + LinePacing.gap(random);
         typing.start(server, speaker, List.of(player), earliest);
-        generateFresh(citizen, prompt, messages, null, server, List.copyOf(heard.getOrDefault(playerId, new java.util.ArrayDeque<>())),
+        generateFresh(citizen, prompt, messages, null, server,
+                ownTopic ? List.copyOf(heard.getOrDefault(playerId, new java.util.ArrayDeque<>())) : List.of(),
                 result -> {
             thinking.remove(key);
             Optional<String> text = lineOf(speaker, result);

@@ -45,7 +45,9 @@ public final class RequestCraft implements Errand {
     @Override
     public ToolSpec spec() {
         return Errands.orderSpec(name(), "Order something to be made by the colony's crafters (\"craft me a pickaxe\", "
-                + "\"order 20 iron ingots\"). Any colonist can pass the order on, it doesn't have to be your craft. "
+                + "\"order 20 iron ingots\"). Any colonist can pass the order on, it doesn't have to be your craft: "
+                + "call it whenever someone asks you to craft or make something, and it finds who in the colony has the "
+                + "recipe (a builder's hut may too) or says nobody does; don't decide that yourself. "
                 + "For something only to be carried from the warehouse this is not the right function.",
                 Map.of("item", "The item in plain English words, like iron pickaxe or oak planks",
                         "count", "How many, as a number; 1 if the player didn't say",

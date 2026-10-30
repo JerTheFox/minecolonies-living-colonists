@@ -189,7 +189,7 @@ final class Initiative {
         }
         String purpose = purpose(topic.get(), longApart(speaker, player)) + " Keep it short, one or two lines, and don't repeat anything you "
                 + "already said to them. If they don't seem to want to talk, that's fine.";
-        if (talk.writeFirst(player, speaker, purpose, true, null) != Notes.Delivery.SENT) {
+        if (talk.writeFirst(player, speaker, purpose, true, null, true) != Notes.Delivery.SENT) {
             return Optional.empty();
         }
         note(speaker, player, topic.get(), now);

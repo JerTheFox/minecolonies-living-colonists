@@ -143,7 +143,8 @@ public final class ColonyLookups {
             ColonistFacts facts = perception.facts(citizen);
             if (facts.construction() != null) {
                 add(lacking, citizen.getName() + " is on " + facts.construction() + (facts.missingMaterials().isEmpty()
-                        ? ", with everything at hand" : ", still lacking " + String.join(", ", facts.missingMaterials())));
+                        ? ", with everything at hand" : ", still lacking " + String.join(", ", facts.missingMaterials()))
+                        + (facts.materialLedger().isEmpty() ? "" : ". Materials: " + String.join("; ", facts.materialLedger())));
             }
         }
         JsonArray unbuilt = new JsonArray();

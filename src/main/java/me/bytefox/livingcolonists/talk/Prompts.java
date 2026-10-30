@@ -100,8 +100,45 @@ public final class Prompts {
      * Strips what models add around a chat line: a name prefix, wrapping quotes, line breaks, and
      * Minecraft formatting codes, which could hide or garble text in chat.
      */
+    /** Latin letters as a Russian word would have them, for words the model wrote half in each alphabet. */
+    private static final java.util.Map<Character, String> TO_CYRILLIC = java.util.Map.ofEntries(
+            java.util.Map.entry('a', "а"), java.util.Map.entry('b', "б"), java.util.Map.entry('c', "к"),
+            java.util.Map.entry('d', "д"), java.util.Map.entry('e', "е"), java.util.Map.entry('f', "ф"),
+            java.util.Map.entry('g', "г"), java.util.Map.entry('h', "х"), java.util.Map.entry('i', "и"),
+            java.util.Map.entry('j', "дж"), java.util.Map.entry('k', "к"), java.util.Map.entry('l', "л"),
+            java.util.Map.entry('m', "м"), java.util.Map.entry('n', "н"), java.util.Map.entry('o', "о"),
+            java.util.Map.entry('p', "п"), java.util.Map.entry('q', "к"), java.util.Map.entry('r', "р"),
+            java.util.Map.entry('s', "с"), java.util.Map.entry('t', "т"), java.util.Map.entry('u', "у"),
+            java.util.Map.entry('v', "в"), java.util.Map.entry('w', "в"), java.util.Map.entry('x', "кс"),
+            java.util.Map.entry('y', "ы"), java.util.Map.entry('z', "з"));
+    private static final java.util.regex.Pattern MIXED_WORD =
+            java.util.regex.Pattern.compile("(?=[\\p{L}]*\\p{IsCyrillic})(?=[\\p{L}]*[A-Za-z])[\\p{L}]+");
+
+    /**
+     * A word the model wrote half in Cyrillic, half in Latin ("колонist"), put all in Cyrillic. Models
+     * do it now and then when the prompt is in English and the answer in Russian.
+     */
+    public static String fixMixedWords(String text) {
+        java.util.regex.Matcher matcher = MIXED_WORD.matcher(text);
+        StringBuilder out = new StringBuilder();
+        while (matcher.find()) {
+            StringBuilder word = new StringBuilder();
+            for (char c : matcher.group().toCharArray()) {
+                String cyrillic = TO_CYRILLIC.get(Character.toLowerCase(c));
+                if (cyrillic == null) {
+                    word.append(c);
+                } else {
+                    word.append(Character.isUpperCase(c) ? cyrillic.toUpperCase(java.util.Locale.ROOT) : cyrillic);
+                }
+            }
+            matcher.appendReplacement(out, java.util.regex.Matcher.quoteReplacement(word.toString()));
+        }
+        matcher.appendTail(out);
+        return out.toString();
+    }
+
     public static String cleanReply(String text, String name) {
-        String line = text.replaceAll("§.?", "").strip().replaceAll("\\s*\\R+\\s*", " ");
+        String line = fixMixedWords(text.replaceAll("§.?", "").strip().replaceAll("\\s*\\R+\\s*", " "));
         String prefix = name + ":";
         if (line.regionMatches(true, 0, prefix, 0, prefix.length())) {
             line = line.substring(prefix.length()).strip();

@@ -165,4 +165,10 @@ class PromptsTest {
         assertEquals("Boards came crooked.\nBread's dry.", Prompts.voiceLines("1. Boards came crooked.\n- \"Bread's dry.\"\n"));
         assertEquals(4, Prompts.voiceLines("a1\nb2\nc3\nd4\ne5").split("\n").length);
     }
+
+    @Test
+    void aWordHalfInEachAlphabetIsMadeCyrillic() {
+        assertEquals("Голодный колонист просит еду.", Prompts.fixMixedWords("Голодный колонist просит еду."));
+        assertEquals("Builder's Hut and Хижина stay as they are.", Prompts.fixMixedWords("Builder's Hut and Хижина stay as they are."));
+    }
 }

@@ -51,9 +51,9 @@ public final class WalkErrands {
                 command("call_colonist", "Call another colonist over to the player (\"call Idris here\").",
                         Map.of("name", "Who, as the colony spells the name"),
                         (c, a) -> call(walks, c, Errand.string(a, "name"))),
-                command("gather", "Gather colonists (everyone, or one profession) here or at a building (\"everyone "
-                        + "to the town hall\"); they wait there a few minutes.",
-                        Map.of("who", "everyone, or a profession in plain English words",
+                command("gather", "Gather colonists (everyone, the unemployed, or one profession) here or at a building "
+                        + "(\"everyone to the town hall\", \"the unemployed, come to me\"); they wait there a few minutes.",
+                        Map.of("who", "everyone, unemployed, or a profession in plain English words",
                                 "where", "here, or a building in plain English words"),
                         (c, a) -> gather(walks, c, Errand.string(a, "who"), Errand.string(a, "where"))),
                 command("everyone_home", "Send every colonist but the guards home (\"everyone go home\").",
@@ -163,6 +163,11 @@ public final class WalkErrands {
         List<ICitizenData> chosen = new ArrayList<>();
         if (who.isEmpty() || who.toLowerCase().startsWith("every") || who.toLowerCase().startsWith("all")) {
             chosen.addAll(citizens);
+        } else if (who.toLowerCase().matches(".*(unemploy|jobless|without (a )?job|idle|безработ|без работы).*")) {
+            citizens.stream().filter(c -> c.getJob() == null && !c.isChild()).forEach(chosen::add);
+            if (chosen.isEmpty()) {
+                return Errand.error("Everyone in the colony has a job.");
+            }
         } else {
             String locale = player.clientInformation().language();
             JobNames jobs = new JobNames();

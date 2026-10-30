@@ -33,7 +33,8 @@ public final class Notes {
 
     /** How a colonist writes to a player first. */
     public interface Writer {
-        Delivery writeFirst(ServerPlayer player, ICitizenData citizen, String purpose, boolean inColonyOnly, Runnable failed);
+        Delivery writeFirst(ServerPlayer player, ICitizenData citizen, String purpose, boolean inColonyOnly, Runnable failed,
+                            boolean ownTopic);
     }
 
     /** Delivery is checked this often: every five seconds. */
@@ -78,6 +79,14 @@ public final class Notes {
         if (data == null) {
             return new Errand.Result.Answer(Errand.error("That can't be noted down right now."));
         }
+        // Asked twice ("did you tell her?"), the colonist keeps it once.
+        if (data.book.all().stream().anyMatch(kept -> kept.kind() == note.kind() && kept.from().equals(note.from())
+                && kept.to().equals(note.to()) && same(kept.text(), note.text()))) {
+            JsonObject reply = new JsonObject();
+            reply.addProperty("success", true);
+            reply.addProperty("info", "You already have this message and will pass it on; nothing more to do.");
+            return new Errand.Result.Answer(reply);
+        }
         if (!data.book.add(note)) {
             return new Errand.Result.Answer(Errand.error("You already keep too many of these for this player."));
         }
@@ -88,6 +97,10 @@ public final class Notes {
         reply.addProperty("success", true);
         reply.addProperty("info", done);
         return new Errand.Result.Answer(reply);
+    }
+
+    private static boolean same(String a, String b) {
+        return a.replaceAll("[^\\p{L}\\p{N}]+", "").equalsIgnoreCase(b.replaceAll("[^\\p{L}\\p{N}]+", ""));
     }
 
     /** Hands out what is due: to players online, and for mail only once the addressee is in the colony. */
@@ -116,7 +129,7 @@ public final class Notes {
                             ? "livingcolonists.note.mail" : "livingcolonists.note.reminder",
                     citizen.getName(), note.fromName(), note.text()).withStyle(ChatFormatting.GRAY);
             Delivery delivery = writer.writeFirst(player, citizen, purpose, note.kind() == NoteBook.Kind.MAIL,
-                    () -> player.sendSystemMessage(notice));
+                    () -> player.sendSystemMessage(notice), false);
             if (delivery == Delivery.NEVER) {
                 player.sendSystemMessage(notice);
             }

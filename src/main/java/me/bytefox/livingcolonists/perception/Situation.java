@@ -76,6 +76,9 @@ public final class Situation {
                     ? " You have all the materials for it."
                     : " Still missing: " + String.join(", ", facts.missingMaterials()) + ".")
                     + (facts.materialsOnTheWay() > 0 ? " Some of it is already being delivered." : ""));
+            if (!facts.materialLedger().isEmpty()) {
+                lines.add("- Its materials, as your resource scroll shows them: " + String.join("; ", facts.materialLedger()) + ".");
+            }
         } else if ("builder".equals(facts.job())) {
             lines.add("- You have no construction order right now.");
         }
