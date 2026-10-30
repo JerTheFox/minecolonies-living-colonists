@@ -1,10 +1,10 @@
 <p align="center"><img src=".github/logo.png" alt="Living Colonists logo" width="160"></p>
 
-# MineColonies: Living Colonists
+# Living Colonists for MineColonies
 
 A [MineColonies](https://github.com/ldtteam/minecolonies) addon for NeoForge that lets colonists talk in text chat almost like other players. They start conversations, answer you, remember what you told them and gossip about the colony with each other. The words come from a language model behind any OpenAI-compatible API: DeepSeek, Gemini, OpenRouter, or a model running on your own machine.
 
-> **Status: 0.2.2.** Everything below works and is being played on a live server. Expect rough edges, and please report them in [Issues](https://github.com/JerTheFox/minecolonies-living-colonists/issues).
+> **Status: 0.2.3.** Everything below works and is being played on a live server. Expect rough edges, and please report them in [Issues](https://github.com/JerTheFox/minecolonies-living-colonists/issues).
 
 ## What it feels like
 
@@ -181,7 +181,7 @@ The mod follows the game's language setting. English and Russian are included. T
 
 Since 0.1.0: memory that keeps players by account and recalls what a talk touches (optionally by meaning, with embeddings), colonists' real day, personal goals and voices of their own, a handbook of the colony's mechanics, names in the players' language, speech bubbles that work with shaders.
 
-Next: playing 0.2.2 on a live server and fixing what comes up; then deadlines read by code and gifts noticed in a colonist's inventory.
+Next: playing 0.2.3 on a live server and fixing what comes up; then deadlines read by code and gifts noticed in a colonist's inventory.
 
 ## About this project
 

@@ -5,6 +5,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-10-31
+
+### Changed
+
+- Renamed to **Living Colonists for MineColonies** (was "MineColonies: Living Colonists"), so the name doesn't lead with MineColonies' brand. The mod id stays `livingcolonists`: worlds, configs and commands are unchanged.
+
 ## [0.2.2] - 2026-10-31
 
 ### Changed
@@ -192,7 +198,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A colony conversation that ended while a reply was still on its way no longer comes back to life.
 - Old conversations that are fully written down no longer pile up in the world's data.
 
-[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.1.0...v0.2.0
