@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-30
+
 ### Added
 
 - In-game settings screen with every option of the config file on four tabs (Connection, Behaviour, Limits, Usage): values are checked before saving and apply at once; buttons test the chat and character models and load the provider's model list. Opens from the mod list's *Config* button and an unbound *Living Colonists settings* key. In a world it edits the server's settings (operators and the single-player owner change, others look); from the main menu, the local file. API keys are never sent to players, only whether they are set.
@@ -121,3 +123,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Colonists no longer make up colony events, noises or visitors, which then spread as gossip.
 - A colony conversation that ended while a reply was still on its way no longer comes back to life.
 - Old conversations that are fully written down no longer pile up in the world's data.
+
+[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/JerTheFox/minecolonies-living-colonists/releases/tag/v0.1.0

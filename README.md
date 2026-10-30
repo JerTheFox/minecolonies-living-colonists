@@ -50,7 +50,7 @@ The mod is needed on both the server and the client.
 
 ## Installation
 
-No release yet. Once there is one, it goes into the `mods` folder of the server and of every client, like any other mod.
+Download the jar from [Releases](https://github.com/JerTheFox/minecolonies-living-colonists/releases) and put it into the `mods` folder of the server and of every client, like any other mod. Then set up the language model (see Configuration).
 
 ## Configuration
 
@@ -170,10 +170,12 @@ The mod follows the game's language setting. English and Russian are included. T
 2. ✅ Talking without commands: the whole colony or one colonist privately.
 3. ✅ Personalities, perception and memory: archetypes, backgrounds, memory, promises and relations, `/lcdebug`.
 4. ✅ In-game settings screen.
-5. Errands through the colony's request system.
-6. Colonists speak first, with a line budget.
-7. Colonists talk to each other.
-8. Speech bubbles.
+5. ✅ Errands through the colony's systems: look-ups, orders confirmed with Yes / No, walks, couriers, guards, mail and reminders.
+6. ✅ Colonists speak first, at uneven times and taking turns.
+7. ✅ Colonists talk to each other.
+8. ✅ Speech bubbles.
+
+Next: playing 0.1.0 on a live server and fixing what comes up; then deadlines read by code and gifts noticed in a colonist's inventory.
 
 ## About this project
 
