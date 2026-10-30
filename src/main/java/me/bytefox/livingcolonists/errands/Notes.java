@@ -42,10 +42,12 @@ public final class Notes {
     private static final int MAX_TEXT = 300;
 
     private final Writer writer;
+    private final Errands.Deeds deeds;
     private NotesData data;
 
-    public Notes(Writer writer) {
+    public Notes(Writer writer, Errands.Deeds deeds) {
         this.writer = writer;
+        this.deeds = deeds;
     }
 
     public void attach(NotesData data) {
@@ -135,6 +137,10 @@ public final class Notes {
             }
             if (delivery != Delivery.LATER) {
                 data.book.delivered(note);
+                // Remembered as done: otherwise the colonist recalls only being asked, and tells the sender it isn't passed on yet.
+                deeds.remember(citizen, note.kind() == NoteBook.Kind.MAIL
+                        ? "I passed " + note.fromName() + "'s message on to " + note.toName() + ": \"" + note.text() + "\"."
+                        : "I reminded " + note.toName() + ", as they had asked me: \"" + note.text() + "\".");
             }
         }
         if (data.book.all().size() != before) {

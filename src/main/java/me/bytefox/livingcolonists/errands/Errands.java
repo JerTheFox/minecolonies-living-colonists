@@ -83,7 +83,7 @@ public final class Errands {
     public Errands(PerceptionService perception, Notes.Writer writer, Deeds deeds) {
         this.deeds = deeds;
         items = new ItemIndex();
-        notes = new Notes(writer);
+        notes = new Notes(writer, deeds);
         notes.errands().forEach(this::add);
         notify = new NotifyWhen(items);
         add(new CheckStock(items));
