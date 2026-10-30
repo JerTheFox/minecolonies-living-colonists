@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-30
+
 ### Added
 
 - Colonists' day as it really went: the mod notes what each colonist did (worked, slept at home or outside, ate, sheltered, hid from a raid, had no work), which they can talk about and bring up on their own.
@@ -164,5 +166,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A colony conversation that ended while a reply was still on its way no longer comes back to life.
 - Old conversations that are fully written down no longer pile up in the world's data.
 
-[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/JerTheFox/minecolonies-living-colonists/releases/tag/v0.1.0
