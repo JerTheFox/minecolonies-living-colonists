@@ -10,8 +10,11 @@ import com.google.gson.JsonObject;
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.buildings.IBuilding;
+import com.minecolonies.api.colony.colonyEvents.descriptions.ICitizenEventDescription;
+import com.minecolonies.api.colony.colonyEvents.descriptions.IColonyEventDescription;
 import com.minecolonies.api.colony.workorders.IServerWorkOrder;
 import com.minecolonies.api.tileentities.AbstractTileEntityRack;
+import com.minecolonies.core.colony.eventhooks.citizenEvents.CitizenDiedEvent;
 import me.bytefox.livingcolonists.llm.ToolSpec;
 import me.bytefox.livingcolonists.perception.ColonistFacts;
 import me.bytefox.livingcolonists.perception.PerceptionService;
@@ -64,6 +67,8 @@ public final class ColonyLookups {
                 lookup("food_status", "How much food the warehouses hold, roughly how many days it lasts the colony, "
                         + "and who is hungry.", null, null,
                         (context, arguments) -> food(context.colony(), perception)),
+                lookup("fallen_colonists", "The colonists who died, newest last, and how, from the colony's own records.",
+                        null, null, (context, arguments) -> fallen(context.colony())),
                 lookup("where_is", "Which way and how far a colonist or a building is from the person asking.",
                         "what", "A colonist's name as the colony spells it, or a building in plain English words",
                         (context, arguments) -> where(context, Errand.string(arguments, "what"))));
@@ -245,6 +250,25 @@ public final class ColonyLookups {
             case ItemMatch.Result.None<IBuilding> none -> Errand.error("There is nobody and no building called \""
                     + what + "\" in the colony.");
         };
+    }
+
+    private static JsonObject fallen(IColony colony) {
+        List<String> deaths = new ArrayList<>();
+        for (IColonyEventDescription entry : colony.getEventDescriptionManager().getEventDescriptions()) {
+            if (entry instanceof ICitizenEventDescription citizen && entry.getEventTypeId().getPath().contains("died")) {
+                String cause = entry instanceof CitizenDiedEvent died && died.getDeathCause() != null
+                        ? " (" + died.getDeathCause() + ")" : "";
+                deaths.add(citizen.getCitizenName() + cause);
+            }
+        }
+        JsonArray list = new JsonArray();
+        deaths.subList(Math.max(0, deaths.size() - MAX_LINES), deaths.size()).forEach(list::add);
+        JsonObject reply = ok();
+        reply.add("died", list);
+        if (deaths.isEmpty()) {
+            reply.addProperty("info", "Nobody in the colony's records has died.");
+        }
+        return reply;
     }
 
     private static void add(JsonArray array, String line) {

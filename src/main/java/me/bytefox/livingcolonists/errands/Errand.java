@@ -62,6 +62,13 @@ public interface Errand {
         return result;
     }
 
+    /** Nothing fits the words; a name in another language than English gets one more try. */
+    static JsonObject notFound(String what, String words) {
+        boolean english = words.chars().filter(Character::isLetter).allMatch(c -> c < 128);
+        return error("There is no " + what + " called \"" + words + "\"." + (english ? ""
+                : " Names are looked up in English: call again with its English name."));
+    }
+
     static String string(JsonObject arguments, String key) {
         return arguments.has(key) && arguments.get(key).isJsonPrimitive() ? arguments.get(key).getAsString().strip() : "";
     }

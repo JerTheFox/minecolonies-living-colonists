@@ -3,12 +3,14 @@ package me.bytefox.livingcolonists.errands;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -26,6 +28,7 @@ import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
@@ -38,6 +41,8 @@ import net.minecraft.server.level.ServerPlayer;
 public final class Errands {
     public static final String PLAYER_WORDS = "player_words";
     private static final int KEPT_LOOKUPS = 5;
+    /** If the colonist's line never comes (silence, a dropped thread), the buttons show after this long. */
+    private static final long QUESTION_FALLBACK_TICKS = 15 * 20;
     private static final int MAX_LOOKUP_TEXT = 600;
     private static final DateTimeFormatter CLOCK = DateTimeFormatter.ofPattern("HH:mm:ss");
 
@@ -46,6 +51,12 @@ public final class Errands {
 
     private final Map<String, Errand> errands = new LinkedHashMap<>();
     private final OrderBook<Ticket> book = new OrderBook<>();
+    private final NotifyWhen notify;
+    /** Yes and no buttons waiting for the colonist's line that asks for them. */
+    private final List<Question> questions = new ArrayList<>();
+
+    private record Question(int colonyId, int citizenId, UUID player, Component text, long showBy) {
+    }
     /** The latest look-ups in each colony, so everyone in a conversation knows what was looked up. */
     private final Map<Integer, Deque<Lookup>> lookups = new HashMap<>();
     /** Game time of the latest look-up or order in each colony. */
@@ -56,10 +67,19 @@ public final class Errands {
 
     public Errands(PerceptionService perception) {
         ItemIndex items = new ItemIndex();
+        notify = new NotifyWhen(items);
         add(new CheckStock(items));
         ColonyLookups.all(perception).forEach(this::add);
         add(new ResearchStatus());
         add(new UpgradeBuilding());
+        add(new TakeJob());
+        add(new RequestCraft(items));
+        add(new Prioritize());
+        GuardGear.all().forEach(this::add);
+        add(new FarmerPlant(items));
+        add(new StartResearch());
+        HouseOrders.all(items).forEach(this::add);
+        add(notify);
     }
 
     private void add(Errand errand) {
@@ -97,9 +117,11 @@ public final class Errands {
             LivingColonists.LOGGER.warn("Errand {} failed", call.name(), e);
             return Errand.error("That couldn't be done right now.").toString();
         }
+        if (result instanceof Errand.Result.Answer answer) {
+            LivingColonists.LOGGER.info("{} by {}: {}{} -> {}", errand.isOrder() ? "Order turned down" : "Look-up",
+                    context.citizen().getName(), call.name(), call.arguments(), answer.reply());
+        }
         if (result instanceof Errand.Result.Answer answer && !errand.isOrder()) {
-            LivingColonists.LOGGER.info("Look-up by {}: {}{} -> {}", context.citizen().getName(), call.name(),
-                    call.arguments(), answer.reply());
             String text = context.citizen().getName() + " looked up " + call.name() + call.arguments() + ": " + answer.reply();
             Deque<Lookup> colony = lookups.computeIfAbsent(context.colony().getID(), id -> new ArrayDeque<>());
             colony.addLast(new Lookup(context.colony().getWorld().getGameTime(),
@@ -138,7 +160,9 @@ public final class Errands {
         long now = player.server.getTickCount();
         book.propose(player.getUUID(), new Ticket(order, context.citizen().getName(), context.colony().getName()), now);
         log(context, order.tool(), "asked: " + order.summary());
-        player.sendSystemMessage(question(context.citizen().getName(), order.question()));
+        // The buttons come right after the colonist's own line asking for a yes, not before it.
+        questions.add(new Question(context.colony().getID(), context.citizen().getId(), player.getUUID(),
+                question(context.citizen().getName(), order.question()), now + QUESTION_FALLBACK_TICKS));
         JsonObject reply = new JsonObject();
         reply.addProperty("success", true);
         reply.addProperty("waiting_for_yes", order.summary());
@@ -243,7 +267,32 @@ public final class Errands {
         return book.log();
     }
 
+    /** Once a second: the watches for things colonists were asked to tell about, and late buttons. */
+    public void tick(MinecraftServer server) {
+        if (server.getTickCount() % 20 == 0) {
+            notify.tick(server);
+            long now = server.getTickCount();
+            questions.removeIf(question -> question.showBy() <= now && show(server, question));
+        }
+    }
+
+    /** A colonist's line went out: the buttons it asks the player to press come right after it. */
+    public void afterLine(MinecraftServer server, int colonyId, int citizenId) {
+        questions.removeIf(question -> question.colonyId() == colonyId && question.citizenId() == citizenId
+                && show(server, question));
+    }
+
+    private static boolean show(MinecraftServer server, Question question) {
+        ServerPlayer player = server.getPlayerList().getPlayer(question.player());
+        if (player != null) {
+            player.sendSystemMessage(question.text());
+        }
+        return true;
+    }
+
     public void clear() {
+        notify.clear();
+        questions.clear();
         book.clear();
         lookups.clear();
         lastErrand.clear();
@@ -280,7 +329,7 @@ public final class Errands {
         return spec(name, description + " Only when the player asks for it themselves; they confirm before it happens.", all);
     }
 
-    private static ToolSpec spec(String name, String description, Map<String, String> parameters) {
+    static ToolSpec spec(String name, String description, Map<String, String> parameters) {
         JsonObject schema = new JsonObject();
         schema.addProperty("type", "object");
         JsonObject properties = new JsonObject();

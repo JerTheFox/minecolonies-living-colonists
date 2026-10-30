@@ -395,6 +395,7 @@ public final class ColonyThreads {
         ServerPlayer author = thread.lastPlayer == null ? null : server.getPlayerList().getPlayer(thread.lastPlayer);
         typing.stop(server, speaker);
         output.colonistSaid(speaker, text, TalkService.colonyAudience(server, colony, author));
+        talk.errands().afterLine(server, speaker.colonyId(), speaker.citizenId());
         memory.rememberColony(colony, speaker.name(), text);
         thread.lastLineTick = server.getTickCount();
         thread.lastSpeaker = speaker.citizenId();

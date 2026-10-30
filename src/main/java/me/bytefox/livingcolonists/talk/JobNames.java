@@ -7,6 +7,7 @@ import java.util.Set;
 
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.jobs.IJob;
+import com.minecolonies.api.colony.jobs.registry.JobEntry;
 
 /**
  * The words players may use for a colonist's profession: its names from the translations of the
@@ -39,10 +40,11 @@ public final class JobNames {
     /** The words for this colonist's profession; empty for the unemployed and children. */
     public Set<String> of(ICitizenData citizen, String locale) {
         IJob<?> job = citizen.getJob();
-        if (job == null) {
-            return Set.of();
-        }
-        var entry = job.getJobRegistryEntry();
+        return job == null ? Set.of() : of(job.getJobRegistryEntry(), locale);
+    }
+
+    /** The words for a profession, in English, Russian and the locale, and everyday ones. */
+    public static Set<String> of(JobEntry entry, String locale) {
         Set<String> words = new LinkedHashSet<>();
         for (String language : new LinkedHashSet<>(List.of("en_us", "ru_ru", locale))) {
             String name = Translations.of(entry.getKey().getNamespace(), language).get(entry.getTranslationKey());

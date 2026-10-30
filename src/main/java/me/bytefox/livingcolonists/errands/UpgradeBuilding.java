@@ -51,8 +51,7 @@ public final class UpgradeBuilding implements Errand {
                 reply.add("options", options);
                 yield new Result.Answer(reply);
             }
-            case ItemMatch.Result.None<IBuilding> none -> new Result.Answer(Errand.error("The colony has no building "
-                    + "called \"" + words + "\"."));
+            case ItemMatch.Result.None<IBuilding> none -> new Result.Answer(Errand.notFound("building in the colony", words));
         };
     }
 

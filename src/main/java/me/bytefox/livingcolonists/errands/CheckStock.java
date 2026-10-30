@@ -55,8 +55,7 @@ public final class CheckStock implements Errand {
             case ItemMatch.Result.Found<Item> found -> new Result.Answer(count(context.colony(), found.value()));
             case ItemMatch.Result.Ambiguous<Item> ambiguous -> new Result.Answer(several(context.colony(), words,
                     ambiguous.options().stream().map(ItemMatch.Candidate::value).toList()));
-            case ItemMatch.Result.None<Item> none -> new Result.Answer(Errand.error("There is no item called \""
-                    + words + "\"."));
+            case ItemMatch.Result.None<Item> none -> new Result.Answer(Errand.notFound("item", words));
         };
     }
 

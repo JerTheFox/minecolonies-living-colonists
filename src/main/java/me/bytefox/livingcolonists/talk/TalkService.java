@@ -145,10 +145,12 @@ public final class TalkService {
             typing.stop(server, line.speaker());
             if (citizen != null && player != null) {
                 output.colonistWhispered(line.speaker(), player, line.text());
+                errands.afterLine(server, line.speaker().colonyId(), line.speaker().citizenId());
                 memory.rememberPrivate(citizen, player.getUUID(), line.speaker().name(), line.text());
             }
         }
         threads.tick(server);
+        errands.tick(server);
         events.tick(server);
         typing.tick(server);
     }

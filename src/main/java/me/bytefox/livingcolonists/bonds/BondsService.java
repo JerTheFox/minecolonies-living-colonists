@@ -23,6 +23,7 @@ import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.colony.buildings.ModBuildings;
 import com.minecolonies.api.colony.requestsystem.request.IRequest;
+import com.minecolonies.api.colony.requestsystem.requestable.IDeliverable;
 import com.minecolonies.api.colony.requestsystem.token.IToken;
 import com.minecolonies.api.colony.requestsystem.token.StandardToken;
 import com.minecolonies.api.colony.colonyEvents.descriptions.IBuildingEventDescription;
@@ -33,6 +34,8 @@ import me.bytefox.livingcolonists.memory.Digests;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.common.Tags;
 
 /**
  * Promises players make to colonists and how players treat them. Both are written down from
@@ -162,6 +165,21 @@ public final class BondsService {
      * A button pressed in a colonist's request dialog: "I will work on it!" becomes a promise tied
      * to the request; "Cancel" on a promised request drops it, a breach once it is overdue.
      */
+    /** What a requested thing is worth, by code from the item and the amount; ordinary (2) if unknown. */
+    private static int worth(IRequest<?> asked) {
+        if (asked == null || asked.getDisplayStacks().isEmpty()) {
+            return 2;
+        }
+        ItemStack stack = asked.getDisplayStacks().get(0);
+        int count = asked.getRequest() instanceof IDeliverable deliverable ? deliverable.getCount() : stack.getCount();
+        Worth.Kind kind = stack.is(Tags.Items.STORAGE_BLOCKS) ? Worth.Kind.STORAGE_BLOCK
+                : stack.is(Tags.Items.GEMS) ? Worth.Kind.GEM
+                : stack.is(Tags.Items.INGOTS) ? Worth.Kind.INGOT
+                : stack.is(Tags.Items.ORES) ? Worth.Kind.ORE : Worth.Kind.PLAIN;
+        return Worth.of(new Worth.Traits(stack.getRarity().ordinal(), kind, stack.getMaxDamage(), stack.isEnchanted(),
+                stack.getMaxStackSize()), count);
+    }
+
     public void onRequestResponse(ICitizenData citizen, IToken<?> request, String button, ServerPlayer player,
                                   String playerName) {
         if (data == null || !(request.getIdentifier() instanceof UUID id)) {
@@ -183,7 +201,7 @@ public final class BondsService {
                 IRequest<?> asked = request(citizen.getColony(), request);
                 String what = asked == null ? "what they asked for" : asked.getShortDisplayString().getString();
                 String text = playerName + " promised to bring " + citizen.getName() + " " + what + ".";
-                list.add(new Promise(data.nextId++, player.getUUID(), playerName, text, 2, Promise.About.SUPPLY, now,
+                list.add(new Promise(data.nextId++, player.getUUID(), playerName, text, worth(asked), Promise.About.SUPPLY, now,
                         now + REQUEST_PROMISE_TICKS, Promise.Status.OPEN, 0, false, false, requestId));
                 data.playerNames.put(player.getUUID(), playerName);
                 data.setDirty();
