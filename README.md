@@ -74,6 +74,8 @@ Or edit the file by hand: open `config/livingcolonists-common.toml` (it appears 
 
 The `[llm.fallback]` section sets up a second API used when the main one fails even after retries, for example a local model: `enabled`, `baseUrl`, `model`, `apiKey` (may stay empty for local models), `apiKeyEnv`.
 
+The optional `[embeddings]` section lets colonists recall the remembered facts a talk touches by meaning, in any language: "is your leg better?" finds "Ephraim's knee aches" though they share no word. Without it, facts are picked by the people in the talk, the words in common, importance and age. It takes an OpenAI-compatible `/embeddings` API: `baseUrl` (default OpenRouter, `https://openrouter.ai/api/v1`), `model` (default `baai/bge-m3`: multilingual, about $0.01 per million tokens, a fraction of a cent a day), `apiKey` and `apiKeyEnv` (default `LIVINGCOLONISTS_EMBEDDINGS_API_KEY`). Embeddings are on when a key is found, or when `baseUrl` is on this machine (for example Ollama with `bge-m3`). The model must know your players' languages; English-only models can't match Russian messages with English facts.
+
 The `[behaviour]` section sets how colonists behave:
 
 | Option | Default | Meaning |

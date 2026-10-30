@@ -99,4 +99,30 @@ class MemoryShapeTest {
         // Still oldest first.
         assertEquals(shown.stream().sorted(java.util.Comparator.comparingLong(Fact::created)).toList(), shown);
     }
+
+    @Test
+    void closenessInMeaningFindsAFactWithNoWordInCommon() {
+        List<Fact> facts = new java.util.ArrayList<>();
+        for (int i = 0; i < 12; i++) {
+            facts.add(new Fact("Old trivia number " + i + ".", 3, i, 30 * DAY, Fact.COLONY_CHAT, false, ""));
+        }
+        Fact knee = new Fact("Ephraim's knee aches in the mornings.", 2, 0, 30 * DAY, Fact.COLONY_CHAT, false, "");
+        facts.add(knee);
+        // "нога у тебя прошла?" shares no word with the fact; only its meaning is close.
+        assertFalse(Digests.relevant(facts, Set.of(), "нога у тебя прошла?", 30, 4).contains(knee));
+        Map<Fact, Double> closeness = new java.util.HashMap<>();
+        facts.forEach(fact -> closeness.put(fact, 0.3));
+        closeness.put(knee, 0.7);
+        assertTrue(Digests.relevant(facts, Set.of(), "нога у тебя прошла?", 30, 4, closeness).contains(knee));
+    }
+
+    @Test
+    void anEmbeddingsAnswerGivesVectorsInInputOrder() {
+        List<float[]> vectors = me.bytefox.livingcolonists.llm.EmbeddingClient.parse("""
+                {"data":[{"index":1,"embedding":[0,1]},{"index":0,"embedding":[1,0]}],"usage":{"prompt_tokens":4}}""", 2);
+        assertEquals(1f, vectors.get(0)[0]);
+        assertEquals(1f, vectors.get(1)[1]);
+        assertEquals(0, me.bytefox.livingcolonists.llm.EmbeddingClient.cosine(vectors.get(0), vectors.get(1)), 1e-9);
+        assertEquals(1, me.bytefox.livingcolonists.llm.EmbeddingClient.cosine(vectors.get(0), vectors.get(0)), 1e-9);
+    }
 }

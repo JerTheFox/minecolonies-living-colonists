@@ -5,9 +5,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- Optional embeddings (`[embeddings]` in the config, OpenRouter with `baai/bge-m3` by default): with a key, colonists recall the remembered facts a talk touches by meaning, in any language, not only by the words in common. Vectors are kept in the server's memory, not in the world.
+
 ### Changed
 
-- With a shader pack (Iris), speech bubbles are drawn on the screen over the speaker's head, so the shaders no longer dim them.
+- With a shader pack (Iris), speech bubbles are drawn on the screen over the speaker's head, so the shaders no longer dim or hide them.
 - Nobody joins in right after a look-up or an order, and colonists don't argue with facts from the colony's records.
 - One homeless colonist telling a player is enough for a while: others don't raise the same problem to them in turn, and unhappiness about having no home no longer counts as a second complaint.
 - Memory keeps players by their account, not their name: after a rename (a new nickname, `playerNames` set later) colonists know the same person under the new name, and the prompt mentions the names they had before.
@@ -15,6 +19,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - From the colony chat, a fact about one of the colonists who took part is kept by that colonist only, not by everyone who heard it; a fact like one already known about the same person replaces it instead of piling up.
 - Colonists no longer write down what the colony tracks live (homes, jobs, hunger, sickness, materials, happiness), so their memory doesn't go stale and contradict what they see.
 - Facts about a colonist who died or left are forgotten by the others too.
+- Colonists in the colony chat know which players are in the colony, so one player greeting another by name no longer gets "they aren't here".
 
 ### Fixed
 

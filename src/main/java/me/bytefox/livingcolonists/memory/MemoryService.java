@@ -13,7 +13,9 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.time.Duration;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -29,6 +31,8 @@ import me.bytefox.livingcolonists.bonds.Promise;
 import me.bytefox.livingcolonists.behaviour.Module;
 import me.bytefox.livingcolonists.llm.ChatMessage;
 import me.bytefox.livingcolonists.llm.ChatResult;
+import me.bytefox.livingcolonists.llm.EmbeddingClient;
+import me.bytefox.livingcolonists.llm.LlmEndpoint;
 import me.bytefox.livingcolonists.llm.LlmClient;
 import me.bytefox.livingcolonists.llm.LlmSettings;
 import me.bytefox.livingcolonists.llm.ModelRole;
@@ -81,21 +85,40 @@ public final class MemoryService {
     private static final int MEMORIES_SHOWN = 8;
     /** Players named in the hint about former names, at most. */
     private static final int MAX_NAME_HINTS = 4;
+    /** How long a reply waits for the vector of what was said; then the facts are picked by words. */
+    private static final Duration QUERY_WAIT = Duration.ofSeconds(2);
+    private static final Duration FACTS_WAIT = Duration.ofSeconds(20);
+    /** Vectors kept in memory, by fact text; rebuilt after a restart, never saved with the world. */
+    private static final int MAX_VECTORS = 20000;
+    /** The end of what is said that a vector is made of: the last line or two is what the reply answers. */
+    private static final int QUERY_CHARS = 400;
     private static final int MAX_PRIVATE_FACTS = 5;
     private static final int MAX_COLONY_FACTS = 4;
 
     private final LlmClient client;
+    private final EmbeddingClient embeddings;
     private final PromptLibrary prompts;
     private final BondsService bonds;
     private MemoryData data;
+    private final Map<String, float[]> vectors = new java.util.LinkedHashMap<>(256, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, float[]> eldest) {
+            return size() > MAX_VECTORS;
+        }
+    };
+    /** Fact texts whose vectors are on their way. */
+    private final Set<String> embedding = new HashSet<>();
+    /** The model the vectors were made with: another model's vectors don't compare. */
+    private String vectorModel = "";
     /** Conversations being written down, by transcript key. */
     private final Set<String> digesting = new HashSet<>();
     /** Server tick before which a conversation is not tried again, by transcript key. */
     private final Map<String, Long> retryAt = new HashMap<>();
     private long lastCleanupDay = -1;
 
-    public MemoryService(LlmClient client, PromptLibrary prompts, BondsService bonds) {
+    public MemoryService(LlmClient client, EmbeddingClient embeddings, PromptLibrary prompts, BondsService bonds) {
         this.client = client;
+        this.embeddings = embeddings;
         this.prompts = prompts;
         this.bonds = bonds;
     }
@@ -113,6 +136,8 @@ public final class MemoryService {
 
     public void detach() {
         data = null;
+        vectors.clear();
+        embedding.clear();
         PlayerMarks.clearCurrent();
         digesting.clear();
         retryAt.clear();
@@ -201,8 +226,51 @@ public final class MemoryService {
      * @param context what is being said
      */
     public String memories(ICitizenData citizen, Set<String> present, String context) {
+        return memories(citizen, present, context, Map.of());
+    }
+
+    /**
+     * The same, found by meaning too when an embeddings API is set up: {@code done} gets the block on
+     * the server thread, after a moment for the vector of what was said, or at once without one.
+     */
+    public void memoriesFor(ICitizenData citizen, Set<String> present, String context, MinecraftServer server,
+                            Consumer<String> done) {
+        Optional<LlmEndpoint> endpoint = Config.embeddings();
+        List<Fact> facts = facts(citizen);
+        if (endpoint.isEmpty() || facts.size() <= MEMORIES_SHOWN || context.isBlank()) {
+            done.accept(memories(citizen, present, context));
+            return;
+        }
+        useModel(endpoint.get());
+        embedFacts(facts, endpoint.get(), server);
+        String query = context.length() > QUERY_CHARS ? context.substring(context.length() - QUERY_CHARS) : context;
+        int colonyId = citizen.getColony().getID();
+        int citizenId = citizen.getId();
+        embeddings.embed(endpoint.get(), List.of(PlayerMarks.resolve(query)), QUERY_WAIT).whenComplete((result, error) ->
+                server.execute(() -> {
+                    IColony colony = Citizens.colony(colonyId);
+                    ICitizenData current = colony == null ? null : colony.getCitizenManager().getCivilian(citizenId);
+                    if (current == null) {
+                        done.accept("");
+                        return;
+                    }
+                    Map<Fact, Double> closeness = new HashMap<>();
+                    if (error == null && data != null) {
+                        for (Fact fact : facts(current)) {
+                            float[] vector = vectors.get(fact.text());
+                            if (vector != null) {
+                                closeness.put(fact, EmbeddingClient.cosine(result.get(0), vector));
+                            }
+                        }
+                    }
+                    done.accept(memories(current, present, context, closeness));
+                }));
+    }
+
+    private String memories(ICitizenData citizen, Set<String> present, String context, Map<Fact, Double> closeness) {
         long now = now(citizen.getColony());
-        String facts = Digests.memories(Digests.relevant(facts(citizen), present, context, now, MEMORIES_SHOWN), now);
+        String facts = Digests.memories(Digests.relevant(facts(citizen), present, context, now, MEMORIES_SHOWN, closeness),
+                now);
         List<UUID> players = present.stream().filter(key -> key.startsWith("p:"))
                 .map(key -> UUID.fromString(key.substring(2))).toList();
         String names = formerNames(players);
@@ -430,6 +498,11 @@ public final class MemoryService {
                     Digests.Digest digest = marked(Digests.parseAll(reply.text(), max));
                     List<Digests.Entry> entries = digest.facts();
                     store(now, ownerIds, entries, source);
+                    Config.embeddings().ifPresent(endpoint -> {
+                        useModel(endpoint);
+                        ownerIds.stream().map(id -> now.getCitizenManager().getCivilian(id)).filter(Objects::nonNull)
+                                .forEach(owner -> embedFacts(facts(owner), endpoint, server));
+                    });
                     if (after != null) {
                         after.accept(now, digest);
                     }
@@ -491,6 +564,40 @@ public final class MemoryService {
             }
         }
         touched.forEach(book -> book.cleanup(now, limits.facts()));
+    }
+
+    /** Asks for the vectors of facts that have none yet, in the background; they are used once they come. */
+    private void embedFacts(Collection<Fact> facts, LlmEndpoint endpoint, MinecraftServer server) {
+        List<String> missing = facts.stream().map(Fact::text)
+                .filter(text -> !vectors.containsKey(text) && !embedding.contains(text)).distinct().toList();
+        if (missing.isEmpty()) {
+            return;
+        }
+        embedding.addAll(missing);
+        MemoryData target = data;
+        String model = endpoint.model();
+        embeddings.embed(endpoint, missing.stream().map(PlayerMarks::resolve).toList(), FACTS_WAIT)
+                .whenComplete((result, error) -> server.execute(() -> {
+                    missing.forEach(embedding::remove);
+                    if (error != null) {
+                        LivingColonists.LOGGER.warn("Could not get embeddings for {} facts: {}", missing.size(),
+                                error.getCause() != null ? error.getCause().getMessage() : error.getMessage());
+                        return;
+                    }
+                    if (data == target && model.equals(vectorModel)) {
+                        for (int i = 0; i < missing.size(); i++) {
+                            vectors.put(missing.get(i), result.get(i));
+                        }
+                    }
+                }));
+    }
+
+    /** Vectors of another model don't compare with the new one's: they are made again. */
+    private void useModel(LlmEndpoint endpoint) {
+        if (!endpoint.model().equals(vectorModel)) {
+            vectors.clear();
+            vectorModel = endpoint.model();
+        }
     }
 
     /** Whom the model said a fact is about, as a key: a colonist of this colony, a known player, the colony. */

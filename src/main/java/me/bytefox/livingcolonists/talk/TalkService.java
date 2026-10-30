@@ -246,11 +246,8 @@ public final class TalkService {
         messages.add(ChatMessage.user(message));
         Map<String, String> values = promptValues(citizen, player);
         values.put("language", replyLanguage(citizen, player, speaker, history, message));
-        values.put("memories", memory.memories(citizen, Set.of(Fact.aboutCitizen(citizen.getId()),
-                Fact.aboutPlayer(player.getUUID())), message));
         Optional<Fact> rumor = memory.rumor(citizen, player.getUUID(), random);
         rumor.ifPresent(fact -> values.put("initiative", values.get("initiative") + " " + Prompts.gossip(fact.text())));
-        String prompt = Templates.render(prompts.get(PromptLibrary.REPLY_PRIVATE), values);
 
         thinking.add(key);
         MinecraftServer server = player.server;
@@ -258,20 +255,26 @@ public final class TalkService {
         ResourceKey<Level> dimension = citizen.getColony().getDimension();
         long earliest = server.getTickCount() + LinePacing.gap(random);
         typing.start(server, speaker, List.of(player), earliest);
-        generate(citizen, prompt, messages, playerId, server, result -> {
-            thinking.remove(key);
-            ServerPlayer author = server.getPlayerList().getPlayer(playerId);
-            Optional<String> text = lineOf(speaker, result);
-            if (text.isEmpty()) {
-                typing.stop(server, speaker);
-                if (author != null && result instanceof ChatResult.Failure) {
-                    author.sendSystemMessage(Component.translatable("livingcolonists.talk.failed", speaker.name()));
+        // The facts this message touches, by meaning when embeddings are set up: a moment, while the colonist "reads".
+        memory.memoriesFor(citizen, Set.of(Fact.aboutCitizen(citizen.getId()), Fact.aboutPlayer(playerId)), message, server,
+                memories -> {
+            values.put("memories", memories);
+            String prompt = Templates.render(prompts.get(PromptLibrary.REPLY_PRIVATE), values);
+            generate(citizen, prompt, messages, playerId, server, result -> {
+                thinking.remove(key);
+                ServerPlayer author = server.getPlayerList().getPlayer(playerId);
+                Optional<String> text = lineOf(speaker, result);
+                if (text.isEmpty()) {
+                    typing.stop(server, speaker);
+                    if (author != null && result instanceof ChatResult.Failure) {
+                        author.sendSystemMessage(Component.translatable("livingcolonists.talk.failed", speaker.name()));
+                    }
+                    return;
                 }
-                return;
-            }
-            rumor.ifPresent(fact -> told(dimension, speaker, fact));
-            long at = LinePacing.slot(server.getTickCount(), earliest + LinePacing.typingTicks(text.get().length()), 0);
-            pending.add(new PendingLine(at, dimension, speaker, playerId, text.get()));
+                rumor.ifPresent(fact -> told(dimension, speaker, fact));
+                long at = LinePacing.slot(server.getTickCount(), earliest + LinePacing.typingTicks(text.get().length()), 0);
+                pending.add(new PendingLine(at, dimension, speaker, playerId, text.get()));
+            });
         });
     }
 

@@ -417,6 +417,12 @@ public final class ColonyThreads {
         values.put("transcript", transcriptText(colony, thread, answeringPlayer || opening != null
                 || chatter == null && namedLast(colony, citizen)));
         values.put("language", thread.language != null ? thread.language : "the language of the latest chat lines");
+        // Who of the players is here: otherwise "hi, Max!" from one player to another gets "Max isn't here".
+        List<String> here = TalkService.colonyAudience(server, colony, null).stream().map(TalkService::playerName).toList();
+        if (!here.isEmpty()) {
+            values.put("situation", values.get("situation") + "\nIn the colony now, besides colonists: "
+                    + String.join(", ", here) + ". They may greet or call each other in the chat.");
+        }
         // Remembered facts this talk touches: about whoever is in it, or sharing words with what was said.
         Set<String> present = new HashSet<>();
         present.add(Fact.aboutCitizen(citizen.getId()));
@@ -424,7 +430,6 @@ public final class ColonyThreads {
         if (player != null) {
             present.add(Fact.aboutPlayer(player.getUUID()));
         }
-        values.put("memories", memory.memories(citizen, present, values.get("transcript")));
         String along = bonds.colonistBlock(citizen, chatPeople(colony, thread));
         if (!along.isEmpty()) {
             values.put("bonds", values.get("bonds").isEmpty() ? along : values.get("bonds") + "\n" + along);
@@ -476,7 +481,6 @@ public final class ColonyThreads {
             }
         }
         Optional<Fact> gossip = rumor;
-        String prompt = Templates.render(prompts.get(PromptLibrary.REPLY_COLONY), values);
         List<MemoryLine> lines = memory.colonyChat(colony);
         String last = opening != null ? "[Colony news: " + opening + "]"
                 : lines.isEmpty() ? "" : lines.get(lines.size() - 1).speaker() + ": " + lines.get(lines.size() - 1).text();
@@ -485,29 +489,37 @@ public final class ColonyThreads {
         double pace = answeringPlayer ? THREAD_PACE : CHATTER_PACE;
         long readingEnd = thread.lastLineTick + Math.round(pace * LinePacing.gap(random));
         typing.start(server, speaker, TalkService.colonyAudience(server, colony, player), readingEnd);
-        talk.generate(citizen, prompt, List.of(ChatMessage.user(last)), answeringPlayer ? thread.lastPlayer : null,
-                server, result -> {
+        // The facts the last line touches, by meaning when embeddings are set up; asked during the reading pause.
+        memory.memoriesFor(citizen, present, chatter != null ? chatter : last, server, memories -> {
             if (thread.version != version) {
                 return;
             }
-            Optional<String> text = TalkService.lineOf(speaker, result).map(line -> Prompts.firstSentences(line, MAX_SENTENCES));
-            if (text.isEmpty()) {
-                typing.stop(server, speaker);
-                if (answeringPlayer && result instanceof ChatResult.Reply && thread.silent++ < MAX_SILENT) {
-                    // Nobody ignores a player: if the one asked has nothing to say, someone else answers.
-                    LivingColonists.LOGGER.info("{} had nothing to say to the player, someone else answers", speaker.name());
-                    thread.lastSpeaker = speaker.citizenId();
-                    nextTurn(server, colony, thread, version);
+            values.put("memories", memories);
+            String prompt = Templates.render(prompts.get(PromptLibrary.REPLY_COLONY), values);
+            talk.generate(citizen, prompt, List.of(ChatMessage.user(last)), answeringPlayer ? thread.lastPlayer : null,
+                    server, result -> {
+                if (thread.version != version) {
                     return;
                 }
-                thread.addressed.clear();
-                return;
-            }
-            gossip.ifPresent(fact -> talk.told(colony.getDimension(), speaker, fact));
-            long now = server.getTickCount();
-            long at = Math.max(now, readingEnd + Math.round(pace * LinePacing.typingTicks(text.get().length())));
-            thread.lastLineTick = at;
-            scheduled.add(new Scheduled(at, () -> say(server, colony, thread, version, speaker, text.get(), answeringPlayer)));
+                Optional<String> text = TalkService.lineOf(speaker, result).map(line -> Prompts.firstSentences(line, MAX_SENTENCES));
+                if (text.isEmpty()) {
+                    typing.stop(server, speaker);
+                    if (answeringPlayer && result instanceof ChatResult.Reply && thread.silent++ < MAX_SILENT) {
+                        // Nobody ignores a player: if the one asked has nothing to say, someone else answers.
+                        LivingColonists.LOGGER.info("{} had nothing to say to the player, someone else answers", speaker.name());
+                        thread.lastSpeaker = speaker.citizenId();
+                        nextTurn(server, colony, thread, version);
+                        return;
+                    }
+                    thread.addressed.clear();
+                    return;
+                }
+                gossip.ifPresent(fact -> talk.told(colony.getDimension(), speaker, fact));
+                long now = server.getTickCount();
+                long at = Math.max(now, readingEnd + Math.round(pace * LinePacing.typingTicks(text.get().length())));
+                thread.lastLineTick = at;
+                scheduled.add(new Scheduled(at, () -> say(server, colony, thread, version, speaker, text.get(), answeringPlayer)));
+            });
         });
     }
 

@@ -217,10 +217,10 @@ public final class Errands {
         JsonObject reply = new JsonObject();
         reply.addProperty("success", true);
         reply.addProperty("waiting_for_yes", order.summary());
-        reply.addProperty("info", "Nothing is done yet: the player now sees yes and no buttons, and it happens only "
-                + "once they agree. Ask " + TalkService.playerName(player) + " by name to confirm, in one short line, in "
-                + "your own way: offer it, don't say it is already placed or started, and don't guess how long it will "
-                + "take. Don't call this again.");
+        reply.addProperty("info", "Nothing is done or ordered yet: the player now sees yes and no buttons, and it "
+                + "happens only once they agree. In one short line, ask " + TalkService.playerName(player) + " by name "
+                + "whether to do it, as a question, like \"Build the residence up to level one, then?\": never say you "
+                + "have placed, filed, ordered or started it, and don't guess how long it will take. Don't call this again.");
         return reply;
     }
 

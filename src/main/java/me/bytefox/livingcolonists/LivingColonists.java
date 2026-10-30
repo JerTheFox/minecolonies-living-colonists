@@ -12,6 +12,7 @@ import com.mojang.logging.LogUtils;
 import me.bytefox.livingcolonists.debug.DebugCommand;
 import me.bytefox.livingcolonists.debug.UsageData;
 import me.bytefox.livingcolonists.llm.LlmClient;
+import me.bytefox.livingcolonists.llm.EmbeddingClient;
 import me.bytefox.livingcolonists.llm.UsageStats;
 import me.bytefox.livingcolonists.bonds.BondsData;
 import me.bytefox.livingcolonists.errands.GuardTally;
@@ -82,7 +83,9 @@ public final class LivingColonists {
             new ArchetypeLibrary(FMLPaths.CONFIGDIR.get()), client);
     private final PerceptionService perception = new PerceptionService();
     private final BondsService bonds = new BondsService();
-    private final MemoryService memory = new MemoryService(client, prompts, bonds);
+    private final MemoryService memory = new MemoryService(client, new EmbeddingClient(
+            HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).connectTimeout(Duration.ofSeconds(5)).build(), usage),
+            prompts, bonds);
     private final TalkService talk = new TalkService(client, prompts, personalities, perception, memory, bonds);
     private UsageData usageData;
     private final Conversations conversations = new Conversations(talk);
@@ -194,6 +197,8 @@ public final class LivingColonists {
         IMinecoloniesAPI.getInstance().getEventBus().subscribe(ColonyDeletedModEvent.class, this::onColonyDeleted);
         LOGGER.info("Living Colonists loaded, model {} at {}, API key {}", Config.CHAT_MODEL.get(), Config.BASE_URL.get(),
                 Config.apiKey().isPresent() ? "found" : "missing: set apiKey in the config or " + Config.API_KEY_ENV.get());
+        LOGGER.info("Embeddings: {}", Config.embeddings().map(endpoint -> "model " + endpoint.model() + " at "
+                + endpoint.baseUrl()).orElse("off (no key), remembered facts are picked by words"));
     }
 
     /**

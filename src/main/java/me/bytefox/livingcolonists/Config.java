@@ -132,6 +132,35 @@ public final class Config {
 
     static {
         BUILDER.pop(2);
+        BUILDER.comment("Optional: an OpenAI-compatible embeddings API, so colonists recall the remembered facts a talk",
+                        "touches by meaning, in any language. Without a key, facts are picked by the words in common.")
+                .translation("livingcolonists.configuration.section.embeddings").push("embeddings");
+    }
+
+    public static final ModConfigSpec.ConfigValue<String> EMBEDDINGS_BASE_URL = BUILDER
+            .translation("livingcolonists.configuration.embeddingsBaseUrl")
+            .comment("Address of the embeddings API, without /embeddings. Default: OpenRouter.")
+            .define("baseUrl", "https://openrouter.ai/api/v1");
+
+    public static final ModConfigSpec.ConfigValue<String> EMBEDDINGS_MODEL = BUILDER
+            .translation("livingcolonists.configuration.embeddingsModel")
+            .comment("Embedding model, as the provider names it. It must know the players' languages: baai/bge-m3 does,",
+                    "and is cheap and fast. Empty: embeddings off.")
+            .define("model", "baai/bge-m3");
+
+    public static final ModConfigSpec.ConfigValue<String> EMBEDDINGS_API_KEY = BUILDER
+            .translation("livingcolonists.configuration.embeddingsApiKey")
+            .comment("Key of the embeddings API, plain text. Empty: the variable below. Without a key, embeddings are off,",
+                    "except for an API on this machine (localhost), which needs none.")
+            .define("apiKey", "");
+
+    public static final ModConfigSpec.ConfigValue<String> EMBEDDINGS_API_KEY_ENV = BUILDER
+            .translation("livingcolonists.configuration.embeddingsApiKeyEnv")
+            .comment("Environment variable with the embeddings key, used when the key above is empty.")
+            .define("apiKeyEnv", "LIVINGCOLONISTS_EMBEDDINGS_API_KEY");
+
+    static {
+        BUILDER.pop();
         BUILDER.comment("How deep colonists' personalities, knowledge and memory go, and who may talk to them")
                 .translation("livingcolonists.configuration.section.behaviour").push("behaviour");
     }
@@ -291,6 +320,21 @@ public final class Config {
     /** The main API key from the config, or else from the environment variable; empty if neither is set. */
     public static Optional<String> apiKey() {
         return key(API_KEY.get(), API_KEY_ENV.get());
+    }
+
+    /**
+     * The embeddings API, if one is set up: a model, and a key or an address on this machine. The key
+     * is never logged or sent to players.
+     */
+    public static Optional<LlmEndpoint> embeddings() {
+        String model = EMBEDDINGS_MODEL.get().strip();
+        if (model.isEmpty()) {
+            return Optional.empty();
+        }
+        Optional<String> key = key(EMBEDDINGS_API_KEY.get(), EMBEDDINGS_API_KEY_ENV.get());
+        String base = EMBEDDINGS_BASE_URL.get().strip();
+        boolean local = base.matches("(?i)https?://(localhost|127\\.0\\.0\\.1)([:/].*)?");
+        return key.isPresent() || local ? Optional.of(new LlmEndpoint(base, model, key.orElse(""))) : Optional.empty();
     }
 
     private static Optional<String> key(String configured, String environmentVariable) {

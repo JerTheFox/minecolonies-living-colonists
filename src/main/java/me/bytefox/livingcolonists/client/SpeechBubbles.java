@@ -213,7 +213,7 @@ public final class SpeechBubbles {
             pose.translate(anchor.x, anchor.y, anchor.z);
             pose.mulPose(camera.rotation());
             pose.scale(SCALE, -SCALE, SCALE);
-            draw(font, pose.last().pose(), buffers, bubble, now, entity.isDiscrete(), !bubble.inSight);
+            draw(font, pose.last().pose(), buffers, bubble, now, entity.isDiscrete(), !bubble.inSight, false);
             pose.popPose();
         }
         buffers.endBatch();
@@ -252,8 +252,10 @@ public final class SpeechBubbles {
                 pose.pushPose();
                 pose.translate(placed.x(), placed.y(), 0);
                 pose.scale(placed.scale(), placed.scale(), 1);
-                // Drawn like a bubble seen through a wall: in order, nothing depth-tested.
-                draw(minecraft.font, pose.last().pose(), graphics.bufferSource(), placed.bubble(), now, placed.sneaking(), true);
+                // Drawn like a bubble seen through a wall, in order, with the bubble as plain GUI rectangles:
+                // Iris leaves the GUI's own render types alone, but not the world's text backgrounds.
+                draw(minecraft.font, pose.last().pose(), graphics.bufferSource(), placed.bubble(), now, placed.sneaking(),
+                        true, true);
                 pose.popPose();
             }
             graphics.flush();
@@ -288,14 +290,14 @@ public final class SpeechBubbles {
      * its own white comic bubble with a pixel border; only the lowest has the tail toward the head.
      */
     private static void draw(Font font, Matrix4f matrix, MultiBufferSource.BufferSource buffers, Bubble bubble, long now,
-                             boolean sneaking, boolean throughWalls) {
+                             boolean sneaking, boolean throughWalls, boolean onScreen) {
         float dim = (sneaking ? 0.5f : 1) * bubble.shown;
         float bottom = 0;
         boolean tail = true;
         if (bubble.typingSince >= 0) {
             int width = DOT_SPACING * 3 + PAD * 2 - 2;
             int height = font.lineHeight + PAD * 2 - 2;
-            frame(matrix, buffers, -width / 2f, bottom - height, width, height, dim, tail, throughWalls);
+            frame(matrix, buffers, -width / 2f, bottom - height, width, height, dim, tail, throughWalls, onScreen);
             drawDots(font, matrix, buffers, bottom - height + PAD, now, dim, throughWalls);
             bottom -= height + GAP;
             tail = false;
@@ -316,7 +318,7 @@ public final class SpeechBubbles {
             int width = textWidth + PAD * 2;
             int height = rows.size() * (font.lineHeight + 1) - 1 + PAD * 2;
             float top = bottom - height;
-            frame(matrix, buffers, -width / 2f, top, width, height, alpha, tail, throughWalls);
+            frame(matrix, buffers, -width / 2f, top, width, height, alpha, tail, throughWalls, onScreen);
             int ink = ((int) (alpha * 255) << 24) | INK;
             for (int i = 0; i < rows.size(); i++) {
                 FormattedCharSequence row = rows.get(i);
@@ -334,45 +336,46 @@ public final class SpeechBubbles {
      * rounded corners, and, if asked, a stepped tail pointing down at the speaker.
      */
     private static void frame(Matrix4f matrix, MultiBufferSource.BufferSource buffers, float x, float y, int width, int height,
-                              float alpha, boolean tail, boolean throughWalls) {
-        RenderType type = throughWalls ? RenderType.textBackgroundSeeThrough() : RenderType.textBackground();
+                              float alpha, boolean tail, boolean throughWalls, boolean onScreen) {
+        RenderType type = onScreen ? RenderType.gui()
+                : throughWalls ? RenderType.textBackgroundSeeThrough() : RenderType.textBackground();
         VertexConsumer quads = buffers.getBuffer(type);
         int paper = ((int) (alpha * 255) << 24) | PAPER;
         int edge = ((int) (alpha * 255) << 24) | EDGE;
         float right = x + width;
         float lower = y + height;
         // The body as two crossed rectangles, then a border that steps around rounded pixel corners.
-        rect(quads, matrix, x + 1, y + 2, right - 1, lower - 2, paper);
-        rect(quads, matrix, x + 2, y + 1, right - 2, lower - 1, paper);
-        rect(quads, matrix, x + 2, y, right - 2, y + 1, edge);
-        rect(quads, matrix, x + 2, lower - 1, right - 2, lower, edge);
-        rect(quads, matrix, x, y + 2, x + 1, lower - 2, edge);
-        rect(quads, matrix, right - 1, y + 2, right, lower - 2, edge);
-        rect(quads, matrix, x + 1, y + 1, x + 2, y + 2, edge);
-        rect(quads, matrix, right - 2, y + 1, right - 1, y + 2, edge);
-        rect(quads, matrix, x + 1, lower - 2, x + 2, lower - 1, edge);
-        rect(quads, matrix, right - 2, lower - 2, right - 1, lower - 1, edge);
+        rect(quads, matrix, !onScreen, x + 1, y + 2, right - 1, lower - 2, paper);
+        rect(quads, matrix, !onScreen, x + 2, y + 1, right - 2, lower - 1, paper);
+        rect(quads, matrix, !onScreen, x + 2, y, right - 2, y + 1, edge);
+        rect(quads, matrix, !onScreen, x + 2, lower - 1, right - 2, lower, edge);
+        rect(quads, matrix, !onScreen, x, y + 2, x + 1, lower - 2, edge);
+        rect(quads, matrix, !onScreen, right - 1, y + 2, right, lower - 2, edge);
+        rect(quads, matrix, !onScreen, x + 1, y + 1, x + 2, y + 2, edge);
+        rect(quads, matrix, !onScreen, right - 2, y + 1, right - 1, y + 2, edge);
+        rect(quads, matrix, !onScreen, x + 1, lower - 2, x + 2, lower - 1, edge);
+        rect(quads, matrix, !onScreen, right - 2, lower - 2, right - 1, lower - 1, edge);
         if (tail) {
             float center = x + width / 2f;
             for (int step = 0; step < TAIL; step++) {
                 float half = TAIL - step;
                 float row = lower - 1 + step;
-                rect(quads, matrix, center - half + 1, row, center + half - 1, row + 1, paper);
-                rect(quads, matrix, center - half, row, center - half + 1, row + 1, edge);
-                rect(quads, matrix, center + half - 1, row, center + half, row + 1, edge);
+                rect(quads, matrix, !onScreen, center - half + 1, row, center + half - 1, row + 1, paper);
+                rect(quads, matrix, !onScreen, center - half, row, center - half + 1, row + 1, edge);
+                rect(quads, matrix, !onScreen, center + half - 1, row, center + half, row + 1, edge);
             }
-            rect(quads, matrix, center - 1, lower - 1 + TAIL, center + 1, lower + TAIL, edge);
+            rect(quads, matrix, !onScreen, center - 1, lower - 1 + TAIL, center + 1, lower + TAIL, edge);
         }
-        flush(buffers, throughWalls);
+        flush(buffers, type, throughWalls || onScreen);
     }
 
     /**
-     * Behind a wall nothing is depth-tested, so the bubble is drawn now and its text after it; in
-     * sight the text's depth offset keeps it over the bubble anyway.
+     * Behind a wall and on the screen nothing is depth-tested, so the bubble is drawn now and its
+     * text after it; in sight the text's depth offset keeps it over the bubble anyway.
      */
-    private static void flush(MultiBufferSource.BufferSource buffers, boolean throughWalls) {
-        if (throughWalls) {
-            buffers.endBatch(RenderType.textBackgroundSeeThrough());
+    private static void flush(MultiBufferSource.BufferSource buffers, RenderType type, boolean now) {
+        if (now) {
+            buffers.endBatch(type);
         }
     }
 
@@ -380,17 +383,30 @@ public final class SpeechBubbles {
         return throughWalls ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.POLYGON_OFFSET;
     }
 
-    /** A flat rectangle facing both ways, so it shows whatever the camera's side. */
-    private static void rect(VertexConsumer quads, Matrix4f matrix, float x0, float y0, float x1, float y1, int color) {
-        int light = LightTexture.FULL_BRIGHT;
-        quads.addVertex(matrix, x0, y0, 0).setColor(color).setLight(light);
-        quads.addVertex(matrix, x0, y1, 0).setColor(color).setLight(light);
-        quads.addVertex(matrix, x1, y1, 0).setColor(color).setLight(light);
-        quads.addVertex(matrix, x1, y0, 0).setColor(color).setLight(light);
-        quads.addVertex(matrix, x0, y0, 0).setColor(color).setLight(light);
-        quads.addVertex(matrix, x1, y0, 0).setColor(color).setLight(light);
-        quads.addVertex(matrix, x1, y1, 0).setColor(color).setLight(light);
-        quads.addVertex(matrix, x0, y1, 0).setColor(color).setLight(light);
+    /**
+     * A flat rectangle; in the world facing both ways, so it shows whatever the camera's side. On the
+     * screen one side is enough, and two would show a faint bubble twice as strong.
+     */
+    private static void rect(VertexConsumer quads, Matrix4f matrix, boolean bothSides, float x0, float y0, float x1,
+                             float y1, int color) {
+        // In the world the text background takes a light value; the GUI's rectangles have none.
+        corner(quads, matrix, x0, y0, color, bothSides);
+        corner(quads, matrix, x0, y1, color, bothSides);
+        corner(quads, matrix, x1, y1, color, bothSides);
+        corner(quads, matrix, x1, y0, color, bothSides);
+        if (bothSides) {
+            corner(quads, matrix, x0, y0, color, true);
+            corner(quads, matrix, x1, y0, color, true);
+            corner(quads, matrix, x1, y1, color, true);
+            corner(quads, matrix, x0, y1, color, true);
+        }
+    }
+
+    private static void corner(VertexConsumer quads, Matrix4f matrix, float x, float y, int color, boolean lit) {
+        VertexConsumer vertex = quads.addVertex(matrix, x, y, 0).setColor(color);
+        if (lit) {
+            vertex.setLight(LightTexture.FULL_BRIGHT);
+        }
     }
 
     /** Three dots bouncing one after another, like a chat app's "typing…". */

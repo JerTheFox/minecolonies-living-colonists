@@ -2,9 +2,11 @@ package me.bytefox.livingcolonists.memory;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
@@ -47,6 +49,8 @@ public final class Digests {
     private static final int MAX_PROMISES = 3;
     private static final int MAX_CONDUCT = 2;
     private static final int MAX_COLONIST_BONDS = 3;
+    /** Facts closest in meaning that count as touched by the talk; as many again count a little. */
+    private static final int CLOSEST = 3;
 
     /**
      * @param importance 1 to 5
@@ -163,12 +167,29 @@ public final class Digests {
      * @param context what is being said, for words in common
      */
     public static List<Fact> relevant(List<Fact> facts, Set<String> present, String context, long now, int max) {
+        return relevant(facts, present, context, now, max, Map.of());
+    }
+
+    /**
+     * The same, with how close in meaning each fact is to what is being said (embeddings, -1 to 1),
+     * for the facts that have a vector: the closest few count as touched even with no word in common.
+     */
+    public static List<Fact> relevant(List<Fact> facts, Set<String> present, String context, long now, int max,
+                                      Map<Fact, Double> closeness) {
         if (facts.size() <= max) {
             return facts;
         }
         Set<String> said = keywords(context);
+        // Ranks, not raw values: how alike two texts come out differs from one model to another.
+        Map<Fact, Double> meaning = new HashMap<>();
+        List<Fact> closest = closeness.entrySet().stream().sorted(Map.Entry.<Fact, Double>comparingByValue().reversed())
+                .map(Map.Entry::getKey).toList();
+        for (int i = 0; i < closest.size() && i < CLOSEST * 2; i++) {
+            meaning.put(closest.get(i), i < CLOSEST ? 3.0 : 1.5);
+        }
         Set<Fact> keep = new HashSet<>(facts.stream()
-                .sorted(Comparator.comparingDouble((Fact fact) -> score(fact, present, said, now))
+                .sorted(Comparator.comparingDouble((Fact fact) -> score(fact, present, said, now)
+                                + meaning.getOrDefault(fact, 0.0))
                         .thenComparingLong(Fact::created).reversed())
                 .limit(max).toList());
         return facts.stream().filter(keep::contains).toList();
