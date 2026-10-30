@@ -5,6 +5,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-31
+
+### Added
+
+- A builder knows his construction as the resource scroll shows it: the stage, about how much of the materials is used, and for each material how much is used, at hand, on the way and still to bring; the builders' look-up tells it too.
+
+### Fixed
+
+- A colonist joining a talk with a player no longer has their line taken for a repeat because it uses the player's own words.
+- A message passed on ("tell Alex…") or a reminder could be swapped for a line on another subject by the repeat check; only a colonist's own topics are checked now. Asked twice, a colonist keeps one message, not two.
+- A word the model writes half in Cyrillic, half in Latin ("колонist") is put all in Cyrillic.
+- A colonist starting a talk of their own no longer answers the last line of a talk that died down a while ago.
+- "The unemployed, come to me" gathers the colonists without a job, and every colonist a player's message is for answers with the colony's functions, not only the first.
+- A request named in one word (a builder's "Pickaxe") reached the colonist as "something for work", so they never said what they needed.
+- Asked to craft something, a colonist orders it through the colony (which finds who has the recipe, the builder's hut too) instead of deciding nobody can.
+
 ## [0.2.0] - 2026-10-30
 
 ### Added
@@ -166,6 +182,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A colony conversation that ended while a reply was still on its way no longer comes back to life.
 - Old conversations that are fully written down no longer pile up in the world's data.
 
-[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/JerTheFox/minecolonies-living-colonists/releases/tag/v0.1.0
