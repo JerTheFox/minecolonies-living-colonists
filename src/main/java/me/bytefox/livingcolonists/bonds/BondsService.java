@@ -695,6 +695,11 @@ public final class BondsService {
     }
 
     /** Relations of the colonist with players, by player name. */
+    /** How the colonist feels about a player, -100 to 100; 0 when they have no history. */
+    public int playerRapport(ICitizenData citizen, UUID player) {
+        return data == null ? 0 : data.relations.getOrDefault(key(citizen, player), Relation.EMPTY).rapport();
+    }
+
     public Map<String, Relation> relations(ICitizenData citizen) {
         Map<String, Relation> out = new HashMap<>();
         if (data == null) {

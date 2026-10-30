@@ -12,10 +12,10 @@ import org.junit.jupiter.api.Test;
 class PlayerNamesTest {
     @Test
     void parsesNicknamesAndNamesMostCommonFirst() {
-        Map<String, List<String>> names = PlayerNames.parse(List.of("JerTheFox=Максим, Макс ,Максик", "Wife = Настя"));
+        Map<String, List<String>> names = PlayerNames.parse(List.of("Steve42=Steven, Steve ,Stevie", "Alex_7 = Alexandra"));
 
-        assertEquals(List.of("Максим", "Макс", "Максик"), names.get("jerthefox"));
-        assertEquals(List.of("Настя"), names.get("wife"));
+        assertEquals(List.of("Steven", "Steve", "Stevie"), names.get("steve42"));
+        assertEquals(List.of("Alexandra"), names.get("alex_7"));
     }
 
     @Test
@@ -25,23 +25,23 @@ class PlayerNamesTest {
 
     @Test
     void theFirstNameIsWhatColonistsCallThePlayer() {
-        Map<String, List<String>> names = PlayerNames.parse(List.of("JerTheFox=Максим,Макс"));
+        Map<String, List<String>> names = PlayerNames.parse(List.of("Steve42=Steven,Steve"));
 
-        assertEquals("Максим", PlayerNames.name("JerTheFox", names));
+        assertEquals("Steven", PlayerNames.name("Steve42", names));
         assertEquals("Steve", PlayerNames.name("Steve", names));
     }
 
     @Test
     void theNameIsAllowedInAboutAThirdOfRepliesWithTheFirstFormLikeliest() {
-        Map<String, List<String>> names = PlayerNames.parse(List.of("JerTheFox=Максим,Макс,Максик"));
+        Map<String, List<String>> names = PlayerNames.parse(List.of("Steve42=Steven,Steve,Stevie"));
         Random random = new Random(5);
         Map<String, Integer> counts = new java.util.HashMap<>();
         int withName = 0;
         for (int i = 0; i < 3000; i++) {
-            String line = PlayerNames.addressing("JerTheFox", names, random);
+            String line = PlayerNames.addressing("Steve42", names, random, 60);
             if (!line.startsWith("Don't")) {
                 withName++;
-                for (String form : List.of("Максим", "Максик", "Макс")) {
+                for (String form : List.of("Steven", "Stevie", "Steve")) {
                     if (line.contains(" " + form + " ")) {
                         counts.merge(form, 1, Integer::sum);
                         break;
@@ -50,8 +50,8 @@ class PlayerNamesTest {
             }
         }
         assertTrue(withName > 750 && withName < 1050, String.valueOf(withName));
-        assertTrue(counts.get("Максим") > counts.get("Макс"), counts.toString());
-        assertTrue(counts.get("Макс") > counts.get("Максик"), counts.toString());
+        assertTrue(counts.get("Steven") > counts.get("Steve"), counts.toString());
+        assertTrue(counts.get("Steve") > counts.get("Stevie"), counts.toString());
     }
 
     @Test
@@ -61,5 +61,21 @@ class PlayerNamesTest {
             String line = PlayerNames.addressing("Steve", Map.of(), random);
             assertTrue(line.startsWith("Don't") || line.contains("Steve"), line);
         }
+    }
+
+    @Test
+    void howWarmlyAColonistCallsThePlayerFollowsTheirRelation() {
+        Map<String, List<String>> names = PlayerNames.parse(List.of("Steve42=Steven,Steve,Stevie"));
+        Random random = new Random(9);
+        for (int i = 0; i < 300; i++) {
+            assertTrue(PlayerNames.addressing("Steve42", names, random, -50).startsWith("Don't use"));
+            String neutral = PlayerNames.addressing("Steve42", names, random, 0);
+            assertTrue(neutral.startsWith("Don't use") || neutral.contains(" Steven "), neutral);
+        }
+        boolean familiar = false;
+        for (int i = 0; i < 300; i++) {
+            familiar |= PlayerNames.addressing("Steve42", names, random, 60).contains("Stevie");
+        }
+        assertTrue(familiar);
     }
 }

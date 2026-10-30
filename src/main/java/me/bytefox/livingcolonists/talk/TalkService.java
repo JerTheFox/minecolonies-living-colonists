@@ -119,7 +119,7 @@ public final class TalkService {
         this.memory = memory;
         this.bonds = bonds;
         this.tools = new ColonyTools(perception);
-        this.errands = new Errands(perception, this::writeFirst);
+        this.errands = new Errands(perception, this::writeFirst, memory::rememberDeed);
         this.threads = new ColonyThreads(this, prompts, memory, personalities, output, typing, bonds);
         this.events = new ColonyEvents(threads);
     }
@@ -325,6 +325,7 @@ public final class TalkService {
         MinecraftServer server = citizen.getColony().getWorld().getServer();
         Map<String, String> values = new HashMap<>(personalities.promptValues(citizen, server));
         values.put("name", speaker.name());
+        values.put("character", (values.getOrDefault("character", "") + "\nHow you talk: " + Prompts.voice(speaker.name())).strip());
         if (citizen.isChild()) {
             values.put("character", (values.getOrDefault("character", "") + "\nYou are still a child: talk like one, "
                     + "simply and in short sentences, about the things children care about.").strip());
@@ -340,7 +341,8 @@ public final class TalkService {
         if (player != null) {
             Map<String, List<String>> names = Config.playerNames();
             values.put("player", PlayerNames.name(player.getGameProfile().getName(), names));
-            values.put("addressing", PlayerNames.addressing(player.getGameProfile().getName(), names, random));
+            values.put("addressing", PlayerNames.addressing(player.getGameProfile().getName(), names, random,
+                    bonds.playerRapport(citizen, player.getUUID())));
             values.put("bonds", bonds.block(citizen, player, values.get("player")));
         } else {
             values.put("bonds", bonds.block(citizen, null, null));

@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Random;
+
 import org.junit.jupiter.api.Test;
 
 class PromptsTest {
@@ -103,5 +105,50 @@ class PromptsTest {
         assertEquals("«Нет» — значит нет.", Prompts.cleanReply("«Нет» — значит нет.", "John Brown"));
         assertEquals(Prompts.MAX_REPLY_LENGTH, Prompts.cleanReply("a".repeat(1000), "John").length());
         assertEquals("plain text", Prompts.cleanReply("§kplain §ctext§r", "John"));
+    }
+
+    @Test
+    void changingTheSubjectPicksATopicTheThreadHasntHad() {
+        Random random = new Random(3);
+        java.util.Set<String> used = new java.util.HashSet<>(Prompts.TOPICS.subList(1, Prompts.TOPICS.size()));
+        String steer = Prompts.steer(random, used);
+        assertEquals(Prompts.TOPICS.get(0), Prompts.topicOf(steer));
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (int i = 0; i < 300; i++) {
+            seen.add(Prompts.topicOf(Prompts.steer(random, java.util.List.of())));
+        }
+        assertTrue(seen.size() > 30, "topics: " + seen.size());
+        assertEquals(null, Prompts.topicOf("You partly agree"));
+    }
+
+    @Test
+    void lineShapesVaryButAnAnswerIsNeverJustAQuestion() {
+        Random random = new Random(4);
+        int plain = 0;
+        for (int i = 0; i < 2000; i++) {
+            String form = Prompts.form(random, false);
+            plain += form.isEmpty() ? 1 : 0;
+            assertFalse(Prompts.form(random, true).contains("question"));
+        }
+        assertTrue(plain > 1000 && plain < 1300, "plain: " + plain);
+    }
+
+    @Test
+    void aColonistKeepsOneVoice() {
+        assertEquals(Prompts.voice("Idris Y. Crawley"), Prompts.voice("Idris Y. Crawley"));
+        java.util.Set<String> voices = new java.util.HashSet<>();
+        for (String name : java.util.List.of("Idris Y. Crawley", "Adair D. Asplin", "Rylee G. Gray", "Noe I. Gupta",
+                "Elsa A. Crawley", "Landyn X. Gascoigne", "Teresa L. Kumar", "Brooke G. Kumar")) {
+            voices.add(Prompts.voice(name));
+        }
+        assertTrue(voices.size() >= 4, "voices: " + voices.size());
+    }
+
+    @Test
+    void chatLinesKeepTheirFirstSentences() {
+        assertEquals("One. Two.", Prompts.firstSentences("One. Two. Three.", 2));
+        assertEquals("Wait... what? No.", Prompts.firstSentences("Wait... what? No. Never.", 3).replace("Wait... what? No.", "Wait... what? No."));
+        assertEquals("No dots here", Prompts.firstSentences("No dots here", 2));
+        assertEquals("v1.5 is out. Yes!", Prompts.firstSentences("v1.5 is out. Yes! Great.", 2));
     }
 }

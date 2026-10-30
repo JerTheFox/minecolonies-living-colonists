@@ -63,6 +63,8 @@ public final class ColonyThreads {
     private static final double THREAD_PACE = 2;
     /** Colonists talking among themselves go slower still, so a player can get a word in. */
     private static final double CHATTER_PACE = 3;
+    /** The most sentences a line in the colony chat keeps. */
+    private static final int MAX_SENTENCES = 2;
     /** A player who wrote within this many ticks (a minute) is talking with the colony right now. */
     private static final long ACTIVE_TICKS = 60 * 20;
     /** While a player talks, others wait this long (12 seconds) after a line before joining in, so the player can answer first. */
@@ -108,6 +110,8 @@ public final class ColonyThreads {
         UUID lastPlayer;
         final Deque<Integer> addressed = new ArrayDeque<>();
         final Set<Integer> participants = new HashSet<>();
+        /** Topics the dice already turned this thread to. */
+        final Set<String> topics = new HashSet<>();
         /** A colony event the next line opens the thread with, if any. */
         String opening;
         /** The language the thread is in, like "Russian"; null leaves it to the model. */
@@ -278,7 +282,7 @@ public final class ColonyThreads {
             roster.add(new ColonyRouter.Member(speaker.name(), speaker.job()));
             ids.add(citizen.getId());
         }
-        talkClient().complete(settings.get(), ColonyRouter.prompt(prompts.get(PromptLibrary.ROUTE_COLONY), roster, message))
+        talkClient().complete(settings.get().quick(), ColonyRouter.prompt(prompts.get(PromptLibrary.ROUTE_COLONY), roster, message))
                 .thenAccept(result -> server.execute(() -> {
                     if (thread.version != version) {
                         return;
@@ -333,9 +337,8 @@ public final class ColonyThreads {
                 ? values.get("player") + " just wrote to the colony chat, and you answer them: don't answer [silence]."
                 : "Join the conversation: answer what was said last, or add something of your own. Don't repeat what "
                         + "others already said. People chat about more than their troubles: unless the talk is about the "
-                        + "colony's problems, don't steer back to them; if you bring up something new, keep it light, like "
-                        + "work, a neighbour, the weather, a plan or a joke. Don't come back to a joke or a topic that "
-                        + "has already come up several times: move on.");
+                        + "colony's problems, don't steer back to them; if you bring up something new, keep it light. "
+                        + "Don't come back to a joke or a topic that has already come up several times: move on.");
         if (opening != null) {
             values.put("turn", "Something just happened in the colony: " + opening + " Bring it up in the colony chat "
                     + "in your own way, as someone who just heard of it. Write in " + thread.language + ".");
@@ -343,10 +346,21 @@ public final class ColonyThreads {
         Optional<Fact> rumor = Optional.empty();
         if (!answeringPlayer && opening == null) {
             values.put("initiative", Prompts.chatInitiative(random));
-            values.put("turn", values.get("turn") + " " + Prompts.stance(Bonds.contrarinessWith(contrariness(citizen),
-                    bonds.rapport(colony, citizen.getId(), thread.lastSpeaker)), thread.colonistTurns, random));
+            String stance = Prompts.stance(Bonds.contrarinessWith(contrariness(citizen),
+                    bonds.rapport(colony, citizen.getId(), thread.lastSpeaker)), thread.colonistTurns, random, thread.topics);
+            String topic = Prompts.topicOf(stance);
+            if (topic != null) {
+                thread.topics.add(topic);
+            }
+            values.put("turn", values.get("turn") + " " + stance);
             rumor = memory.rumor(citizen, null, random);
             rumor.ifPresent(fact -> values.put("initiative", values.get("initiative") + " " + Prompts.gossip(fact.text())));
+        }
+        if (opening == null) {
+            String form = Prompts.form(random, answeringPlayer);
+            if (!form.isEmpty()) {
+                values.put("turn", values.get("turn") + " " + form);
+            }
         }
         Optional<Fact> gossip = rumor;
         String prompt = Templates.render(prompts.get(PromptLibrary.REPLY_COLONY), values);
@@ -363,7 +377,7 @@ public final class ColonyThreads {
             if (thread.version != version) {
                 return;
             }
-            Optional<String> text = TalkService.lineOf(speaker, result);
+            Optional<String> text = TalkService.lineOf(speaker, result).map(line -> Prompts.firstSentences(line, MAX_SENTENCES));
             if (text.isEmpty()) {
                 typing.stop(server, speaker);
                 if (answeringPlayer && result instanceof ChatResult.Reply && thread.silent++ < MAX_SILENT) {

@@ -173,8 +173,8 @@ public final class Config {
             .translation("livingcolonists.configuration.playerNames")
             .comment("What colonists call players instead of their nicknames. One entry per player:",
                     "Nickname=Name,Other name,Rare name; the first name is used most. In this file it is a list, like",
-                    "[\"Steve=Стив,Стивен\", \"Alex=Алекс,Саша\"]; on the settings screen separate entries with ';', like",
-                    "Steve=Стив,Стивен; Alex=Алекс,Саша. Empty: nicknames.")
+                    "[\"Steve=Steven,Stevie\", \"Alex=Alexandra,Alex\"]; on the settings screen separate entries with ';', like",
+                    "Steve=Steven,Stevie; Alex=Alexandra,Alex. Empty: nicknames.")
             .defineListAllowEmpty("playerNames", List.of(), () -> "Nickname=Name", value -> value instanceof String);
 
     public static final ModConfigSpec.BooleanValue COLONY_CHAT_ANYWHERE = BUILDER

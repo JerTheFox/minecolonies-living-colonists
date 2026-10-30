@@ -9,11 +9,15 @@ import java.util.Random;
 
 /**
  * What colonists call players instead of their nicknames, from config entries like
- * {@code JerTheFox=Максим,Макс,Максик}: the most common form first, the rarest last.
+ * {@code Steve42=Steven,Steve,Stevie}: the most common form first, the rarest last.
  */
 public final class PlayerNames {
     /** Share of replies in which a colonist may use the player's name. */
     public static final double NAME_CHANCE = 0.3;
+    /** At or below this rapport a colonist doesn't call the player by name. */
+    static final int COLD = -30;
+    /** From this rapport on, the familiar forms of the name come in. */
+    static final int CLOSE = 30;
 
     private PlayerNames() {
     }
@@ -49,11 +53,19 @@ public final class PlayerNames {
      * otherwise it must not use any.
      */
     public static String addressing(String nickname, Map<String, List<String>> names, Random random) {
-        if (random.nextDouble() >= NAME_CHANCE) {
+        return addressing(nickname, names, random, 0);
+    }
+
+    /**
+     * The same, by how the colonist feels about the player: someone they dislike doesn't get their
+     * name at all, and only good friends get the rarer, more familiar forms.
+     */
+    public static String addressing(String nickname, Map<String, List<String>> names, Random random, int rapport) {
+        if (rapport <= COLD || random.nextDouble() >= NAME_CHANCE) {
             return "Don't use the player's name in this reply.";
         }
         List<String> forms = names.get(nickname.toLowerCase(Locale.ROOT));
-        String name = forms == null ? nickname : pick(forms, random);
+        String name = forms == null ? nickname : rapport >= CLOSE ? pick(forms, random) : forms.get(0);
         return "If it fits naturally, you may call the player " + name + " once in this reply, not at the start.";
     }
 

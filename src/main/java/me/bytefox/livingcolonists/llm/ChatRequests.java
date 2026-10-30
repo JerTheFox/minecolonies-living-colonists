@@ -66,6 +66,12 @@ public final class ChatRequests {
         }
         body.addProperty("max_tokens", settings.maxTokens());
         body.addProperty("temperature", settings.temperature());
+        // Only DeepSeek is known to take this switch; other providers may reject a field they don't know.
+        if (settings.quickAnswer() && endpoint.baseUrl().contains("api.deepseek.com")) {
+            JsonObject thinking = new JsonObject();
+            thinking.addProperty("type", "disabled");
+            body.add("thinking", thinking);
+        }
         for (Map.Entry<String, JsonElement> extra : settings.extraParams().entrySet()) {
             body.add(extra.getKey(), extra.getValue());
         }

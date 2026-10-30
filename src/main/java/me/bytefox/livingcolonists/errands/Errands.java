@@ -18,7 +18,6 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
-import com.minecolonies.api.colony.buildings.IBuilding;
 import com.minecolonies.core.colony.buildings.AbstractBuildingGuards;
 import me.bytefox.livingcolonists.Config;
 import me.bytefox.livingcolonists.LivingColonists;
@@ -50,13 +49,19 @@ public final class Errands {
     private static final int MAX_LOOKUP_TEXT = 600;
     private static final DateTimeFormatter CLOCK = DateTimeFormatter.ofPattern("HH:mm:ss");
 
-    private record Ticket(Errand.Order order, String citizen, String colony, IColony where) {
+    private record Ticket(Errand.Order order, String citizen, int citizenId, String colony, IColony where) {
+    }
+
+    /** Where a carried-out order goes into the colonist's memory. */
+    public interface Deeds {
+        void remember(ICitizenData citizen, String deed);
     }
 
     private final Map<String, Errand> errands = new LinkedHashMap<>();
     private final OrderBook<Ticket> book = new OrderBook<>();
     private final NotifyWhen notify;
     private final Notes notes;
+    private final Deeds deeds;
     private final ItemIndex items;
     private final Walks walks = new Walks();
     private final Couriers couriers;
@@ -75,7 +80,8 @@ public final class Errands {
     private record Lookup(long gameTime, String text) {
     }
 
-    public Errands(PerceptionService perception, Notes.Writer writer) {
+    public Errands(PerceptionService perception, Notes.Writer writer, Deeds deeds) {
+        this.deeds = deeds;
         items = new ItemIndex();
         notes = new Notes(writer);
         notes.errands().forEach(this::add);
@@ -104,9 +110,9 @@ public final class Errands {
     }
 
     /**
-     * The functions worth offering this colonist: guard orders only where there are towers, courier
-     * jobs only with a courier, a farmer's only to a farmer. Fewer functions keep requests smaller
-     * and the model's choice clearer.
+     * The functions worth offering in this colonist's colony: guard orders only where there are
+     * towers, courier jobs only with a courier, fields only with a farm. Fewer functions keep requests
+     * smaller and the model's choice clearer.
      */
     public List<ToolSpec> specs(ICitizenData citizen) {
         IColony colony = citizen.getColony();
@@ -114,10 +120,11 @@ public final class Errands {
                 .anyMatch(b -> b instanceof AbstractBuildingGuards);
         boolean couriers = colony.getCitizenManager().getCitizens().stream()
                 .anyMatch(c -> c.getJob() != null && c.getJob().getJobRegistryEntry().getKey().getPath().equals("deliveryman"));
-        IBuilding work = citizen.getWorkBuilding();
+        // By the colony only, not the colonist: the same functions for everyone keep the provider's cache warm.
+        // Whether this colonist may do it (a farmer's field, a guard's patrol) is checked when it's called.
         Map<String, Boolean> offered = Map.ofEntries(
-                Map.entry("farmer_plant", work != null && work.getBuildingType().getRegistryName().getPath().equals("farmer")),
-                Map.entry("patrol_here", work instanceof AbstractBuildingGuards),
+                Map.entry("farmer_plant", has(colony, "farmer")),
+                Map.entry("patrol_here", towers),
                 Map.entry("guard_me", towers), Map.entry("defend_here", towers), Map.entry("red_alert", towers),
                 Map.entry("stand_down", towers), Map.entry("guard_gear", towers), Map.entry("arm_guards", towers),
                 Map.entry("guard_leaderboard", towers),
@@ -201,8 +208,8 @@ public final class Errands {
     private JsonObject propose(Errand.Context context, Errand.Order order) {
         ServerPlayer player = context.player();
         long now = player.server.getTickCount();
-        book.propose(player.getUUID(), new Ticket(order, context.citizen().getName(), context.colony().getName(),
-                context.colony()), now);
+        book.propose(player.getUUID(), new Ticket(order, context.citizen().getName(), context.citizen().getId(),
+                context.colony().getName(), context.colony()), now);
         log(context, order.tool(), "asked: " + order.summary());
         // The buttons come right after the colonist's own line asking for a yes, not before it.
         questions.add(new Question(context.colony().getID(), context.citizen().getId(), player.getUUID(),
@@ -266,6 +273,10 @@ public final class Errands {
         }
         if (outcome.done()) {
             book.done(player.getUUID(), ticket.get(), outcome.undo());
+            ICitizenData citizen = ticket.get().where().getCitizenManager().getCivilian(ticket.get().citizenId());
+            if (citizen != null) {
+                deeds.remember(citizen, "On " + TalkService.playerName(player) + "'s order I saw to it: " + order.summary() + ".");
+            }
         }
         log(ticket.get(), player, (outcome.done() ? "done: " : "failed: ") + order.summary());
         player.sendSystemMessage(Component.translatable("livingcolonists.order.outcome", ticket.get().citizen(),

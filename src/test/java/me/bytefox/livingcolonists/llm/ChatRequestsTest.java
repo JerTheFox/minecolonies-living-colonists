@@ -30,6 +30,26 @@ class ChatRequestsTest {
     }
 
     @Test
+    void aQuickRequestTurnsDeepSeekThinkingOffOnly() {
+        LlmEndpoint deepseek = new LlmEndpoint("https://api.deepseek.com", "deepseek-flash", "k");
+        JsonObject quick = JsonParser.parseString(ChatRequests.toJson(deepseek, settings("{}").quick(),
+                List.of(ChatMessage.user("Hi")))).getAsJsonObject();
+        assertEquals("disabled", quick.getAsJsonObject("thinking").get("type").getAsString());
+
+        JsonObject normal = JsonParser.parseString(ChatRequests.toJson(deepseek, settings("{}"),
+                List.of(ChatMessage.user("Hi")))).getAsJsonObject();
+        assertFalse(normal.has("thinking"));
+
+        JsonObject other = JsonParser.parseString(ChatRequests.toJson(ENDPOINT, settings("{}").quick(),
+                List.of(ChatMessage.user("Hi")))).getAsJsonObject();
+        assertFalse(other.has("thinking"));
+
+        JsonObject configured = JsonParser.parseString(ChatRequests.toJson(deepseek,
+                settings("{\"thinking\":{\"type\":\"enabled\"}}").quick(), List.of(ChatMessage.user("Hi")))).getAsJsonObject();
+        assertEquals("enabled", configured.getAsJsonObject("thinking").get("type").getAsString());
+    }
+
+    @Test
     void mergesExtraParamsAndLetsThemOverride() {
         JsonObject body = JsonParser.parseString(ChatRequests.toJson(ENDPOINT,
                 settings("{\"thinking\":{\"type\":\"disabled\"},\"temperature\":1.3}"),

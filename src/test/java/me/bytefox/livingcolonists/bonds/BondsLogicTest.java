@@ -57,12 +57,12 @@ class BondsLogicTest {
     @Test
     void theColonyDigestCarriesPromisesToNamedColonists() {
         Digests.Digest digest = Digests.parseAll("""
-                promise | Максим | Idris Y. Crawley | 0 | supply | Максим promised Idris a couple of diamonds.
+                promise | Alex | Idris Y. Crawley | 0 | supply | Alex promised Idris a couple of diamonds.
                 promise | 1 | supply | A private-talk style line still counts as a promise without names.
                 kept | 1
                 """, 5);
-        assertEquals(List.of(new Digests.ColonyPromise("Максим", "Idris Y. Crawley", 0, "supply", 0,
-                "Максим promised Idris a couple of diamonds.")), digest.colonyPromises());
+        assertEquals(List.of(new Digests.ColonyPromise("Alex", "Idris Y. Crawley", 0, "supply", 0,
+                "Alex promised Idris a couple of diamonds.")), digest.colonyPromises());
         assertEquals(1, digest.promises().size());
         assertEquals(List.of(new Digests.Resolution("kept", 1)), digest.resolutions());
     }

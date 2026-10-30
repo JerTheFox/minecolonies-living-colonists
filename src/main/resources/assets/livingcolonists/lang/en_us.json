@@ -139,7 +139,7 @@
   "livingcolonists.configuration.cooldownSeconds": "Cooldown, seconds",
   "livingcolonists.configuration.cooldownSeconds.tooltip": "Shortest time between two messages of one player to colonists, in seconds; guards against spam. 0 turns it off. From 0 to 60, default 3.",
   "livingcolonists.configuration.playerNames": "Player names",
-  "livingcolonists.configuration.playerNames.tooltip": "What colonists call players instead of their nicknames. One entry per player: Nickname=Name,Other name,Rare name; the first name is used most. Separate entries with \";\", like Steve=Стив,Стивен; Alex=Алекс,Саша. Empty: nicknames.",
+  "livingcolonists.configuration.playerNames.tooltip": "What colonists call players instead of their nicknames. One entry per player: Nickname=Name,Other name,Rare name; the first name is used most. Separate entries with \";\", like Steve=Steven,Stevie; Alex=Alexandra,Alex. Empty: nicknames.",
   "livingcolonists.configuration.colonyChatAnywhere": "Colony chat anywhere",
   "livingcolonists.configuration.colonyChatAnywhere.tooltip": "On: colony members (owner, officers, friends) read their colony's chat and write to it from anywhere. Off: only players inside the colony's borders take part. Default off.",
   "livingcolonists.configuration.membersOnly": "Members only",

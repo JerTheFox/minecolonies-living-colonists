@@ -49,6 +49,10 @@ import net.minecraft.server.MinecraftServer;
 public final class MemoryService {
     /** Colony chat lines kept for conversation threads. */
     private static final int COLONY_LINES = 16;
+    /** Facts of what a colonist did on a player's order. */
+    private static final String DEED = "deed";
+    /** As important as a plan or a decision: kept for a few days. */
+    private static final int DEED_IMPORTANCE = 3;
     /** Colony chat lines older than this (one Minecraft day) are dropped. */
     private static final long COLONY_MAX_AGE = 24000;
     private static final long DAY = 24000;
@@ -379,6 +383,17 @@ public final class MemoryService {
             }
         }));
         return true;
+    }
+
+    /**
+     * Something the colonist did on a player's order becomes a fact they remember, so they won't
+     * later deny it ("I sorted the warehouse for Alex this morning").
+     */
+    public void rememberDeed(ICitizenData citizen, String deed) {
+        if (data != null && FactLimits.of(level()).facts() > 0) {
+            store(citizen.getColony(), List.of(citizen.getId()), List.of(new Digests.Entry(DEED_IMPORTANCE, deed)), DEED);
+            data.setDirty();
+        }
     }
 
     private void store(IColony colony, List<Integer> ownerIds, List<Digests.Entry> entries, String source) {

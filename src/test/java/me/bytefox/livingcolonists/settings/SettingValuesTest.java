@@ -29,7 +29,7 @@ class SettingValuesTest {
         assertTrue(SettingValues.check(kind(Setting.Type.BOOL), "maybe").isError());
         assertEquals("{\"a\":1}", SettingValues.check(kind(Setting.Type.JSON), "{\"a\":1}").value());
         assertTrue(SettingValues.check(kind(Setting.Type.JSON), "[1]").isError());
-        assertEquals("Dev=Максим,Макс\nSteve=Стив", SettingValues.check(kind(Setting.Type.LIST), " Dev=Максим,Макс \n\n Steve=Стив ").value());
+        assertEquals("Steve42=Steven,Steve\nAlex=Alexandra", SettingValues.check(kind(Setting.Type.LIST), " Steve42=Steven,Steve \n\n Alex=Alexandra ").value());
     }
 
     @Test

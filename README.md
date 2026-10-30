@@ -82,7 +82,7 @@ The `[behaviour]` section sets how colonists behave:
 | `profile` | `DEFAULT` | `MINIMAL` (orders and answers only, cheapest), `LIGHT`, `DEFAULT` or `IMMERSIVE` (colonists remember much more) |
 | `personality`, `perception`, `memory`, `conversation` | `profile` | override one module: `off`, `low`, `default` or `high`; `conversation` sets how long colony chats run on their own |
 | `cooldownSeconds` | `3` | shortest time between one player's messages to colonists |
-| `playerNames` | empty | what colonists call players instead of nicknames, e.g. `["JerTheFox=Максим,Макс,Максик"]`, most common form first |
+| `playerNames` | empty | what colonists call players instead of nicknames, e.g. `["Steve42=Steven,Steve,Stevie"]`, most common form first |
 | `colonyChatAnywhere` | `false` | colony members read and write their colony's chat from anywhere, not only inside its borders |
 | `membersOnly` | `true` | only the colony's owner, officers and friends may talk to its colonists; only owners and officers may give orders |
 
