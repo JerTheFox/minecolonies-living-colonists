@@ -169,7 +169,9 @@ public final class Errands {
             return Errand.error("That couldn't be done right now.").toString();
         }
         if (result instanceof Errand.Result.Answer answer) {
-            LivingColonists.LOGGER.info("{} by {}: {}{} -> {}", errand.isOrder() ? "Order turned down" : "Look-up",
+            boolean done = answer.reply().has("success") && answer.reply().get("success").getAsBoolean();
+            LivingColonists.LOGGER.info("{} by {}: {}{} -> {}",
+                    !errand.isOrder() ? "Look-up" : done ? "Command" : "Order turned down",
                     context.citizen().getName(), call.name(), call.arguments(), answer.reply());
         }
         if (result instanceof Errand.Result.Answer answer && !errand.isOrder()) {

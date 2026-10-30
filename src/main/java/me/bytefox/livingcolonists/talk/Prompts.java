@@ -8,9 +8,9 @@ import java.util.Random;
 /** Values for prompt templates and clean-up of model output, kept free of game classes for unit tests. */
 public final class Prompts {
     /** Share of replies in which a colonist may bring up one of their own worries unasked. */
-    public static final double INITIATIVE_CHANCE = 0.25;
+    public static final double INITIATIVE_CHANCE = 0.1;
     /** The same while colonists chat among themselves, where worries would snowball. */
-    public static final double CHAT_INITIATIVE_CHANCE = 0.1;
+    public static final double CHAT_INITIATIVE_CHANCE = 0.05;
     /** From this many colonist lines into a thread, the subject changes more often. */
     public static final int TOPIC_FATIGUE_TURNS = 3;
     /** How often a colonist changes the subject once a thread runs long. */

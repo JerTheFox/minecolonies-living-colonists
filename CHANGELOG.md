@@ -39,6 +39,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Names spelled with е for э ("Рендольф") are found by code; a building's name ("хижина строителя", "builder's hut") no longer calls its worker.
 - Colonists no longer make up meetings and talks with people, or guess how the colony works.
 - A promise from a request dialog names the full amount ("34 Cobblestone", not "1-34 Cobblestone").
+- A colonist no longer asks a player how something turned out when it was the colonist's own words in an earlier talk.
+- A placed hut nobody has ordered yet shows in the builders' look-up, so "build the tavern" orders it instead of "there is no tavern".
+- Colonists bring up their own troubles (no home, hunger) in answers on other subjects less often.
+- Commands that ran ("come here") are logged as commands, not as orders turned down.
 - A player renamed in `playerNames` could hear their own private words back as gossip, and lost the follow-ups on what they told colonists earlier.
 
 ## [0.1.0] - 2026-10-30

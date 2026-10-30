@@ -255,7 +255,10 @@ final class Initiative {
         List<String> playerNames = memory.namesOf(player.getUUID());
         for (Fact fact : memory.facts(citizen)) {
             String key = "fact:" + Integer.toHexString(fact.text().hashCode());
-            if (fact.toldBy(player.getUUID(), playerNames) && fact.importance() >= MIN_IMPORTANCE
+            // Only what is about the player: a private talk's facts hold the colonist's own words too, and
+            // "how did it go?" about those makes no sense to the player.
+            if (fact.toldBy(player.getUUID(), playerNames) && fact.about().equals(Fact.aboutPlayer(player.getUUID()))
+                    && fact.importance() >= MIN_IMPORTANCE
                     && gameTime - fact.created() <= FRESH_FACT && fresh(prefix + key, gameTime)) {
                 topics.add(new InitiativePolicy.Topic(InitiativePolicy.Kind.FOLLOW_UP, key, fact.text(), 0));
             }

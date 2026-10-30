@@ -28,7 +28,7 @@ class PromptsTest {
     }
 
     @Test
-    void worriesComeUpUnaskedInAboutAQuarterOfReplies() {
+    void worriesComeUpUnaskedInAboutATenthOfReplies() {
         java.util.Random random = new java.util.Random(3);
         int allowed = 0;
         for (int i = 0; i < 4000; i++) {
@@ -36,7 +36,7 @@ class PromptsTest {
                 allowed++;
             }
         }
-        assertTrue(allowed > 850 && allowed < 1150, String.valueOf(allowed));
+        assertTrue(allowed > 300 && allowed < 500, String.valueOf(allowed));
     }
 
     @Test

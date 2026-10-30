@@ -146,9 +146,23 @@ public final class ColonyLookups {
                         ? ", with everything at hand" : ", still lacking " + String.join(", ", facts.missingMaterials())));
             }
         }
+        JsonArray unbuilt = new JsonArray();
+        for (IBuilding building : colony.getServerBuildingManager().getBuildings().values()) {
+            boolean ordered = colony.getWorkManager().getWorkOrders().values().stream()
+                    .anyMatch(order -> order.getLocation().equals(building.getPosition()));
+            if (building.getBuildingLevel() == 0 && !ordered && building.getBuildingType() != null && unbuilt.size() < MAX_LINES) {
+                unbuilt.add(ItemNames.named(Component.translatable(building.getBuildingType().getTranslationKey())));
+            }
+        }
         JsonObject reply = ok();
         reply.add("work_orders", orders);
         reply.add("builders", lacking);
+        if (!unbuilt.isEmpty()) {
+            // Placed huts nobody ordered yet: upgrade_building builds them, if the player asks.
+            reply.add("placed_not_built_no_order", unbuilt);
+            reply.addProperty("info", "Buildings in placed_not_built_no_order exist, at level 0: if the player asks to "
+                    + "build one, that is upgrade_building for it.");
+        }
         return reply;
     }
 
