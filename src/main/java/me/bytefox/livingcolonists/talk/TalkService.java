@@ -246,7 +246,9 @@ public final class TalkService {
         messages.add(ChatMessage.user(message));
         Map<String, String> values = promptValues(citizen, player);
         values.put("language", replyLanguage(citizen, player, speaker, history, message));
-        Optional<Fact> rumor = memory.rumor(citizen, playerName, random);
+        values.put("memories", memory.memories(citizen, Set.of(Fact.aboutCitizen(citizen.getId()),
+                Fact.aboutPlayer(player.getUUID())), message));
+        Optional<Fact> rumor = memory.rumor(citizen, player.getUUID(), random);
         rumor.ifPresent(fact -> values.put("initiative", values.get("initiative") + " " + Prompts.gossip(fact.text())));
         String prompt = Templates.render(prompts.get(PromptLibrary.REPLY_PRIVATE), values);
 
@@ -376,9 +378,12 @@ public final class TalkService {
         values.put("mood", plain ? "calm and busy with your work" : Prompts.mood(citizen.getId(),
                 citizen.getColony().getWorld().getDayTime() / 24000, happiness(citizen)));
         values.put("situation", perception.situation(citizen));
-        values.put("memories", memory.memories(citizen));
+        Set<String> present = player == null ? Set.of(Fact.aboutCitizen(citizen.getId()))
+                : Set.of(Fact.aboutCitizen(citizen.getId()), Fact.aboutPlayer(player.getUUID()));
+        values.put("memories", memory.memories(citizen, present, ""));
         values.put("initiative", plain ? "Answer only what the player said." : Prompts.initiative(random));
         if (player != null) {
+            memory.seen(player.getUUID(), playerName(player), player.getGameProfile().getName());
             Map<String, List<String>> names = Config.playerNames();
             values.put("player", PlayerNames.name(player.getGameProfile().getName(), names));
             values.put("addressing", PlayerNames.addressing(player.getGameProfile().getName(), names, random,

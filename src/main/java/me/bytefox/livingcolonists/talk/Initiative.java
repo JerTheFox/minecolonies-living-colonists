@@ -57,6 +57,11 @@ final class Initiative {
     /** When each colonist last wrote first to anyone, and last complained: {@code colonyId:citizenId}, server ticks. */
     private final Map<String, Long> lastSpoke = new HashMap<>();
     private final Map<String, Long> lastComplained = new HashMap<>();
+    /**
+     * When any colonist last raised a problem to a player: {@code colonyId:player:need}, server ticks.
+     * Several homeless colonists would otherwise each tell the same player in turn.
+     */
+    private final Map<String, Long> raisedToPlayer = new HashMap<>();
     /** Per player: positive, so many colony chats in a row lately; negative, so many private words. */
     private final Map<UUID, Integer> streak = new HashMap<>();
     private InitiativeData data;
@@ -241,19 +246,21 @@ final class Initiative {
             InitiativeData.Raised raised = data.complaints.get(prefix + key);
             int times = raised == null ? 0 : raised.times();
             boolean waited = raised == null || gameTime - raised.last() >= InitiativePolicy.COMPLAINT_GAP;
-            if (times <= InitiativePolicy.GIVES_UP_AFTER && waited) {
+            boolean heardLately = now - raisedToPlayer.getOrDefault(playerKey(citizen, player, key), Long.MIN_VALUE / 2)
+                    < InitiativePolicy.COMPLAINED_LATELY;
+            if (times <= InitiativePolicy.GIVES_UP_AFTER && waited && !heardLately) {
                 topics.add(new InitiativePolicy.Topic(InitiativePolicy.Kind.COMPLAINT, key, text, times));
             }
         });
-        String playerName = TalkService.playerName(player);
+        List<String> playerNames = memory.namesOf(player.getUUID());
         for (Fact fact : memory.facts(citizen)) {
             String key = "fact:" + Integer.toHexString(fact.text().hashCode());
-            if (fact.source().equals(Fact.privateTalk(playerName)) && fact.importance() >= MIN_IMPORTANCE
+            if (fact.toldBy(player.getUUID(), playerNames) && fact.importance() >= MIN_IMPORTANCE
                     && gameTime - fact.created() <= FRESH_FACT && fresh(prefix + key, gameTime)) {
                 topics.add(new InitiativePolicy.Topic(InitiativePolicy.Kind.FOLLOW_UP, key, fact.text(), 0));
             }
         }
-        memory.rumor(citizen, playerName, random).ifPresent(fact -> {
+        memory.rumor(citizen, player.getUUID(), random).ifPresent(fact -> {
             String key = "news:" + Integer.toHexString(fact.text().hashCode());
             if (fresh(prefix + key, gameTime)) {
                 topics.add(new InitiativePolicy.Topic(InitiativePolicy.Kind.NEWS, key, fact.text(), 0));
@@ -280,7 +287,8 @@ final class Initiative {
             issues.put("need:bring", "your work needs " + String.join(", ", facts.playerMustBring())
                     + ", and nobody in the colony can make it, so someone has to bring it");
         }
-        if (citizen.getHomeBuilding() == null && !citizen.isChild()) {
+        boolean homeless = citizen.getHomeBuilding() == null && !citizen.isChild();
+        if (homeless) {
             issues.put("need:home", "you have no home to sleep in");
         }
         if (facts.saturation() >= 0 && facts.saturation() < 6 && facts.food() == ColonistFacts.Food.NONE) {
@@ -293,8 +301,11 @@ final class Initiative {
             issues.put("need:materials", "your building job (" + facts.construction() + ") still lacks "
                     + String.join(", ", facts.missingMaterials()));
         }
-        if (facts.happiness() >= 0 && facts.happiness() < 5 && !facts.unhappyAbout().isEmpty()) {
-            issues.put("need:mood", "you are unhappy about " + String.join(", ", facts.unhappyAbout()));
+        // Unhappy for want of a home is the home problem again, not a second one.
+        List<String> unhappyAbout = facts.unhappyAbout().stream()
+                .filter(reason -> !(homeless && reason.contains("homeless"))).toList();
+        if (facts.happiness() >= 0 && facts.happiness() < 5 && !unhappyAbout.isEmpty()) {
+            issues.put("need:mood", "you are unhappy about " + String.join(", ", unhappyAbout));
         }
         return issues;
     }
@@ -322,6 +333,7 @@ final class Initiative {
         lastSpoke.put(citizenKey(citizen), now);
         if (topic.kind() == InitiativePolicy.Kind.COMPLAINT) {
             lastComplained.put(citizenKey(citizen), now);
+            raisedToPlayer.put(playerKey(citizen, player, topic.key()), now);
             data.complaints.put(prefix + topic.key(), new InitiativeData.Raised(topic.raised() + 1, gameTime));
         } else {
             data.done.put(prefix + topic.key(), gameTime);
@@ -331,6 +343,10 @@ final class Initiative {
 
     private static String citizenKey(ICitizenData citizen) {
         return citizen.getColony().getID() + ":" + citizen.getId();
+    }
+
+    private static String playerKey(ICitizenData citizen, ServerPlayer player, String need) {
+        return citizen.getColony().getID() + ":" + player.getUUID() + ":" + need;
     }
 
     private static String colonistKey(ICitizenData citizen, ServerPlayer player) {

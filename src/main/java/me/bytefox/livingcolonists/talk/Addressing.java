@@ -36,6 +36,14 @@ public final class Addressing {
 
     private static final Set<String> EVERYONE = Set.of("everyone", "everybody", "all", "guys", "folks", "people",
             "все", "всем", "всех", "вы", "вас", "вам", "народ", "ребята", "ребят");
+    /**
+     * Words for a building: a profession next to one names the building ("хижина строителя",
+     * "builder's hut"), not its worker. Russian puts the profession after it, English before.
+     */
+    private static final List<String> BUILDING_BEFORE = List.of("хижин", "мастерск", "здани", "постройк", "дом",
+            "башн", "лавк", "лачуг");
+    private static final Set<String> BUILDING_AFTER = Set.of("hut", "huts", "house", "houses", "workshop", "building",
+            "tower", "shop", "yard", "hall");
 
     private Addressing() {
     }
@@ -99,13 +107,34 @@ public final class Addressing {
         for (int i = 0; i < jobs.size(); i++) {
             for (String job : jobs.get(i)) {
                 List<String> parts = words(job);
-                if (!parts.isEmpty() && parts.stream().allMatch(part -> words.stream().anyMatch(w -> wordMatches(w, part)))) {
+                if (!parts.isEmpty() && parts.stream().allMatch(part -> callsProfession(words, part))) {
                     found.add(i);
                     break;
                 }
             }
         }
         return found;
+    }
+
+    /** Whether some word of the message is this profession word and not part of a building's name. */
+    private static boolean callsProfession(List<String> words, String part) {
+        for (int i = 0; i < words.size(); i++) {
+            if (wordMatches(words.get(i), part) && !namesBuilding(words, i)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean namesBuilding(List<String> words, int index) {
+        if (index > 0) {
+            String before = words.get(index - 1);
+            if (BUILDING_BEFORE.stream().anyMatch(stem -> before.startsWith(stem)
+                    && before.length() - stem.length() <= MAX_ENDING)) {
+                return true;
+            }
+        }
+        return index + 1 < words.size() && BUILDING_AFTER.contains(words.get(index + 1));
     }
 
     private static boolean nameMatches(String word, String name) {
@@ -202,6 +231,7 @@ public final class Addressing {
     }
 
     private static String normalize(String text) {
-        return text.strip().toLowerCase(Locale.ROOT).replace('ё', 'е');
+        // Russian writes э and е, ё and е for the same sound in names: Рэндольф is often рендольф.
+        return text.strip().toLowerCase(Locale.ROOT).replace('ё', 'е').replace('э', 'е');
     }
 }

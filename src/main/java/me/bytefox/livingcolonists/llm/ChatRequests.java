@@ -6,6 +6,7 @@ import java.util.Map;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import me.bytefox.livingcolonists.memory.PlayerMarks;
 
 /** Builds the body of an OpenAI-compatible {@code POST /chat/completions} request. */
 public final class ChatRequests {
@@ -29,7 +30,8 @@ public final class ChatRequests {
         for (ChatMessage message : messages) {
             JsonObject item = new JsonObject();
             item.addProperty("role", message.role());
-            item.addProperty("content", message.content());
+            // Players named in memories go out under the name they have now.
+            item.addProperty("content", PlayerMarks.resolve(message.content()));
             if (!message.toolCalls().isEmpty()) {
                 JsonArray calls = new JsonArray();
                 for (ToolCall call : message.toolCalls()) {

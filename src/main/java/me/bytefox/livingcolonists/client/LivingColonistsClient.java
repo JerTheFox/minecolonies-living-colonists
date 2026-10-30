@@ -59,6 +59,7 @@ public final class LivingColonistsClient {
         NeoForge.EVENT_BUS.addListener(ConversationIndicator::click);
         NeoForge.EVENT_BUS.addListener(TypingIndicator::renderHud);
         NeoForge.EVENT_BUS.addListener(SpeechBubbles::render);
+        NeoForge.EVENT_BUS.addListener(SpeechBubbles::renderOnScreen);
         NeoForge.EVENT_BUS.addListener(SpeechBubbles::onClientTick);
         NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut event) -> {
             ClientConversation.reset();

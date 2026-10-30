@@ -51,6 +51,14 @@ class ChatResponsesTest {
     }
 
     @Test
+    void anEmptyReplyThatJustStoppedIsWorthAnotherTry() {
+        ChatResult.Failure failure = assertInstanceOf(ChatResult.Failure.class,
+                ChatResponses.parse(200, completion("\"\"", "stop")));
+
+        assertTrue(failure.retryable());
+    }
+
+    @Test
     void aReplyCutOffByTheTokenLimitKeepsItsWholeSentences() {
         ChatResult.Reply reply = assertInstanceOf(ChatResult.Reply.class, ChatResponses.parse(200,
                 completion("\"Ask Max. I promised not to tell, so I won't give it awa\"", "length")));

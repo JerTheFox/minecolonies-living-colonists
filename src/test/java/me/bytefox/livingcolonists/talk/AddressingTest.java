@@ -98,6 +98,22 @@ class AddressingTest {
     }
 
     @Test
+    void aBuildingNamedAfterAProfessionDoesNotCallItsWorker() {
+        List<Set<String>> jobs = List.of(Set.of("Builder", "Строитель"), Set.of("Farmer", "Фермер"));
+        assertTrue(Addressing.byJob("хижину строителя поставил, кто туда подходит?", jobs).isEmpty());
+        assertTrue(Addressing.byJob("I placed a builder's hut, who wants it?", jobs).isEmpty());
+        assertEquals(List.of(0), Addressing.byJob("строитель, построй хижину строителя", jobs));
+        assertEquals(List.of(0), Addressing.byJob("builder, upgrade the builder's hut", jobs));
+    }
+
+    @Test
+    void eAndEhAreTheSameLetterInNames() {
+        List<String> names = List.of("Рэндольф Кейси", "Фиона Макнамара");
+        assertEquals(List.of(0), Addressing.allMentioned("рендольф почему ты скелет", names));
+        assertEquals(List.of(0), Addressing.allMentioned("Рэндольф, чего не хватает?", names));
+    }
+
+    @Test
     void seesAMessageForEveryone() {
         assertTrue(Addressing.toEveryone("Всем привет!"));
         assertTrue(Addressing.toEveryone("Hey everyone, raid tonight"));

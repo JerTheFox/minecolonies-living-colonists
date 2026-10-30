@@ -126,7 +126,7 @@ public final class Prompts {
     public static String initiative(Random random) {
         return random.nextDouble() < INITIATIVE_CHANCE
                 ? "Answer what the player said. If it fits, you may add one thing that bothers you, in passing."
-                : "Answer only what the player said. Don't bring up your work, materials or needs unless the player asks about them.";
+                : "Answer only what the player said. Don't bring up your work, home, materials or needs unless the player asks about them.";
     }
 
     /**
@@ -185,7 +185,7 @@ public final class Prompts {
     public static String chatInitiative(Random random) {
         return random.nextDouble() < CHAT_INITIATIVE_CHANCE
                 ? "If it fits, you may mention one thing that bothers you, in passing."
-                : "Don't bring up your own work, materials or needs unless the conversation is about them.";
+                : "Don't bring up your own work, home, materials, aches or needs unless the conversation is about them.";
     }
 
     /**
@@ -215,7 +215,8 @@ public final class Prompts {
             return "This time you don't agree with what was said last: say why, in your own way, and stand by your view.";
         }
         double rest = (roll - contrariness) / (1 - contrariness);
-        if (rest < 0.5) {
+        // Whoever answers the line that opened a talk answers it rather than change the subject at once.
+        if (rest < 0.5 || rest < 0.7 && turns <= 1) {
             return "You partly agree, but add your own angle or a doubt; don't just echo the others.";
         }
         if (rest < 0.7) {

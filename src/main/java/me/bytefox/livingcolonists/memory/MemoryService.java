@@ -1,6 +1,7 @@
 package me.bytefox.livingcolonists.memory;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -33,6 +34,7 @@ import me.bytefox.livingcolonists.llm.LlmSettings;
 import me.bytefox.livingcolonists.llm.ModelRole;
 import me.bytefox.livingcolonists.prompt.PromptLibrary;
 import me.bytefox.livingcolonists.prompt.Templates;
+import me.bytefox.livingcolonists.talk.Addressing;
 import me.bytefox.livingcolonists.talk.Prompts;
 import net.minecraft.server.MinecraftServer;
 
@@ -75,8 +77,10 @@ public final class MemoryService {
      * and sometimes ran out of the usual 2000, leaving an empty answer.
      */
     private static final int DIGEST_TOKENS = 8000;
-    /** Facts shown in a reply prompt at most: the most important ones. */
-    private static final int MEMORIES_SHOWN = 20;
+    /** Facts shown in a reply prompt at most: the ones the talk touches, see {@link Digests#relevant}. */
+    private static final int MEMORIES_SHOWN = 8;
+    /** Players named in the hint about former names, at most. */
+    private static final int MAX_NAME_HINTS = 4;
     private static final int MAX_PRIVATE_FACTS = 5;
     private static final int MAX_COLONY_FACTS = 4;
 
@@ -99,12 +103,60 @@ public final class MemoryService {
     public void attach(MemoryData data) {
         this.data = data;
         lastCleanupDay = -1;
+        PlayerMarks.clearCurrent();
+        data.playerNames.forEach((player, names) -> {
+            if (!names.isEmpty()) {
+                PlayerMarks.setCurrent(player, names.get(0));
+            }
+        });
     }
 
     public void detach() {
         data = null;
+        PlayerMarks.clearCurrent();
         digesting.clear();
         retryAt.clear();
+    }
+
+    // ---- players
+
+    /**
+     * Notes the name colonists know a player by now, with their nickname and the forms set in
+     * {@code playerNames}; names from before stay known, so older memories still find the player.
+     */
+    public void seen(UUID player, String name, String nickname) {
+        PlayerMarks.setCurrent(player, name);
+        if (data == null) {
+            return;
+        }
+        List<String> names = data.playerNames.computeIfAbsent(player, id -> new ArrayList<>());
+        LinkedHashSet<String> updated = new LinkedHashSet<>();
+        updated.add(name);
+        updated.addAll(Config.playerNames().getOrDefault(nickname, List.of()));
+        updated.add(nickname);
+        updated.addAll(names);
+        if (!List.copyOf(updated).equals(names)) {
+            names.clear();
+            names.addAll(updated);
+            data.setDirty();
+        }
+    }
+
+    /** Every name the player was known by, the current one first; empty if never seen. */
+    public List<String> namesOf(UUID player) {
+        return data == null ? List.of() : List.copyOf(data.playerNames.getOrDefault(player, List.of()));
+    }
+
+    /** For a prompt: what else these players were called, like "Max (also called Steve42)"; empty if nothing. */
+    public String formerNames(Collection<UUID> players) {
+        List<String> hints = new ArrayList<>();
+        for (UUID player : players) {
+            List<String> names = namesOf(player);
+            if (names.size() > 1 && hints.size() < MAX_NAME_HINTS) {
+                hints.add(names.get(0) + " (also called " + String.join(", ", names.subList(1, names.size())) + ")");
+            }
+        }
+        return hints.isEmpty() ? "" : "The same people under other names: " + String.join("; ", hints) + ".";
     }
 
     // ---- short memory
@@ -141,9 +193,20 @@ public final class MemoryService {
 
     // ---- long memory
 
-    /** The colonist's facts as a prompt block; empty when they remember nothing or memory is off. */
-    public String memories(ICitizenData citizen) {
-        return Digests.memories(Digests.mostImportant(facts(citizen), MEMORIES_SHOWN), now(citizen.getColony()));
+    /**
+     * The colonist's facts as a prompt block, those this talk touches; empty when they remember
+     * nothing or memory is off.
+     *
+     * @param present whom the talk is with: {@link Fact#aboutPlayer}, {@link Fact#aboutCitizen}
+     * @param context what is being said
+     */
+    public String memories(ICitizenData citizen, Set<String> present, String context) {
+        long now = now(citizen.getColony());
+        String facts = Digests.memories(Digests.relevant(facts(citizen), present, context, now, MEMORIES_SHOWN), now);
+        List<UUID> players = present.stream().filter(key -> key.startsWith("p:"))
+                .map(key -> UUID.fromString(key.substring(2))).toList();
+        String names = formerNames(players);
+        return names.isEmpty() ? facts : facts.isEmpty() ? names : facts + "\n" + names;
     }
 
     /** Facts the colonist still remembers, oldest first. */
@@ -162,11 +225,12 @@ public final class MemoryService {
      *
      * @param listener the player being answered, who won't hear their own words back; null in the colony chat
      */
-    public Optional<Fact> rumor(ICitizenData citizen, String listener, Random random) {
+    public Optional<Fact> rumor(ICitizenData citizen, UUID listener, Random random) {
         if (random.nextDouble() >= FactLimits.of(level()).rumorChance()) {
             return Optional.empty();
         }
-        return Digests.pickRumor(facts(citizen), listener, random);
+        List<String> names = listener == null ? List.of() : namesOf(listener);
+        return Digests.pickRumor(facts(citizen), fact -> listener != null && fact.toldBy(listener, names), random);
     }
 
     /** The colonist passed the fact on, so it won't be retold. */
@@ -281,7 +345,7 @@ public final class MemoryService {
         int citizenId = citizen.getId();
         String playerName = player.get();
         return request(server, key, transcript, values, lines, MAX_PRIVATE_FACTS, colony, List.of(citizen),
-                Fact.privateTalk(playerName), (current, digest) -> {
+                Fact.privateTalk(playerId), (current, digest) -> {
                     ICitizenData owner = current.getCitizenManager().getCivilian(citizenId);
                     if (owner != null) {
                         bonds.apply(owner, playerId, playerName, digest, open);
@@ -363,7 +427,7 @@ public final class MemoryService {
                     if (now == null) {
                         return;
                     }
-                    Digests.Digest digest = Digests.parseAll(reply.text(), max);
+                    Digests.Digest digest = marked(Digests.parseAll(reply.text(), max));
                     List<Digests.Entry> entries = digest.facts();
                     store(now, ownerIds, entries, source);
                     if (after != null) {
@@ -391,29 +455,78 @@ public final class MemoryService {
      */
     public void rememberDeed(ICitizenData citizen, String deed) {
         if (data != null && FactLimits.of(level()).facts() > 0) {
-            store(citizen.getColony(), List.of(citizen.getId()), List.of(new Digests.Entry(DEED_IMPORTANCE, deed)), DEED);
+            store(citizen.getColony(), List.of(citizen.getId()),
+                    List.of(new Digests.Entry(DEED_IMPORTANCE, citizen.getName(), deed)), DEED);
             data.setDirty();
         }
     }
 
+    /**
+     * Gives the facts to the colonists who heard them. From the colony chat, a fact about one of the
+     * colonists who took part goes to that colonist only: the others heard it, but if each of them
+     * kept "Ephraim's knee aches", they would all bring it up for days.
+     */
     private void store(IColony colony, List<Integer> ownerIds, List<Digests.Entry> entries, String source) {
         FactLimits limits = FactLimits.of(level());
         long now = now(colony);
-        for (int id : ownerIds) {
-            ICitizenData citizen = colony.getCitizenManager().getCivilian(id);
-            if (citizen == null) {
+        Set<FactBook> touched = new HashSet<>();
+        for (Digests.Entry entry : entries) {
+            String text = Digests.cleanFact(PlayerMarks.markNames(entry.text(), data.playerNames));
+            if (text.isEmpty()) {
                 continue;
             }
-            FactBook book = data.facts.computeIfAbsent(key(citizen), k -> new FactBook());
-            for (Digests.Entry entry : entries) {
-                String text = Digests.cleanFact(entry.text());
-                if (!text.isEmpty()) {
-                    book.add(new Fact(text, entry.importance(), now, now + limits.lifetime(entry.importance()), source,
-                            false));
+            String about = about(colony, entry.about());
+            List<Integer> owners = Fact.COLONY_CHAT.equals(source) && about.startsWith("c:")
+                    && ownerIds.contains(Integer.parseInt(about.substring(2)))
+                    ? List.of(Integer.parseInt(about.substring(2))) : ownerIds;
+            for (int id : owners) {
+                ICitizenData citizen = colony.getCitizenManager().getCivilian(id);
+                if (citizen == null) {
+                    continue;
                 }
+                FactBook book = data.facts.computeIfAbsent(key(citizen), k -> new FactBook());
+                book.add(new Fact(text, entry.importance(), now, now + limits.lifetime(entry.importance()), source, false,
+                        about));
+                touched.add(book);
             }
-            book.cleanup(now, limits.facts());
         }
+        touched.forEach(book -> book.cleanup(now, limits.facts()));
+    }
+
+    /** Whom the model said a fact is about, as a key: a colonist of this colony, a known player, the colony. */
+    private String about(IColony colony, String said) {
+        String name = said.strip();
+        if (name.isEmpty()) {
+            return "";
+        }
+        if (name.equalsIgnoreCase("colony") || name.equalsIgnoreCase("everyone") || name.equalsIgnoreCase("the colony")) {
+            return Fact.ABOUT_COLONY;
+        }
+        List<ICitizenData> citizens = colony.getCitizenManager().getCitizens();
+        var colonist = Addressing.mentioned(name, citizens.stream().map(ICitizenData::getName).toList());
+        if (colonist.isPresent()) {
+            return Fact.aboutCitizen(citizens.get(colonist.getAsInt()).getId());
+        }
+        for (Map.Entry<UUID, List<String>> player : data.playerNames.entrySet()) {
+            if (player.getValue().stream().anyMatch(known -> PlayerMarks.isForm(name, known))) {
+                return Fact.aboutPlayer(player.getKey());
+            }
+        }
+        return "";
+    }
+
+    /** The digest with players' names in its promise and conduct texts kept as marks, like the facts. */
+    private Digests.Digest marked(Digests.Digest digest) {
+        Map<UUID, List<String>> names = data.playerNames;
+        return new Digests.Digest(digest.facts(),
+                digest.promises().stream().map(made -> new Digests.NewPromise(made.days(), made.about(), made.worth(),
+                        PlayerMarks.markNames(made.text(), names))).toList(),
+                digest.resolutions(),
+                digest.conduct().stream().map(note -> new Digests.Conduct(note.kind(),
+                        PlayerMarks.markNames(note.note(), names))).toList(),
+                digest.colonists(),
+                digest.colonyPromises().stream().map(made -> new Digests.ColonyPromise(made.player(), made.colonist(),
+                        made.days(), made.about(), made.worth(), PlayerMarks.markNames(made.text(), names))).toList());
     }
 
     private boolean ready(MinecraftServer server, String key, boolean force) {
@@ -451,8 +564,23 @@ public final class MemoryService {
             return;
         }
         int before = data.facts.size() + data.privateTalks.size();
+        List<String> gone = data.facts.keySet().stream().filter(key).toList();
         data.facts.keySet().removeIf(key);
         data.privateTalks.keySet().removeIf(key);
+        // Nobody keeps remembering things about a colonist who is gone; their id may be given to a newcomer.
+        boolean forgotAbout = false;
+        for (String citizen : gone) {
+            String[] parts = citizen.split(":");
+            String prefix = parts[0] + ":";
+            for (Map.Entry<String, FactBook> book : data.facts.entrySet()) {
+                if (book.getKey().startsWith(prefix) && book.getValue().forgetAbout(Fact.aboutCitizen(Integer.parseInt(parts[1])))) {
+                    forgotAbout = true;
+                }
+            }
+        }
+        if (forgotAbout) {
+            data.setDirty();
+        }
         if (data.facts.size() + data.privateTalks.size() != before) {
             data.setDirty();
         }

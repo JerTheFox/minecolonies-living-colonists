@@ -54,16 +54,20 @@ public final class ThreadPolicy {
         CHATTER,
         /** A player is talking with the colony: others join in now and then, not after every line. */
         TALK,
-        /** A player's request was looked up or ordered: after the answer the chat mostly stays quiet. */
+        /** A player's request was looked up or ordered: after the answer nobody joins in. */
         BUSINESS
     }
 
     /** The same, for the kind of conversation: while a player talks, others join far less. */
     public static double continueChance(Level level, int turns, Kind kind) {
+        if (kind == Kind.BUSINESS) {
+            // A word from a bystander right after a fact or an order only muddles it (seen on a server).
+            return 0;
+        }
         if (kind == Kind.CHATTER || turns >= maxTurns(level)) {
             return continueChance(level, turns);
         }
-        double base = kind == Kind.BUSINESS ? 0.15 : 0.3;
+        double base = 0.3;
         double scale = switch (level) {
             case OFF -> 0;
             case LOW -> 0.5;

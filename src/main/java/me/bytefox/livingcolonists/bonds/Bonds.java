@@ -235,6 +235,14 @@ public final class Bonds {
                 + "words, to keep that one first.";
     }
 
+    /**
+     * A request's short text as a promise names it: MineColonies writes an amount range ("1-34
+     * Cobblestone", the least it accepts to the full count), and the promise is for the full count.
+     */
+    public static String requestedThing(String display) {
+        return display.replaceFirst("^\\d+\\s*-\\s*(\\d+)\\s", "$1 ");
+    }
+
     /** Request states (MineColonies {@code RequestState}) that mean the colonist got what was asked for. */
     private static final Set<String> DELIVERED = Set.of("RESOLVED", "FOLLOWUP_IN_PROGRESS", "COMPLETED", "FINALIZING",
             "RECEIVED");

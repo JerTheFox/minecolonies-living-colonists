@@ -5,6 +5,28 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- With a shader pack (Iris), speech bubbles are drawn on the screen over the speaker's head, so the shaders no longer dim them.
+- Nobody joins in right after a look-up or an order, and colonists don't argue with facts from the colony's records.
+- One homeless colonist telling a player is enough for a while: others don't raise the same problem to them in turn, and unhappiness about having no home no longer counts as a second complaint.
+- Memory keeps players by their account, not their name: after a rename (a new nickname, `playerNames` set later) colonists know the same person under the new name, and the prompt mentions the names they had before.
+- A reply sees the remembered facts the talk touches (about the people in it, sharing words with what is said, important or new), up to eight, instead of the twenty most important every time.
+- From the colony chat, a fact about one of the colonists who took part is kept by that colonist only, not by everyone who heard it; a fact like one already known about the same person replaces it instead of piling up.
+- Colonists no longer write down what the colony tracks live (homes, jobs, hunger, sickness, materials, happiness), so their memory doesn't go stale and contradict what they see.
+- Facts about a colonist who died or left are forgotten by the others too.
+
+### Fixed
+
+- A colonist asking to confirm an order no longer says it is already placed or guesses how long it will take.
+- "Build the hut" for a placed but unbuilt building is taken as the order to build it.
+- An empty reply from the model is retried instead of losing the line.
+- A colonist starting a chat of their own no longer picks up an old talk, and the first answer stays on the topic.
+- Names spelled with е for э ("Рендольф") are found by code; a building's name ("хижина строителя", "builder's hut") no longer calls its worker.
+- Colonists no longer make up meetings and talks with people, or guess how the colony works.
+- A promise from a request dialog names the full amount ("34 Cobblestone", not "1-34 Cobblestone").
+- A player renamed in `playerNames` could hear their own private words back as gossip, and lost the follow-ups on what they told colonists earlier.
+
 ## [0.1.0] - 2026-10-30
 
 ### Added

@@ -1,7 +1,9 @@
 package me.bytefox.livingcolonists.client;
 
+import java.lang.reflect.Method;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -16,6 +18,7 @@ import net.minecraft.Util;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.renderer.LightTexture;
@@ -28,9 +31,11 @@ import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.joml.Matrix4f;
+import org.joml.Vector4f;
 
 /**
  * Speech bubbles over colonists (and players, when the server turns that on): white pixel comic
@@ -38,6 +43,10 @@ import org.joml.Matrix4f;
  * after a while, and three bouncing dots while someone types. Facing the camera like name tags;
  * the text is full bright and drawn with a depth offset, so it never sinks into its bubble. The
  * usual tricks of chat bubble mods, written for this mod. Client thread only.
+ *
+ * <p>A shader pack (Iris) lights and tints whatever is drawn in the world, and a white bubble comes
+ * out dim. While one is in use, the bubbles go on the screen instead, over the speaker's head as the
+ * camera sees it, in the GUI pass that shaders leave alone.
  */
 public final class SpeechBubbles {
     /** Lines kept over one head, newest at the bottom. */
@@ -81,8 +90,18 @@ public final class SpeechBubbles {
         long eased;
     }
 
+    /** A bubble to draw on the screen this frame: where the head is, in GUI pixels, and how big. */
+    private record Placed(Bubble bubble, float x, float y, float scale, boolean sneaking) {
+    }
+
     private static final Map<Integer, Bubble> BUBBLES = new HashMap<>();
+    private static final List<Placed> PLACED = new ArrayList<>();
+    /** On the screen a bubble right in front of the camera would cover it. */
+    private static final float MAX_SCREEN_SCALE = 1.5f;
     private static boolean typingSent;
+    private static boolean irisLooked;
+    private static Object iris;
+    private static Method irisShaders;
 
     private SpeechBubbles() {
     }
@@ -145,6 +164,11 @@ public final class SpeechBubbles {
         Vec3 eye = camera.getPosition();
         float partial = event.getPartialTick().getGameTimeDeltaPartialTick(false);
         PoseStack pose = event.getPoseStack();
+        PLACED.clear();
+        boolean onScreen = shadersInUse();
+        Matrix4f toClip = new Matrix4f(event.getProjectionMatrix()).mul(event.getModelViewMatrix()).mul(pose.last().pose());
+        float guiWidth = minecraft.getWindow().getGuiScaledWidth();
+        float guiHeight = minecraft.getWindow().getGuiScaledHeight();
         MultiBufferSource.BufferSource buffers = minecraft.renderBuffers().bufferSource();
         Font font = minecraft.font;
         for (Iterator<Map.Entry<Integer, Bubble>> it = BUBBLES.entrySet().iterator(); it.hasNext(); ) {
@@ -179,15 +203,84 @@ public final class SpeechBubbles {
             if (bubble.shown < 0.03f) {
                 continue;
             }
-            pose.pushPose();
             // Above the name tag, which MineColonies draws over every colonist.
-            pose.translate(at.x - eye.x, at.y + entity.getBbHeight() + 0.95 - eye.y, at.z - eye.z);
+            Vec3 anchor = new Vec3(at.x - eye.x, at.y + entity.getBbHeight() + 0.95 - eye.y, at.z - eye.z);
+            if (onScreen) {
+                place(bubble, anchor, toClip, event.getProjectionMatrix().m11(), guiWidth, guiHeight, entity.isDiscrete());
+                continue;
+            }
+            pose.pushPose();
+            pose.translate(anchor.x, anchor.y, anchor.z);
             pose.mulPose(camera.rotation());
             pose.scale(SCALE, -SCALE, SCALE);
             draw(font, pose.last().pose(), buffers, bubble, now, entity.isDiscrete(), !bubble.inSight);
             pose.popPose();
         }
         buffers.endBatch();
+        // Farther bubbles first, so nearer ones cover them.
+        PLACED.sort(Comparator.comparingDouble(Placed::scale));
+    }
+
+    /** Where the bubble's anchor lands on the screen, if it does, for {@link #renderOnScreen}. */
+    private static void place(Bubble bubble, Vec3 anchor, Matrix4f toClip, float yScale, float guiWidth, float guiHeight,
+                              boolean sneaking) {
+        Vector4f clip = toClip.transform(new Vector4f((float) anchor.x, (float) anchor.y, (float) anchor.z, 1));
+        if (clip.w < 0.1f) {
+            return;
+        }
+        float x = clip.x / clip.w;
+        float y = clip.y / clip.w;
+        if (Math.abs(x) > 1.2f || Math.abs(y) > 1.2f) {
+            return;
+        }
+        // One font pixel of the world bubble, in GUI pixels at this distance.
+        float scale = Math.min(MAX_SCREEN_SCALE, SCALE * yScale / clip.w * guiHeight / 2);
+        PLACED.add(new Placed(bubble, (x + 1) / 2 * guiWidth, (1 - y) / 2 * guiHeight, scale, sneaking));
+    }
+
+    /** Draws the bubbles placed this frame on the screen, under the rest of the HUD. */
+    public static void renderOnScreen(RenderGuiEvent.Pre event) {
+        if (PLACED.isEmpty()) {
+            return;
+        }
+        Minecraft minecraft = Minecraft.getInstance();
+        if (!minecraft.options.hideGui) {
+            GuiGraphics graphics = event.getGuiGraphics();
+            PoseStack pose = graphics.pose();
+            long now = Util.getMillis();
+            for (Placed placed : PLACED) {
+                pose.pushPose();
+                pose.translate(placed.x(), placed.y(), 0);
+                pose.scale(placed.scale(), placed.scale(), 1);
+                // Drawn like a bubble seen through a wall: in order, nothing depth-tested.
+                draw(minecraft.font, pose.last().pose(), graphics.bufferSource(), placed.bubble(), now, placed.sneaking(), true);
+                pose.popPose();
+            }
+            graphics.flush();
+        }
+        PLACED.clear();
+    }
+
+    /** Whether Iris is drawing with a shader pack, through its public API; false without Iris. */
+    private static boolean shadersInUse() {
+        if (!irisLooked) {
+            irisLooked = true;
+            try {
+                Class<?> api = Class.forName("net.irisshaders.iris.api.v0.IrisApi");
+                iris = api.getMethod("getInstance").invoke(null);
+                irisShaders = api.getMethod("isShaderPackInUse");
+            } catch (ReflectiveOperationException | LinkageError e) {
+                irisShaders = null;
+            }
+        }
+        if (irisShaders == null) {
+            return false;
+        }
+        try {
+            return (boolean) irisShaders.invoke(iris);
+        } catch (ReflectiveOperationException e) {
+            return false;
+        }
     }
 
     /**

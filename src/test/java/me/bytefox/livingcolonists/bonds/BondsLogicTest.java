@@ -224,6 +224,13 @@ class BondsLogicTest {
     }
 
     @Test
+    void aRequestedAmountRangeBecomesTheFullAmount() {
+        assertEquals("34 Cobblestone", Bonds.requestedThing("1-34 Cobblestone"));
+        assertEquals("34 Cobblestone", Bonds.requestedThing("34 Cobblestone"));
+        assertEquals("Food", Bonds.requestedThing("Food"));
+    }
+
+    @Test
     void theColonyTalksAboutPlayersWhoAreRudeToSeveral() {
         assertEquals("Around the colony, Max is known as rude: several colonists grumble about it.",
                 Bonds.reputation("Max", List.of(-30, -20, 5), 0, 0));

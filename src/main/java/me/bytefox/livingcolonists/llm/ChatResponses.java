@@ -35,7 +35,10 @@ public final class ChatResponses {
                         usage(root.getAsJsonObject("usage")), calls);
             }
             if (content == null || content.isJsonNull() || content.getAsString().isBlank()) {
-                return new ChatResult.Failure("empty reply, finish_reason=" + string(choice.get("finish_reason")), false);
+                // A reasoning model sometimes stops with nothing to say; the same request usually works
+                // the next time. Cut off by max_tokens, it would only be cut off again.
+                String finish = string(choice.get("finish_reason"));
+                return new ChatResult.Failure("empty reply, finish_reason=" + finish, "stop".equals(finish));
             }
             String text = content.getAsString().strip();
             if ("length".equals(string(choice.get("finish_reason")))) {

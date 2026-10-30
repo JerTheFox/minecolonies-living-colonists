@@ -27,6 +27,7 @@ import me.bytefox.livingcolonists.bonds.Relation;
 import me.bytefox.livingcolonists.memory.Fact;
 import me.bytefox.livingcolonists.memory.MemoryLine;
 import me.bytefox.livingcolonists.memory.MemoryService;
+import me.bytefox.livingcolonists.memory.PlayerMarks;
 import me.bytefox.livingcolonists.perception.PerceptionService;
 import me.bytefox.livingcolonists.personality.Archetype;
 import me.bytefox.livingcolonists.personality.Personality;
@@ -205,7 +206,7 @@ public final class DebugCommand {
             source.sendFailure(Component.translatable("livingcolonists.debug.prompt.none", citizen.getName()));
             return 0;
         }
-        source.sendSuccess(() -> Component.literal(prompt.get()), false);
+        source.sendSuccess(() -> Component.literal(PlayerMarks.resolve(prompt.get())), false);
         return 1;
     }
 
@@ -221,8 +222,10 @@ public final class DebugCommand {
             source.sendSuccess(() -> Component.translatable("livingcolonists.debug.memory.facts", citizen.getName(),
                     facts.size()), false);
             for (Fact fact : facts) {
-                String line = "  [" + fact.importance() + "] " + fact.text() + " (" + (fact.isPrivate()
-                        ? "from " + fact.teller() : "colony chat") + ", " + (fact.expires() - now) / 24000 + "d left"
+                String teller = fact.tellerId() == null ? fact.teller() : PlayerMarks.resolve(PlayerMarks.mark(fact.tellerId(), "", ""));
+                String line = "  [" + fact.importance() + "] " + PlayerMarks.resolve(fact.text()) + " (" + (fact.isPrivate()
+                        ? "from " + teller : "colony chat") + (fact.about().isEmpty() ? "" : ", about " + fact.about())
+                        + ", " + (fact.expires() - now) / 24000 + "d left"
                         + (fact.told() ? ", told" : "") + ")";
                 source.sendSuccess(() -> Component.literal(line), false);
             }
@@ -248,7 +251,7 @@ public final class DebugCommand {
         for (Promise promise : promises) {
             String due = promise.due() == 0 ? "no deadline" : "due in " + (promise.due() - now) / 24000 + "d";
             String line = "  [" + promise.status() + ", " + promise.about().key() + ", " + due + "] " + promise.makerName()
-                    + ": " + promise.text();
+                    + ": " + PlayerMarks.resolve(promise.text());
             source.sendSuccess(() -> Component.literal(line), false);
         }
         relations.forEach((player, relation) -> {

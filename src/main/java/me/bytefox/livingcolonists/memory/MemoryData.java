@@ -1,18 +1,22 @@
 package me.bytefox.livingcolonists.memory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.saveddata.SavedData;
 
 /**
  * Conversations and what colonists remember of them, saved with the world in
  * {@code data/livingcolonists_memory.dat}: each colonist's private talks per player, each colony's
- * chat, and each colonist's facts. Server thread only.
+ * chat, each colonist's facts, and the names each player went by. Server thread only.
  */
 public final class MemoryData extends SavedData {
     public static final String NAME = "livingcolonists_memory";
@@ -23,6 +27,8 @@ public final class MemoryData extends SavedData {
     final Map<Integer, Transcript> colonyChats = new HashMap<>();
     /** Key: {@code colonyId:citizenId}. */
     final Map<String, FactBook> facts = new HashMap<>();
+    /** The names colonists knew each player by, the current one first. */
+    final Map<UUID, List<String>> playerNames = new HashMap<>();
 
     public static SavedData.Factory<MemoryData> factory() {
         return new SavedData.Factory<>(MemoryData::new, (tag, provider) -> load(tag), null);
@@ -47,9 +53,18 @@ public final class MemoryData extends SavedData {
             for (int i = 0; i < list.size(); i++) {
                 CompoundTag fact = list.getCompound(i);
                 book.add(new Fact(fact.getString("text"), fact.getInt("importance"), fact.getLong("created"),
-                        fact.getLong("expires"), fact.getString("source"), fact.getBoolean("told")));
+                        fact.getLong("expires"), fact.getString("source"), fact.getBoolean("told"), fact.getString("about")));
             }
             data.facts.put(key, book);
+        }
+        CompoundTag players = tag.getCompound("players");
+        for (String key : players.getAllKeys()) {
+            ListTag list = players.getList(key, Tag.TAG_STRING);
+            List<String> names = new ArrayList<>();
+            for (int i = 0; i < list.size(); i++) {
+                names.add(list.getString(i));
+            }
+            data.playerNames.put(UUID.fromString(key), names);
         }
         return data;
     }
@@ -96,6 +111,7 @@ public final class MemoryData extends SavedData {
                     entry.putLong("expires", fact.expires());
                     entry.putString("source", fact.source());
                     entry.putBoolean("told", fact.told());
+                    entry.putString("about", fact.about());
                     list.add(entry);
                 }
                 books.put(key, list);
@@ -106,6 +122,13 @@ public final class MemoryData extends SavedData {
         tag.put("colony", chats);
         tag.put("colonyDigested", chatsDigested);
         tag.put("facts", books);
+        CompoundTag players = new CompoundTag();
+        playerNames.forEach((id, names) -> {
+            ListTag list = new ListTag();
+            names.forEach(name -> list.add(StringTag.valueOf(name)));
+            players.put(id.toString(), list);
+        });
+        tag.put("players", players);
         return tag;
     }
 

@@ -65,10 +65,18 @@ class PromptsTest {
         int early = 0;
         int late = 0;
         for (int i = 0; i < 4000; i++) {
-            early += Prompts.stance(0.35, 1, random).contains("Change the subject") ? 1 : 0;
+            early += Prompts.stance(0.35, 2, random).contains("Change the subject") ? 1 : 0;
             late += Prompts.stance(0.35, 4, random).contains("Change the subject") ? 1 : 0;
         }
         assertTrue(late > 2 * early, early + " vs " + late);
+    }
+
+    @Test
+    void theFirstAnswerToAnOpenerStaysOnItsTopic() {
+        java.util.Random random = new java.util.Random(11);
+        for (int i = 0; i < 2000; i++) {
+            assertFalse(Prompts.stance(0.35, 1, random).contains("Change the subject"));
+        }
     }
 
     @Test

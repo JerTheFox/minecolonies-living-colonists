@@ -31,6 +31,7 @@ import com.minecolonies.api.colony.colonyEvents.descriptions.IColonyEventDescrip
 import me.bytefox.livingcolonists.Citizens;
 import me.bytefox.livingcolonists.LivingColonists;
 import me.bytefox.livingcolonists.memory.Digests;
+import me.bytefox.livingcolonists.memory.PlayerMarks;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -199,15 +200,18 @@ public final class BondsService {
                     return;
                 }
                 IRequest<?> asked = request(citizen.getColony(), request);
-                String what = asked == null ? "what they asked for" : asked.getShortDisplayString().getString();
-                String text = playerName + " promised to bring " + citizen.getName() + " " + what + ".";
+                String what = asked == null ? "what they asked for"
+                        : Bonds.requestedThing(asked.getShortDisplayString().getString());
+                String text = PlayerMarks.mark(player.getUUID(), playerName, playerName) + " promised to bring "
+                        + citizen.getName() + " " + what + ".";
                 list.add(new Promise(data.nextId++, player.getUUID(), playerName, text, worth(asked), Promise.About.SUPPLY, now,
                         now + REQUEST_PROMISE_TICKS, Promise.Status.OPEN, 0, false, false, requestId));
                 data.playerNames.put(player.getUUID(), playerName);
                 data.setDirty();
                 player.displayClientMessage(Component.translatable("livingcolonists.promise.made", citizen.getName()),
                         true);
-                LivingColonists.LOGGER.info("{} wrote down a promise from the request dialog: {}", citizen.getName(), text);
+                LivingColonists.LOGGER.info("{} wrote down a promise from the request dialog: {}", citizen.getName(),
+                        PlayerMarks.resolve(text));
             }
             case BUTTON_FULFILL -> {
                 if (existing != null) {
@@ -290,13 +294,14 @@ public final class BondsService {
             return;
         }
         long now = now(citizen.getColony());
+        text = PlayerMarks.markNames(text, Map.of(player.getUUID(), List.of(playerName)));
         list.add(new Promise(data.nextId++, player.getUUID(), playerName, text, about == Promise.About.FOOD ? 2 : 3, about, now,
                 days > 0 ? now + days * DAY : 0,
                 Promise.Status.OPEN, 0, needUnmet(citizen, about), false, id));
         data.playerNames.put(player.getUUID(), playerName);
         data.setDirty();
         player.displayClientMessage(Component.translatable("livingcolonists.promise.made", name), true);
-        LivingColonists.LOGGER.info("{} wrote down a promise from a dialog: {}", name, text);
+        LivingColonists.LOGGER.info("{} wrote down a promise from a dialog: {}", name, PlayerMarks.resolve(text));
     }
 
     /**
@@ -387,7 +392,8 @@ public final class BondsService {
             String playerName = data.playerNames.getOrDefault(player, made.player());
             list.add(new Promise(data.nextId++, player, playerName, Digests.cleanFact(made.text()), made.worth(), about, now, due,
                     Promise.Status.OPEN, 0, needUnmet(citizen, about), false, ""));
-            LivingColonists.LOGGER.info("{} wrote down a promise from the colony chat: {}", citizen.getName(), made.text());
+            LivingColonists.LOGGER.info("{} wrote down a promise from the colony chat: {}", citizen.getName(),
+                    PlayerMarks.resolve(made.text()));
         }
         data.setDirty();
     }
@@ -611,7 +617,8 @@ public final class BondsService {
 
     private void keptByItself(MinecraftServer server, ICitizenData citizen, Promise promise, String how) {
         resolve(citizen, promise.id(), Promise.Status.KEPT, now(citizen.getColony()));
-        LivingColonists.LOGGER.info("{} noticed a promise came true ({}): {}", citizen.getName(), how, promise.text());
+        LivingColonists.LOGGER.info("{} noticed a promise came true ({}): {}", citizen.getName(), how,
+                PlayerMarks.resolve(promise.text()));
         ServerPlayer maker = server.getPlayerList().getPlayer(promise.maker());
         if (maker != null) {
             maker.displayClientMessage(Component.translatable("livingcolonists.promise.kept", citizen.getName()), true);
@@ -620,7 +627,8 @@ public final class BondsService {
 
     private void lapsed(MinecraftServer server, ICitizenData citizen, Promise promise, Promise.Status status, long now) {
         resolve(citizen, promise.id(), status, now);
-        LivingColonists.LOGGER.info("A promise to {} lapsed as {}: {}", citizen.getName(), status, promise.text());
+        LivingColonists.LOGGER.info("A promise to {} lapsed as {}: {}", citizen.getName(), status,
+                PlayerMarks.resolve(promise.text()));
         ServerPlayer maker = server.getPlayerList().getPlayer(promise.maker());
         if (maker != null && status == Promise.Status.BROKEN) {
             maker.displayClientMessage(Component.translatable("livingcolonists.promise.broken", citizen.getName()), true);

@@ -305,6 +305,7 @@ public final class ColonyThreads {
         }
         MinecraftServer server = player.server;
         output.playerSaid(player, colony.getName(), message, TalkService.colonyAudience(server, colony, player));
+        memory.seen(player.getUUID(), TalkService.playerName(player), player.getGameProfile().getName());
         memory.rememberColony(colony, TalkService.playerName(player), message);
         Thread thread = threads.computeIfAbsent(colony.getID(), id -> {
             Thread fresh = new Thread();
@@ -412,9 +413,18 @@ public final class ColonyThreads {
         boolean answeringPlayer = thread.colonistTurns == 0 && opening == null && chatter == null;
         ServerPlayer player = thread.lastPlayer == null ? null : server.getPlayerList().getPlayer(thread.lastPlayer);
         Map<String, String> values = talk.promptValues(citizen, player);
-        values.put("transcript", transcriptText(colony, thread, answeringPlayer || opening != null || chatter != null
-                || namedLast(colony, citizen)));
+        // A colonist starting a chat of their own starts fresh: lines of an old talk only pull them back to it.
+        values.put("transcript", transcriptText(colony, thread, answeringPlayer || opening != null
+                || chatter == null && namedLast(colony, citizen)));
         values.put("language", thread.language != null ? thread.language : "the language of the latest chat lines");
+        // Remembered facts this talk touches: about whoever is in it, or sharing words with what was said.
+        Set<String> present = new HashSet<>();
+        present.add(Fact.aboutCitizen(citizen.getId()));
+        thread.participants.forEach(id -> present.add(Fact.aboutCitizen(id)));
+        if (player != null) {
+            present.add(Fact.aboutPlayer(player.getUUID()));
+        }
+        values.put("memories", memory.memories(citizen, present, values.get("transcript")));
         String along = bonds.colonistBlock(citizen, chatPeople(colony, thread));
         if (!along.isEmpty()) {
             values.put("bonds", values.get("bonds").isEmpty() ? along : values.get("bonds") + "\n" + along);
@@ -424,7 +434,9 @@ public final class ColonyThreads {
                 : "Join the conversation: answer what was said last, or add something of your own. Don't repeat what "
                         + "others already said. People chat about more than their troubles: unless the talk is about the "
                         + "colony's problems, don't steer back to them; if you bring up something new, keep it light. "
-                        + "Don't come back to a joke or a topic that has already come up several times: move on.");
+                        + "Don't come back to a joke or a topic that has already come up several times: move on. "
+                        + "What someone said about the colony's stock, needs, buildings or orders is a fact: you may "
+                        + "feel something about it, but don't argue with it or correct it.");
         if (opening != null) {
             values.put("turn", "Something just happened in the colony: " + opening + " Bring it up in the colony chat "
                     + "in your own way, as someone who just heard of it. Write in " + thread.language + ".");

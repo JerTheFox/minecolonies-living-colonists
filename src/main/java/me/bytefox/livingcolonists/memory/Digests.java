@@ -1,10 +1,15 @@
 package me.bytefox.livingcolonists.memory;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Random;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -15,7 +20,15 @@ public final class Digests {
     private static final long DAY = 24000;
     /** The "(secret)" mark at the end of a fact, with the full stop after it. */
     private static final Pattern SECRET_MARK = Pattern.compile("\\s*\\(secret\\)\\s*[.!]?\\s*$", Pattern.CASE_INSENSITIVE);
-    private static final Pattern LINE = Pattern.compile("^\\s*[-*•]?\\s*(\\d{1,3})\\s*\\|\\s*(.+?)\\s*$");
+    /** {@code 3 | fact} or {@code 3 | about | fact}, where about is a name or "colony". */
+    private static final Pattern LINE = Pattern.compile(
+            "^\\s*[-*•]?\\s*(\\d{1,3})\\s*\\|\\s*(?:([^|]{1,40}?)\\s*\\|\\s*)?(.+?)\\s*$");
+    private static final Pattern WORD = Pattern.compile("[\\p{L}\\p{N}]+");
+    /** Words too common to say what a fact is about. */
+    private static final Set<String> COMMON = Set.of("about", "after", "again", "also", "been", "before", "being",
+            "could", "does", "done", "from", "have", "into", "just", "like", "made", "make", "only", "said", "should",
+            "some", "than", "that", "their", "them", "then", "there", "they", "this", "told", "very", "were", "what",
+            "when", "will", "with", "would", "your");
 
     private static final Pattern COLONY_PROMISE = Pattern.compile(
             "^\\s*[-*•]?\\s*promise\\s*\\|\\s*([^|]+?)\\s*\\|\\s*([^|]+?)\\s*\\|\\s*(\\d{1,3})\\s*\\|\\s*([A-Za-z]+)\\s*\\|\\s*(?:([1-5])\\s*\\|\\s*)?(.+?)\\s*$",
@@ -35,8 +48,14 @@ public final class Digests {
     private static final int MAX_CONDUCT = 2;
     private static final int MAX_COLONIST_BONDS = 3;
 
-    /** @param importance 1 to 5 */
-    public record Entry(int importance, String text) {
+    /**
+     * @param importance 1 to 5
+     * @param about      whom the fact is mainly about, as the model wrote it (a name, "colony"), or empty
+     */
+    public record Entry(int importance, String about, String text) {
+        public Entry(int importance, String text) {
+            this(importance, "", text);
+        }
     }
 
     /**
@@ -100,7 +119,8 @@ public final class Digests {
             } else if ((matcher = LINE.matcher(line)).matches()) {
                 if (facts.size() < maxFacts) {
                     int importance = Math.max(1, Math.min(5, Integer.parseInt(matcher.group(1))));
-                    facts.add(new Entry(importance, matcher.group(2)));
+                    facts.add(new Entry(importance, matcher.group(2) == null ? "" : matcher.group(2).strip(),
+                            matcher.group(3)));
                 }
             } else if ((matcher = PROMISE.matcher(line)).matches()) {
                 if (promises.size() < MAX_PROMISES) {
@@ -134,6 +154,55 @@ public final class Digests {
         return facts.stream().filter(keep::contains).toList();
     }
 
+    /**
+     * At most {@code max} facts for a reply, the ones this talk touches: about someone in it, sharing
+     * words with what is being said, or important or new; kept in their order. Showing every fact in
+     * every reply pulled colonists back to the same old things line after line.
+     *
+     * @param present whom the talk is with: {@code p:<uuid>}, {@code c:<id>}
+     * @param context what is being said, for words in common
+     */
+    public static List<Fact> relevant(List<Fact> facts, Set<String> present, String context, long now, int max) {
+        if (facts.size() <= max) {
+            return facts;
+        }
+        Set<String> said = keywords(context);
+        Set<Fact> keep = new HashSet<>(facts.stream()
+                .sorted(Comparator.comparingDouble((Fact fact) -> score(fact, present, said, now))
+                        .thenComparingLong(Fact::created).reversed())
+                .limit(max).toList());
+        return facts.stream().filter(keep::contains).toList();
+    }
+
+    private static double score(Fact fact, Set<String> present, Set<String> said, long now) {
+        double score = fact.importance();
+        if (!fact.about().isEmpty() && present.contains(fact.about())) {
+            score += 3;
+        }
+        Set<String> words = keywords(fact.text());
+        words.retainAll(said);
+        if (!words.isEmpty()) {
+            score += 2;
+        }
+        if (now - fact.created() < DAY) {
+            score += 0.5;
+        }
+        return score;
+    }
+
+    /** The words that say what a text is about, cut to a stem: no names' marks, no short or common words. */
+    public static Set<String> keywords(String text) {
+        Set<String> words = new HashSet<>();
+        Matcher matcher = WORD.matcher(PlayerMarks.resolve(text, id -> null).toLowerCase(Locale.ROOT));
+        while (matcher.find()) {
+            String word = matcher.group();
+            if (word.length() >= 4 && !COMMON.contains(word)) {
+                words.add(word.length() > 5 ? word.substring(0, 5) : word);
+            }
+        }
+        return words;
+    }
+
     private static int worth(String digit) {
         return digit == null ? 0 : Integer.parseInt(digit);
     }
@@ -151,10 +220,11 @@ public final class Digests {
             if (fact.isPrivate() && isSecret(fact)) {
                 said = SECRET_MARK.matcher(said).replaceAll("");
                 said = said.matches(".*[.!?]$") ? said : said + ".";
-                where = fact.teller() + " told you in secret: keep it to yourself, whoever asks, unless " + fact.teller()
+                String teller = tellerName(fact);
+                where = teller + " told you in secret: keep it to yourself, whoever asks, unless " + teller
                         + " brings it up";
             } else {
-                where = fact.isPrivate() ? fact.teller() + " told you privately" : "said in the colony chat";
+                where = fact.isPrivate() ? tellerName(fact) + " told you privately" : "said in the colony chat";
             }
             text.append("\n- ").append(said).append(" (").append(where).append(", ")
                     .append(ago(now - fact.created())).append(')');
@@ -167,9 +237,14 @@ public final class Digests {
      * and not from {@code listener}, who knows it already. Weighted by importance.
      */
     public static Optional<Fact> pickRumor(List<Fact> facts, String listener, Random random) {
+        return pickRumor(facts, fact -> fact.teller().equals(listener), random);
+    }
+
+    /** The same; {@code fromListener} tells the facts the listener told themselves. */
+    public static Optional<Fact> pickRumor(List<Fact> facts, Predicate<Fact> fromListener, Random random) {
         List<Fact> eligible = facts.stream()
                 .filter(fact -> fact.isPrivate() && !fact.told() && fact.importance() >= 2
-                        && !fact.teller().equals(listener) && !isSecret(fact))
+                        && !fromListener.test(fact) && !isSecret(fact))
                 .toList();
         int total = eligible.stream().mapToInt(Fact::importance).sum();
         if (total == 0) {
@@ -189,6 +264,12 @@ public final class Digests {
     public static String cleanFact(String text) {
         String fact = text.replaceAll("§.?", "").replaceAll("\\s+", " ").strip();
         return fact.length() > MAX_FACT_LENGTH ? fact.substring(0, MAX_FACT_LENGTH - 1) + "…" : fact;
+    }
+
+    /** Who told a private fact: a mark read back as their current name, or the name older facts keep. */
+    private static String tellerName(Fact fact) {
+        UUID id = fact.tellerId();
+        return id == null ? fact.teller() : PlayerMarks.mark(id, "", "");
     }
 
     /** The character model marks what someone asked to keep quiet with "(secret)". */

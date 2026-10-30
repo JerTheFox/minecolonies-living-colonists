@@ -127,8 +127,15 @@ class ConversationLogicTest {
         double talk = averageLength(Level.DEFAULT, ThreadPolicy.Kind.TALK, random);
         double business = averageLength(Level.DEFAULT, ThreadPolicy.Kind.BUSINESS, random);
         assertTrue(business < talk && talk < chatter, business + " < " + talk + " < " + chatter);
-        assertTrue(talk < 1.5 && business < 1.25, talk + ", " + business);
+        assertTrue(talk < 1.5, String.valueOf(talk));
         assertEquals(0, ThreadPolicy.continueChance(Level.OFF, 1, ThreadPolicy.Kind.TALK));
+    }
+
+    @Test
+    void nobodyJoinsInAfterALookUpOrAnOrder() {
+        for (Level level : Level.values()) {
+            assertEquals(0, ThreadPolicy.continueChance(level, 1, ThreadPolicy.Kind.BUSINESS));
+        }
     }
 
     private static double averageLength(Level level, ThreadPolicy.Kind kind, Random random) {
