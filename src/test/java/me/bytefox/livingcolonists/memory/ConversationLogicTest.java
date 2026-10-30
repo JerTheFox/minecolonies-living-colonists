@@ -72,6 +72,55 @@ class ConversationLogicTest {
     }
 
     @Test
+    void conversationsRunShortOrLongWithoutAFixedLength() {
+        Random random = new Random(12);
+        int[] lengths = new int[30];
+        for (int i = 0; i < 3000; i++) {
+            double energy = ThreadPolicy.startEnergy(Level.DEFAULT, random);
+            int turns = 0;
+            do {
+                turns++;
+                energy = ThreadPolicy.afterLine(energy, new ThreadPolicy.LineTraits(random.nextDouble() < 0.3,
+                        random.nextDouble() < 0.2, random.nextDouble() < 0.2, random.nextDouble() < 0.2), random);
+            } while (ThreadPolicy.goesOn(energy, turns, Level.DEFAULT));
+            lengths[Math.min(turns, 29)]++;
+        }
+        assertTrue(lengths[1] > 300, "dies at once now and then: " + lengths[1]);
+        int longOnes = 0;
+        for (int i = 6; i < 30; i++) {
+            longOnes += lengths[i];
+        }
+        assertTrue(longOnes > 150 && longOnes < 1200, "long talks: " + longOnes);
+        assertEquals(0, lengths[ThreadPolicy.hardCap(Level.DEFAULT) + 1]);
+    }
+
+    @Test
+    void questionsAndArgumentsKeepATalkGoing() {
+        Random random = new Random(1);
+        double plain = ThreadPolicy.afterLine(3, new ThreadPolicy.LineTraits(false, false, false, false), random);
+        double lively = ThreadPolicy.afterLine(3, new ThreadPolicy.LineTraits(true, true, true, false), new Random(1));
+        double flat = ThreadPolicy.afterLine(3, new ThreadPolicy.LineTraits(false, false, false, true), new Random(1));
+        assertTrue(lively > plain && plain > flat, flat + " < " + plain + " < " + lively);
+    }
+
+    @Test
+    void neighboursAndCoworkersJoinMoreButNobodyIsShutOut() {
+        assertTrue(ThreadPolicy.joinWeight(1, 5, false, 0) > ThreadPolicy.joinWeight(1, 100, false, 0));
+        assertTrue(ThreadPolicy.joinWeight(1, 30, true, 0) > ThreadPolicy.joinWeight(1, 30, false, 0));
+        assertTrue(ThreadPolicy.joinWeight(1, 5, false, 3) < ThreadPolicy.joinWeight(1, 5, false, 0));
+        assertEquals(ThreadPolicy.MIN_WEIGHT, ThreadPolicy.joinWeight(0.01, -1, false, 9));
+    }
+
+    @Test
+    void theChannelLeansAgainstAStreakAndTowardPrivateProblems() {
+        assertEquals(0.5, ThreadPolicy.colonyChance(false, 0));
+        assertTrue(ThreadPolicy.colonyChance(true, 0) < 0.5);
+        assertTrue(ThreadPolicy.colonyChance(false, 3) < ThreadPolicy.colonyChance(false, 1));
+        assertTrue(ThreadPolicy.colonyChance(false, -3) > 0.5);
+        assertTrue(ThreadPolicy.colonyChance(false, -3) < 0.8);
+    }
+
+    @Test
     void othersRarelyJoinWhileAPlayerTalks() {
         Random random = new Random(5);
         double chatter = averageLength(Level.DEFAULT, ThreadPolicy.Kind.CHATTER, random);

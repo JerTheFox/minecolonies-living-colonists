@@ -73,6 +73,80 @@ public final class ThreadPolicy {
         return base * scale * Math.pow(0.5, Math.max(0, turns - 1));
     }
 
+    /**
+     * How much life a colonists' conversation has when it starts, about how many lines it would run
+     * if nothing livened it up or killed it: drawn wide, so one dies after a reply and another
+     * grows into a long talk.
+     */
+    public static double startEnergy(Level level, Random random) {
+        double mean = switch (level) {
+            case OFF -> 0;
+            case LOW -> 1.2;
+            case DEFAULT -> 2.5;
+            case HIGH -> 4.5;
+        };
+        return -Math.log(1 - random.nextDouble()) * mean;
+    }
+
+    /** What a line did to the conversation, as code can tell. */
+    public record LineTraits(boolean question, boolean namesSomeone, boolean disagreed, boolean shortReaction) {
+    }
+
+    /**
+     * The energy after a line: every line spends some; a question, a name called or an argument
+     * gives the others something to answer; a bare reaction lets the talk wind down.
+     */
+    public static double afterLine(double energy, LineTraits line, Random random) {
+        double change = -1 + (random.nextDouble() - 0.5) * 0.6;
+        change += line.question() ? 0.8 : 0;
+        change += line.namesSomeone() ? 0.6 : 0;
+        change += line.disagreed() ? 0.6 : 0;
+        change -= line.shortReaction() ? 0.4 : 0;
+        return energy + change;
+    }
+
+    /** A safety stop only: conversations end by losing their energy, not by counting. */
+    public static int hardCap(Level level) {
+        return switch (level) {
+            case OFF -> 0;
+            case LOW -> 6;
+            case DEFAULT -> 14;
+            case HIGH -> 24;
+        };
+    }
+
+    public static boolean goesOn(double energy, int turns, Level level) {
+        return energy > 0 && turns < hardCap(level);
+    }
+
+    /** Nobody is ever ruled out of a conversation: the smallest weight a colonist keeps. */
+    public static final double MIN_WEIGHT = 0.15;
+
+    /**
+     * How readily a colonist joins in next, besides talkativeness and their relation to the last
+     * speaker: near them more, far less; a coworker more; whoever already said a lot steps back.
+     *
+     * @param distance blocks from the last speaker, or negative if either isn't loaded
+     */
+    public static double joinWeight(double base, double distance, boolean coworker, int linesSoFar) {
+        double near = distance < 0 ? 0.5 : distance <= 16 ? 1.5 : distance <= 48 ? 1 : 0.7;
+        double weight = base * near * (coworker ? 1.3 : 1) * Math.pow(0.7, linesSoFar);
+        return Math.max(MIN_WEIGHT, weight);
+    }
+
+    /**
+     * The chance an unprompted moment goes to the colony chat rather than a private word: even by
+     * default, rarer when the colonist has a problem of their own to tell, and a little likelier the
+     * longer the other channel has had its turns in a row.
+     *
+     * @param streak positive: so many colony chats in a row lately; negative: so many private words
+     */
+    public static double colonyChance(boolean personalProblem, int streak) {
+        double chance = personalProblem ? 0.25 : 0.5;
+        chance -= Math.max(-3, Math.min(3, streak)) * 0.08;
+        return Math.max(0.1, Math.min(0.9, chance));
+    }
+
     /** @param weight how likely this colonist speaks next, relative to the others */
     public record Candidate<T>(T id, double weight) {
     }

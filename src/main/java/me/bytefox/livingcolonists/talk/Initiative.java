@@ -20,6 +20,7 @@ import me.bytefox.livingcolonists.behaviour.Module;
 import me.bytefox.livingcolonists.bonds.BondsService;
 import me.bytefox.livingcolonists.errands.Notes;
 import me.bytefox.livingcolonists.memory.Fact;
+import me.bytefox.livingcolonists.memory.ThreadPolicy;
 import me.bytefox.livingcolonists.memory.MemoryLine;
 import me.bytefox.livingcolonists.memory.MemoryService;
 import me.bytefox.livingcolonists.perception.ColonistFacts;
@@ -39,6 +40,8 @@ final class Initiative {
     /** Something a player told the colonist is worth asking about while it's this fresh, in game ticks. */
     private static final long FRESH_FACT = 3 * 24000L;
     private static final int MIN_IMPORTANCE = 3;
+    /** How often a colonist opening a colony chat turns to someone by name. */
+    private static final double ASK_SOMEONE = 0.4;
 
     private final TalkService talk;
     private final ColonyThreads threads;
@@ -54,6 +57,8 @@ final class Initiative {
     /** When each colonist last wrote first to anyone, and last complained: {@code colonyId:citizenId}, server ticks. */
     private final Map<String, Long> lastSpoke = new HashMap<>();
     private final Map<String, Long> lastComplained = new HashMap<>();
+    /** Per player: positive, so many colony chats in a row lately; negative, so many private words. */
+    private final Map<UUID, Integer> streak = new HashMap<>();
     private InitiativeData data;
 
     Initiative(TalkService talk, ColonyThreads threads, PerceptionService perception, MemoryService memory,
@@ -87,6 +92,7 @@ final class Initiative {
         nextAt.clear();
         lastSpoke.clear();
         lastComplained.clear();
+        streak.clear();
         lastByColonist.clear();
     }
 
@@ -162,6 +168,13 @@ final class Initiative {
             }
         }
         int rapport = bonds.playerRapport(speaker, player.getUUID());
+        // The colony chat or a private word: a problem of one's own goes to the player privately more often,
+        // and a run of one kind makes the other a little likelier.
+        int run = streak.getOrDefault(player.getUUID(), 0);
+        if (Config.level(Module.CONVERSATION) != Level.OFF
+                && random.nextDouble() < ThreadPolicy.colonyChance(!issues(speaker).isEmpty(), run)) {
+            return chatter(player, colony, speaker, rapport, now);
+        }
         boolean complainedLately = now - lastComplained.getOrDefault(citizenKey(speaker), Long.MIN_VALUE / 2)
                 < InitiativePolicy.COMPLAINED_LATELY;
         Optional<InitiativePolicy.Topic> topic = InitiativePolicy.pick(topics(speaker, player, now), rapport,
@@ -175,8 +188,42 @@ final class Initiative {
             return Optional.empty();
         }
         note(speaker, player, topic.get(), now);
+        streak.put(player.getUUID(), Math.min(-1, run - 1));
         LivingColonists.LOGGER.info("{} writes first to {}: {}", speaker.getName(), player.getGameProfile().getName(),
                 topic.get().key());
+        return topic;
+    }
+
+    /**
+     * A colonist starts a talk in the colony chat instead: small talk or news, sometimes turning to
+     * a neighbour by name; their own troubles stay for private words.
+     */
+    private Optional<InitiativePolicy.Topic> chatter(ServerPlayer player, IColony colony, ICitizenData speaker,
+                                                     int rapport, long now) {
+        List<InitiativePolicy.Topic> topics = topics(speaker, player, now).stream()
+                .filter(t -> t.kind() == InitiativePolicy.Kind.SMALL_TALK || t.kind() == InitiativePolicy.Kind.NEWS).toList();
+        Optional<InitiativePolicy.Topic> topic = InitiativePolicy.pick(topics, rapport, random);
+        if (topic.isEmpty()) {
+            return Optional.empty();
+        }
+        String about = topic.get().kind() == InitiativePolicy.Kind.NEWS
+                ? "to pass on a bit of news you heard, as hearsay: " + topic.get().text() + "."
+                : "about " + topic.get().text() + ".";
+        int asked = -1;
+        if (random.nextDouble() < ASK_SOMEONE) {
+            Optional<ICitizenData> other = threads.pickAddressee(colony, speaker);
+            if (other.isPresent()) {
+                about += " Turn to " + other.get().getName() + " by name with it.";
+                asked = other.get().getId();
+            }
+        }
+        if (!threads.startChatter(player.server, colony, speaker.getId(), about, asked)) {
+            return Optional.empty();
+        }
+        note(speaker, player, topic.get(), now);
+        int run = streak.getOrDefault(player.getUUID(), 0);
+        streak.put(player.getUUID(), Math.max(1, run + 1));
+        LivingColonists.LOGGER.info("{} starts a colony chat: {}", speaker.getName(), topic.get().key());
         return topic;
     }
 
