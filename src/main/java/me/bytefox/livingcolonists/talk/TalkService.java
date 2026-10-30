@@ -78,7 +78,7 @@ public final class TalkService {
     /** How many of the player's latest lines an order is checked against. */
     private static final int RECENT_PLAYER_LINES = 6;
     /** How far away a colonist can be addressed with the command, in blocks. */
-    private static final double TALK_RANGE = 8.0;
+    private static final double TALK_RANGE = 16.0;
     /** How far from the line of sight a colonist still counts as looked at. */
     private static final double TARGET_RADIUS = 0.8;
 
@@ -90,6 +90,9 @@ public final class TalkService {
     private final BondsService bonds;
     private final ColonyTools tools;
     private final Errands errands;
+    private final Initiative initiative;
+    /** When each player last wrote to colonists, in server ticks: unprompted lines wait until they're quiet. */
+    private final Map<UUID, Long> lastMessage = new HashMap<>();
     private final ColonyThreads threads;
     private final ColonyEvents events;
     private final SpeechOutput output = new ChatSpeechOutput();
@@ -122,6 +125,7 @@ public final class TalkService {
         this.errands = new Errands(perception, this::writeFirst, memory::rememberDeed);
         this.threads = new ColonyThreads(this, prompts, memory, personalities, output, typing, bonds);
         this.events = new ColonyEvents(threads);
+        this.initiative = new Initiative(this, threads, perception, memory, bonds);
     }
 
     public ColonyThreads threads() {
@@ -130,6 +134,31 @@ public final class TalkService {
 
     public Errands errands() {
         return errands;
+    }
+
+    /** Whether colonists can write first at all now: conversation on, a model set and the day's tokens left. */
+    boolean canWriteFirst() {
+        return Config.level(Module.CONVERSATION) != me.bytefox.livingcolonists.behaviour.Level.OFF
+                && !client.overDailyLimit() && Config.llmSettings(ModelRole.CHAT).isPresent();
+    }
+
+    /** When the player last wrote to colonists, in server ticks; long ago if never. */
+    long lastMessage(UUID player) {
+        return lastMessage.getOrDefault(player, Long.MIN_VALUE / 2);
+    }
+
+    /** Colonists writing first: what they already brought up, kept with the world. */
+    public void attachInitiative(InitiativeData data) {
+        initiative.attach(data);
+    }
+
+    public void detachInitiative() {
+        initiative.detach();
+    }
+
+    /** Drops what gone colonists brought up, by their {@code colonyId:citizenId} key. */
+    public void forgetInitiative(java.util.function.Predicate<String> citizenKey) {
+        initiative.forget(citizenKey);
     }
 
     LlmClient client() {
@@ -152,6 +181,7 @@ public final class TalkService {
         }
         threads.tick(server);
         errands.tick(server);
+        initiative.tick(server);
         events.tick(server);
         typing.tick(server);
     }
@@ -171,6 +201,8 @@ public final class TalkService {
         events.clear();
         typing.clear();
         errands.clear();
+        initiative.clear();
+        lastMessage.clear();
     }
 
     /** {@code /lc talk}: a private word with the colonist under the crosshair or the nearest one. */
@@ -186,6 +218,7 @@ public final class TalkService {
 
     /** A player's private message to one colonist; the colonist remembers the talk. */
     public void sayPrivately(ServerPlayer player, ICitizenData citizen, String message) {
+        lastMessage.put(player.getUUID(), (long) player.server.getTickCount());
         if (errands.answer(player, message)) {
             return;
         }
@@ -310,6 +343,7 @@ public final class TalkService {
 
     /** A message to the whole colony goes into its conversation thread. */
     public void sayToColony(ServerPlayer player, IColony colony, String message) {
+        lastMessage.put(player.getUUID(), (long) player.server.getTickCount());
         if (admit(player, colony) && settings(player).isPresent()) {
             threads.onPlayerMessage(player, colony, message);
         }

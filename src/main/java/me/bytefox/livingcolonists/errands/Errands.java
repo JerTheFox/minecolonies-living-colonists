@@ -354,6 +354,16 @@ public final class Errands {
         items.warmUp("en_us");
     }
 
+    /** Whether an order waits for this player's yes. */
+    public boolean hasPending(ServerPlayer player, long now) {
+        return book.pending(player.getUUID(), now).isPresent();
+    }
+
+    /** Whether the colonist is on a walk for a player. */
+    public boolean isWalking(ICitizenData citizen) {
+        return walks.isWalking(citizen);
+    }
+
     /** The guards' kills, kept with the world. */
     public GuardTally tally() {
         return tally;

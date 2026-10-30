@@ -33,7 +33,7 @@ public final class Conversations {
     /** How far away the "Talk to colonist" key reaches the colonist under the crosshair, in blocks. */
     private static final double LOOK_RANGE = 16.0;
     /** Looking at nobody, the key picks the nearest colonist within this range, in blocks. */
-    private static final double NEAREST_RANGE = 8.0;
+    private static final double NEAREST_RANGE = 16.0;
     /** How often partners are checked for having left the colony, in ticks. */
     private static final int CHECK_INTERVAL = 20;
 

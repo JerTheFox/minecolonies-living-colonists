@@ -9,5 +9,7 @@ public enum Module {
     /** What colonists remember of conversations and promises. */
     MEMORY,
     /** How long colony chat threads run: off answers the player once, high lets colonists talk on and on. */
-    CONVERSATION
+    CONVERSATION,
+    /** How often colonists write to a player first, unprompted, about their problems, news or small talk. */
+    INITIATIVE
 }

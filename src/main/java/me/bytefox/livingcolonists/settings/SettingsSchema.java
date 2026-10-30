@@ -42,6 +42,7 @@ public final class SettingsSchema {
             level("perception", Config.PERCEPTION),
             level("memory", Config.MEMORY),
             level("conversation", Config.CONVERSATION),
+            level("initiative", Config.INITIATIVE),
             number("cooldownSeconds", Tab.BEHAVIOUR, Config.COOLDOWN_SECONDS, 0, 60),
             new Setting("playerNames", Tab.BEHAVIOUR, Kind.of(Type.LIST),
                     () -> String.join("\n", Config.PLAYER_NAMES.get()),

@@ -33,6 +33,7 @@ import me.bytefox.livingcolonists.network.TypingState;
 import me.bytefox.livingcolonists.settings.SettingsHandler;
 import me.bytefox.livingcolonists.settings.SettingsService;
 import me.bytefox.livingcolonists.talk.Conversations;
+import me.bytefox.livingcolonists.talk.InitiativeData;
 import me.bytefox.livingcolonists.talk.TalkCommand;
 import me.bytefox.livingcolonists.talk.TalkService;
 import net.minecraft.server.level.ServerPlayer;
@@ -136,6 +137,8 @@ public final class LivingColonists {
             talk.errands().notes().attach(event.getServer().overworld().getDataStorage()
                     .computeIfAbsent(NotesData.factory(), NotesData.NAME));
             talk.errands().warmUp();
+            talk.attachInitiative(event.getServer().overworld().getDataStorage()
+                    .computeIfAbsent(InitiativeData.factory(), InitiativeData.NAME));
             talk.errands().tally().attach(event.getServer().overworld().getDataStorage()
                     .computeIfAbsent(GuardTally.Data.factory(), GuardTally.Data.NAME));
             usage.clearSession();
@@ -157,6 +160,7 @@ public final class LivingColonists {
             bonds.detach();
             talk.errands().notes().detach();
             talk.errands().tally().detach();
+            talk.detachInitiative();
         });
     }
 
@@ -165,6 +169,7 @@ public final class LivingColonists {
         personalities.forget(key);
         talk.errands().notes().forget(key);
         talk.errands().tally().forget(key);
+        talk.forgetInitiative(key);
         memory.forget(key);
         bonds.forget(key);
     }

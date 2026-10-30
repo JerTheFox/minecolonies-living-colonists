@@ -209,5 +209,7 @@
   "livingcolonists.order.patrol.ask": "add this spot to the tower's patrol route?",
   "livingcolonists.order.patrol.done": "the spot is on the patrol route.",
   "livingcolonists.order.rank": "Your colony rank no longer lets you give that order.",
-  "livingcolonists.courier.gave_up": "%s couldn't get the %s to you; a courier keeps what they carry and puts it away."
+  "livingcolonists.courier.gave_up": "%s couldn't get the %s to you; a courier keeps what they carry and puts it away.",
+  "livingcolonists.configuration.initiative": "Initiative",
+  "livingcolonists.configuration.initiative.tooltip": "How often colonists write to a player first, unprompted: about a problem of theirs (more pointed if it stays unsolved, until they give up asking), something the player told them, news or small talk. Any colonist, while the player is in the colony and not in a conversation, at uneven times. profile: as the profile says. off: never. low: about every half hour. default: about every 12 minutes. high: about every 6 minutes."
 }

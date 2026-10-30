@@ -141,7 +141,7 @@ public final class Config {
             .comment("How deep colonists go, and how many tokens they spend. MINIMAL: orders and answers only, no",
                     "character or memory, cheapest. LIGHT: a short character and memory. DEFAULT: the balance. IMMERSIVE:",
                     "detailed knowledge, long memory, long colony chats, the most tokens. Personality, perception, memory",
-                    "and conversation can override parts of it. Default: DEFAULT.")
+                    "and conversation and initiative can override parts of it. Default: DEFAULT.")
             .defineEnum("profile", Profile.DEFAULT);
 
     public static final ModConfigSpec.ConfigValue<String> PERSONALITY = levelOverride("personality",
@@ -162,6 +162,13 @@ public final class Config {
             "How colony chats run on their own. profile: as the profile says. off: one answer to a player. low:",
             "up to 4 lines. default: up to 8. high: up to 16, colonists chat with each other a lot. Also turns",
             "colonists' own colony talk about events and their promise reminders on or off.");
+
+    public static final ModConfigSpec.ConfigValue<String> INITIATIVE = levelOverride("initiative",
+            "How often colonists write to a player first, unprompted: about a problem of theirs (more pointed if",
+            "it stays unsolved, until they give up asking), something the player told them, news or small talk.",
+            "Any colonist, while the player is in the colony and not in a conversation, at uneven times.",
+            "profile: as the profile says. off: never. low: about every half hour. default: about every 12",
+            "minutes. high: about every 6 minutes.");
 
     public static final ModConfigSpec.IntValue COOLDOWN_SECONDS = BUILDER
             .translation("livingcolonists.configuration.cooldownSeconds")
@@ -242,6 +249,7 @@ public final class Config {
             case PERCEPTION -> PERCEPTION.get();
             case MEMORY -> MEMORY.get();
             case CONVERSATION -> CONVERSATION.get();
+            case INITIATIVE -> INITIATIVE.get();
         };
         return Levels.resolve(PROFILE.get(), module, override);
     }

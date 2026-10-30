@@ -483,7 +483,18 @@ public final class ColonyThreads {
         return personality == null ? 0.35 : personalities.archetypes().get(personality.archetype()).contrariness();
     }
 
-    private double talkativeness(ICitizenData citizen) {
+    /** Whether the colony chat is in the middle of a conversation: a line within the last minute, or one coming. */
+    boolean isBusy(int colonyId, long now) {
+        Thread thread = threads.get(colonyId);
+        return thread != null && (now - thread.lastLineTick < 60 * 20 || !thread.addressed.isEmpty());
+    }
+
+    /** A newborn keeping quiet for a while. */
+    boolean isHushed(int colonyId, int citizenId) {
+        return hushed.getOrDefault(TalkService.key(colonyId, citizenId), Long.MIN_VALUE) > currentTick;
+    }
+
+    double talkativeness(ICitizenData citizen) {
         Personality personality = personalities.get(citizen);
         double value = personality == null ? 0.5 : personalities.archetypes().get(personality.archetype()).talkativeness();
         return Math.max(0.05, value);
