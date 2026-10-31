@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for the report. Please check that you run the exact MineColonies version the mod supports (see README) — other versions are not supported.
+        Thanks for the report. Please check that your MineColonies version is in the range the mod supports (see Requirements in the README).
 
   - type: textarea
     id: what-happened
@@ -20,8 +20,8 @@ body:
     attributes:
       label: Steps to reproduce
       placeholder: |
-        1. Switch chat mode to "Nearest colonist"
-        2. Write "hello" to a baker
+        1. Look at a baker and press U
+        2. Write "hello"
         3. ...
     validations:
       required: true
@@ -30,7 +30,7 @@ body:
     id: mod-version
     attributes:
       label: Living Colonists version
-      placeholder: 0.1.0
+      placeholder: 0.2.3
     validations:
       required: true
 
@@ -65,7 +65,7 @@ body:
     id: provider
     attributes:
       label: LLM provider and model
-      placeholder: DeepSeek, deepseek-chat
+      placeholder: DeepSeek, deepseek-flash
 
   - type: textarea
     id: modpack
