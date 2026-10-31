@@ -8,6 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Changed
 
 - The reply prompts put what a colonist knows about people (relations, memories) before the time, mood and situation, which change from one reply to the next, so more of each prompt can come from the provider's cache. Prompt files you edited keep the old order.
+- Colonists call each other by first name and decline the names of buildings, jobs and items in languages that need it, instead of "Idris Vale, ..." and a building's name left in the nominative.
 
 ### Fixed
 
