@@ -4,7 +4,7 @@
 
 A [MineColonies](https://github.com/ldtteam/minecolonies) addon for NeoForge that lets colonists talk in text chat almost like other players. They start conversations, answer you, remember what you told them and gossip about the colony with each other. The words come from a language model behind any OpenAI-compatible API: DeepSeek, Gemini, OpenRouter, or a model running on your own machine.
 
-> **Status: 0.2.3.** Everything below works and is being played on a live server. Expect rough edges, and please report them in [Issues](https://github.com/JerTheFox/minecolonies-living-colonists/issues).
+> **Status: 0.3.0.** Everything below works and is being played on a live server. Expect rough edges, and please report them in [Issues](https://github.com/JerTheFox/minecolonies-living-colonists/issues).
 
 ## An example
 
@@ -20,13 +20,16 @@ You look at the baker and press a key: the chat opens, and a line above the inpu
 ## Features
 
 - Colonists speak first, reply and talk among themselves, but only while a player is in the colony, so an empty server spends no tokens.
+- Colonists notice you coming back: news from while you were away, a death out there, a trip to the Nether or the End, something new in your hand, or word of a big deed like killing the Ender Dragon. With nothing to tell, they rarely bother. Log off while others are still in the colony, and someone may mention it.
+- They see what you hold and wear, and whether you look hurt.
+- Everything colonists say unprompted shares one budget per colony and per player, so a busy server stays quiet: a death or a raid always gets through, small talk gives way first.
 - They know their situation from MineColonies itself: job, hunger, housing, happiness, time of day, weather, who is around, raids, construction, new citizens.
 - Memory of recent lines and events, plus long-term facts like "Max promised to build me a house". It is stored with the world and goes into your backups.
 - Mood sets the tone: a hungry colonist grumbles, a homeless one complains, one who just survived a raid is shaken.
 - Errands go through the colony's own systems: fetching, delivering, crafting requests and more, based on [Colonist Errands](https://github.com/Lovkar-Squid/colonist-errands).
 - Talk to the whole colony or to one colonist privately; colonists understand names and professions in any language.
 - Speech bubbles over colonists' heads: white pixel comic bubbles, faint behind walls nearby, with bouncing dots while they type; optionally over players too.
-- Every colonist gets a personality: an archetype picked mostly from their MineColonies skills, with a dash of chance, and a short background written once by the model. Archetypes and prompts are plain files you can edit, add or delete.
+- Every colonist gets a personality: an archetype picked mostly from their MineColonies skills, with a dash of chance, and a short background written once by the model. Archetypes and prompts are plain files you can edit, add or delete. Players' answers go first; when the provider keeps failing, background chatter pauses for a few minutes.
 - Memory profiles from *minimal* (just orders and answers, cheapest) to *immersive* (colonists remember much more), with old memories fading out.
 - Only colony members (owner, officers, friends) can talk to colonists; only owners and officers can give orders. Can be turned off.
 - Any OpenAI-compatible provider, with separate models for chat and for writing characters, retries, a fallback endpoint and token usage statistics.
@@ -89,6 +92,8 @@ The `[behaviour]` section sets how colonists behave:
 | `playerNames` | empty | what colonists call players instead of nicknames, e.g. `["Steve42=Steven,Steve,Stevie"]`, most common form first |
 | `colonyChatAnywhere` | `false` | colony members read and write their colony's chat from anywhere, not only inside its borders |
 | `membersOnly` | `true` | only the colony's owner, officers and friends may talk to its colonists; only owners and officers may give orders |
+| `extraAdvancements` | empty | more advancements colonists hear about, as `id` or `id=what colonists say`, e.g. `["create:andesite_alloy=learned to make andesite alloy"]` |
+| `logLevel` | `ALL` | how much the mod writes to the server log: `ALL`, `NO_CHAT` (without chat lines), `TECHNICAL` (start-up, settings changes, warnings and errors) or `OFF` (errors only) |
 
 The optional `[limits]` section guards public servers against chat spam and runaway costs; `0` turns a limit off, and both are off by default: `messagesPerPlayerPerHour` (messages one player may send to colonists in an hour) and `tokensPerDay` (tokens the whole server may spend in a day; then colonists rest until midnight).
 
@@ -102,6 +107,8 @@ Colonists also know their situation from MineColonies: their job and what work t
 
 Recent lines of each private talk and of the colony chat go back to the model as they are. Once a conversation goes quiet, the character model writes down what the colonists who took part would remember a few days later: a promise, a plan, news, how someone felt. Every fact gets an importance; trivia fades in a day or two, big news lasts much longer. The `memory` level sets how many facts a colonist keeps and for how long. Now and then a colonist passes on, as gossip, something another player told them in private; what you asked to keep secret, they keep.
 
+What colonists draw on lives in `config/livingcolonists/content/`: `topics.txt` (subjects a colony chat turns to), `rumours.json` (advancements colonists hear about, and the colony's milestones) and `handbook.json` (the mechanics handbook). They follow the mod's defaults the same way as the prompts, and a pack can add its own topics, advancements and articles.
+
 Promise a colonist planks by tomorrow or a house within a week, and they remember the deadline, remind you when it has passed, thank you when you keep it and hold it against you when you don't. A promised home, job, treatment or building is noticed by itself once it happens. Answering a colonist's request ("I need a pickaxe") with "I will work on it!" counts as a promise too, due in a day and kept once the request is delivered. Colonists also remember whether you are kind or rude to them, and the colony talks: a player rude to several colonists gets a reputation.
 
 Colonists talk like ordinary people: short lines, no forced cheer, and a mood for the day that the code rolls (calm, tired, irritable, distracted, bored, gloomy or in a good mood; unhappy colonists are in a bad mood more often). Colonists have their own life too. They remember who they get along with and who gets on their nerves, so the same pairs side with each other or argue. When something happens in the colony (a death, a birth, a child growing up, a newcomer, a finished building, a raid) and players are around, a colonist brings it up in the colony chat and others join in. A promise past its deadline gets you a private reminder from the colonist waiting for it.
@@ -114,7 +121,7 @@ Prompt templates live in `config/livingcolonists/prompts/`: `reply-private.txt`,
 
 | Command | What it does |
 |---|---|
-| `/lcdebug stats` | requests and tokens per model, this run and in total |
+| `/lcdebug stats` | requests and tokens per model, this run and in total, and what colonists did since the server started: lines said and held back, events gone stale, repeats caught |
 | `/lcdebug profile [name]` | show or change the profile |
 | `/lcdebug colonist [name]` | archetype, background, skills and what the colonist knows |
 | `/lcdebug archetype <id\|reroll> [name]` | set or re-pick an archetype |
@@ -126,7 +133,7 @@ Prompt templates live in `config/livingcolonists/prompts/`: `reply-private.txt`,
 | `/lcdebug memory digest` | write down every conversation waiting to be noted, right away |
 | `/lcdebug thread [break]` | the colony chat thread and its recent lines; `break` stops it |
 | `/lcdebug orders` | the latest orders: asked, done, turned down, cancelled, taken back |
-| `/lcdebug reload` | reread archetypes and prompts |
+| `/lcdebug reload` | reread archetypes, prompts and content files |
 
 ## Usage
 
@@ -181,11 +188,13 @@ The mod follows the game's language setting. English and Russian are included. T
 
 Since 0.1.0: memory that keeps players by account and recalls what a talk touches (optionally by meaning, with embeddings), colonists' real day, personal goals and voices of their own, a handbook of the colony's mechanics, names in the players' language, speech bubbles that work with shaders.
 
-Next: playing 0.2.3 on a live server and fixing what comes up; then deadlines read by code and gifts noticed in a colonist's inventory.
+Since 0.2.3: colonists noticing players come and go, rumours of big deeds, colony news that waits its turn instead of getting lost, one budget for unprompted lines, players' answers first at the model.
+
+Next: playing 0.3.0 on a live server and fixing what comes up; then deadlines read by code and gifts noticed in a colonist's inventory.
 
 ## About this project
 
-This is my project, but I'm not a programmer. I decide what the mod does and how colonists behave, approve each change and play every build on our server before it's released; [Claude](https://claude.ai), Anthropic's AI assistant, writes the code.
+This is my project. I'm a sysadmin, not a Java developer: I decide what the mod does and how colonists behave, review and approve each change, fix things by hand when needed and play every build on our server before it's released. Claude, writes most of the code.
 
 It started as a private mod for my home server. We had been running Talking Colonists with Colonist Errands: voice conversations with colonists through Gemini Live. I wanted text chat, a free choice of model provider, and colonists who live their own lives in chat. Since others might want the same, I decided to publish it.
 
