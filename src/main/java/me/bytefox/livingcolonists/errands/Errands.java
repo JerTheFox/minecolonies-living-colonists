@@ -78,6 +78,14 @@ public final class Errands {
     /** Game time of the latest look-up or order in each colony. */
     private final Map<Integer, Long> lastErrand = new HashMap<>();
 
+    /** A look-up's reply as it came, kept {@link #CACHE_TICKS} per colony (#56). */
+    private record Cached(String reply, long gameTime) {
+    }
+
+    /** How long a look-up's result stands for everyone, in game ticks (ten minutes): stock moves. */
+    public static final long CACHE_TICKS = 10 * 60 * 20;
+    private final Map<Integer, Map<String, Cached>> cache = new HashMap<>();
+
     private record Lookup(long gameTime, String text) {
     }
 
@@ -137,6 +145,12 @@ public final class Errands {
         return errands.values().stream().filter(errand -> offered.getOrDefault(errand.name(), true)).map(Errand::spec).toList();
     }
 
+    /** Only the look-ups among {@link #specs}: what a colonist may use when another colonist asks (#56). */
+    public List<ToolSpec> lookupSpecs(ICitizenData citizen) {
+        List<String> lookupNames = errands.values().stream().filter(errand -> !errand.isOrder()).map(Errand::name).toList();
+        return specs(citizen).stream().filter(spec -> lookupNames.contains(spec.name())).toList();
+    }
+
     private static boolean has(IColony colony, String path) {
         return colony.getServerBuildingManager().getBuildings().values().stream()
                 .anyMatch(b -> b.getBuildingType().getRegistryName().getPath().equals(path));
@@ -162,6 +176,17 @@ public final class Errands {
                 return refusal.get().toString();
             }
         }
+        String cacheKey = call.name() + arguments.toString().toLowerCase(java.util.Locale.ROOT);
+        long gameTime = context.colony().getWorld().getGameTime();
+        if (!errand.isOrder()) {
+            // The same look-up within a few minutes is answered from what was found (#56): one result for everyone.
+            Cached cached = cache.computeIfAbsent(context.colony().getID(), id -> new HashMap<>()).get(cacheKey);
+            if (cached != null && gameTime - cached.gameTime() < CACHE_TICKS) {
+                Counters.add("lookups.cached");
+                ModLog.action("Look-up by {} from the cache: {}{}", context.citizen().getName(), call.name(), call.arguments());
+                return cached.reply();
+            }
+        }
         Errand.Result result;
         try {
             result = errand.run(context, arguments);
@@ -184,6 +209,11 @@ public final class Errands {
             while (colony.size() > KEPT_LOOKUPS) {
                 colony.removeFirst();
             }
+        }
+        if (result instanceof Errand.Result.Answer answer && !errand.isOrder()) {
+            Map<String, Cached> colonyCache = cache.computeIfAbsent(context.colony().getID(), id -> new HashMap<>());
+            colonyCache.values().removeIf(old -> gameTime - old.gameTime() >= CACHE_TICKS);
+            colonyCache.put(cacheKey, new Cached(answer.reply().toString(), gameTime));
         }
         return switch (result) {
             case Errand.Result.Answer answer -> answer.reply().toString();
@@ -403,6 +433,7 @@ public final class Errands {
         guards.clear();
         book.clear();
         lookups.clear();
+        cache.clear();
         lastErrand.clear();
     }
 

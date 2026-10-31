@@ -53,6 +53,8 @@ public final class InitiativeData extends SavedData {
     final Map<String, Goal> goals = new HashMap<>();
     /** {@code colonyId:playerUuid}: game time the player was last seen in the colony. */
     final Map<String, Long> seen = new HashMap<>();
+    /** Colonies where the mod is turned off by an operator (#55). */
+    final java.util.Set<Integer> off = new java.util.HashSet<>();
     /** What happened in each colony lately, as told later, oldest first (#34). */
     final Map<Integer, Deque<Told>> history = new HashMap<>();
     /** Big deeds colonists heard each player did, by player UUID, oldest first (#39). */
@@ -81,6 +83,9 @@ public final class InitiativeData extends SavedData {
             }
             CompoundTag seen = tag.getCompound("seen");
             seen.getAllKeys().forEach(key -> data.seen.put(key, seen.getLong(key)));
+            for (int id : tag.getIntArray("off")) {
+                data.off.add(id);
+            }
             CompoundTag history = tag.getCompound("history");
             history.getAllKeys().forEach(key -> data.history.put(Integer.parseInt(key), readTold(history.getList(key, Tag.TAG_COMPOUND))));
             CompoundTag deeds = tag.getCompound("deeds");
@@ -117,6 +122,7 @@ public final class InitiativeData extends SavedData {
         CompoundTag seen = new CompoundTag();
         this.seen.forEach(seen::putLong);
         tag.put("seen", seen);
+        tag.putIntArray("off", off.stream().mapToInt(Integer::intValue).toArray());
         CompoundTag history = new CompoundTag();
         this.history.forEach((colony, list) -> history.put(String.valueOf(colony), writeTold(list)));
         tag.put("history", history);

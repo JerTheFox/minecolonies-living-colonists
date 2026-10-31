@@ -26,6 +26,23 @@ public final class Gifts {
         return added;
     }
 
+    /**
+     * Whether a gift is what a promise was about: one of the gift's item names (in English, as the
+     * promise is written) shares a word of five letters or more with the promise ("an emerald", "planks").
+     */
+    public static boolean fulfils(String promise, java.util.List<String> items) {
+        String text = promise.toLowerCase(java.util.Locale.ROOT);
+        for (String item : items) {
+            for (String word : item.toLowerCase(java.util.Locale.ROOT).split("[^\\p{L}]+")) {
+                String stem = word.endsWith("s") ? word.substring(0, word.length() - 1) : word;
+                if (stem.length() >= 5 && text.contains(stem)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     /** How much a gift of this worth (1 a trifle, 5 something precious) warms the colonist. */
     public static int warmth(int worth) {
         return Math.min(Bonds.KEPT, 1 + worth);

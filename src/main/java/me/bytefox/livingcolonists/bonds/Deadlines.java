@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
  * часа", "к вечеру", "tomorrow", "через неделю". Minutes and hours are real time; evenings and days
  * follow the game clock. The model's guess in days stays for wording code doesn't know.
  */
-final class Deadlines {
+public final class Deadlines {
     private static final long MINUTE = 1200;
     private static final long HOUR = 72000;
     private static final long DAY = 24000;
@@ -39,10 +39,21 @@ final class Deadlines {
     private Deadlines() {
     }
 
-    /** Game time the latest line naming a time sets as the deadline; empty if none names one. */
-    static OptionalLong due(List<String> lines, long gameTime, long dayTime) {
+    /** A player's line and the game time it was said: a deadline counts from then, not from when it is written down. */
+    public record Said(String text, long gameTime) {
+    }
+
+    /**
+     * Game time the latest line naming a time sets as the deadline; empty if none names one.
+     *
+     * @param now     game time now
+     * @param dayTime the world's time of day now, for "by evening" said earlier
+     */
+    static OptionalLong due(List<Said> lines, long now, long dayTime) {
         for (int i = lines.size() - 1; i >= 0; i--) {
-            OptionalLong due = of(lines.get(i).toLowerCase(Locale.ROOT), gameTime, Math.floorMod(dayTime, DAY));
+            Said said = lines.get(i);
+            long thenDayTime = Math.floorMod(dayTime - (now - said.gameTime()), DAY);
+            OptionalLong due = of(said.text().toLowerCase(Locale.ROOT), said.gameTime(), thenDayTime);
             if (due.isPresent()) {
                 return due;
             }

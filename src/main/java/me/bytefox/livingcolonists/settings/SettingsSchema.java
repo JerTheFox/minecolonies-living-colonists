@@ -40,6 +40,7 @@ public final class SettingsSchema {
             text("embeddingsModel", Tab.CONNECTION, Type.TEXT, Config.EMBEDDINGS_MODEL),
             text("embeddingsApiKey", Tab.CONNECTION, Type.SECRET, Config.EMBEDDINGS_API_KEY),
             text("embeddingsApiKeyEnv", Tab.CONNECTION, Type.TEXT, Config.EMBEDDINGS_API_KEY_ENV),
+            bool("enabled", Tab.BEHAVIOUR, Config.ENABLED),
             new Setting("profile", Tab.BEHAVIOUR, new Kind(Type.CHOICE, 0, 0,
                     Arrays.stream(Profile.values()).map(Enum::name).toList()),
                     () -> Config.PROFILE.get().name(), value -> Config.PROFILE.set(Profile.valueOf(value))),

@@ -166,6 +166,13 @@ public final class Config {
                 .translation("livingcolonists.configuration.section.behaviour").push("behaviour");
     }
 
+    public static final ModConfigSpec.BooleanValue ENABLED = BUILDER
+            .translation("livingcolonists.configuration.enabled")
+            .comment("On: colonists talk. Off: the mod is quiet on the whole server: no replies, no lines of their own,",
+                    "no requests to the model; players' chat goes on as usual. A colony's owner turns their own colony",
+                    "off with /lc colony off. Default on.")
+            .define("enabled", true);
+
     public static final ModConfigSpec.EnumValue<Profile> PROFILE = BUILDER
             .translation("livingcolonists.configuration.profile")
             .comment("How deep colonists go, and how many tokens they spend. MINIMAL: the colony run by chat, plain",

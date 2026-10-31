@@ -124,7 +124,7 @@ public final class BondsService {
      * @param numbered the open promises as they were numbered for the model
      */
     public void apply(ICitizenData citizen, UUID player, String playerName, Digests.Digest digest, List<Promise> numbered,
-                      List<String> playerLines) {
+                      List<Deadlines.Said> playerLines) {
         if (data == null) {
             return;
         }
@@ -157,6 +157,7 @@ public final class BondsService {
             long due = due(citizen.getColony(), playerLines, made.days(), now);
             list.add(new Promise(data.nextId++, player, playerName, made.text(), made.worth(), about, now, due, Promise.Status.OPEN, 0,
                     needUnmet(citizen, about), false, ""));
+            keptByGift(citizen, player, now);
         }
         for (Digests.Conduct conduct : digest.conduct()) {
             note(citizen, player, conduct.kind() ? Bonds.KIND : Bonds.RUDE, conduct.note(), now);
@@ -168,7 +169,7 @@ public final class BondsService {
      * A new promise's deadline: from the player's own words when they name a time ("in ten minutes",
      * "к вечеру", "tomorrow"), else the model's guess in days; 0 for none (#11).
      */
-    private static long due(IColony colony, List<String> playerLines, int modelDays, long now) {
+    private static long due(IColony colony, List<Deadlines.Said> playerLines, int modelDays, long now) {
         long dayTime = colony.getWorld() == null ? now : colony.getWorld().getDayTime();
         java.util.OptionalLong said = Deadlines.due(playerLines, now, dayTime);
         if (said.isPresent()) {
@@ -374,7 +375,7 @@ public final class BondsService {
      * to a named colonist, and open promises the chat says were kept, broken or let off.
      */
     public void applyColony(MinecraftServer server, IColony colony, Digests.Digest digest, List<Owned> numbered,
-                            Map<String, List<String>> linesBySpeaker) {
+                            Map<String, List<Deadlines.Said>> linesBySpeaker) {
         if (data == null) {
             return;
         }
@@ -416,6 +417,7 @@ public final class BondsService {
                     Promise.Status.OPEN, 0, needUnmet(citizen, about), false, ""));
             ModLog.action("{} wrote down a promise from the colony chat: {}", citizen.getName(),
                     PlayerMarks.resolve(made.text()));
+            keptByGift(citizen, player, now);
         }
         data.setDirty();
     }
@@ -719,6 +721,30 @@ public final class BondsService {
 
     // ---- for /lcdebug
 
+    /** Gifts of the last little while per colonist and player, so a promise written down after its gift is kept. */
+    private final Map<String, java.util.Deque<Given>> gifts = new java.util.HashMap<>();
+    private static final int MAX_GIFTS_KEPT = 5;
+    /** A gift keeps a promise written down this long after it, in game ticks (half a game day). */
+    private static final long GIFT_COUNTS = 12000;
+
+    private record Given(List<String> items, long at) {
+    }
+
+    /** Open promises of the player to the colonist that a recent gift fulfils are kept. */
+    private void keptByGift(ICitizenData citizen, UUID player, long now) {
+        java.util.Deque<Given> given = gifts.get(key(citizen, player));
+        if (given == null) {
+            return;
+        }
+        for (Promise promise : List.copyOf(promises(citizen))) {
+            if (promise.isOpen() && player.equals(promise.maker()) && given.stream()
+                    .anyMatch(g -> now - g.at() <= GIFT_COUNTS && Gifts.fulfils(promise.text(), g.items()))) {
+                resolve(citizen, promise.id(), Promise.Status.KEPT, now);
+                ModLog.action("{} counts a gift as keeping a promise: {}", citizen.getName(), PlayerMarks.resolve(promise.text()));
+            }
+        }
+    }
+
     /** When each colonist last warmed to each player for a gift, game time; not saved. */
     private final Map<String, Long> lastGift = new java.util.HashMap<>();
 
@@ -726,12 +752,17 @@ public final class BondsService {
      * A player gave the colonist something (#11): a kind act worth what the gift is worth, at most once a
      * game day per colonist and player, so gifts of dirt can't be farmed. Whether it warmed them.
      */
-    public boolean gift(ICitizenData citizen, UUID player, String playerName, String text, int worth) {
+    public boolean gift(ICitizenData citizen, UUID player, String playerName, String text, int worth, List<String> items) {
         if (data == null) {
             return false;
         }
         long now = now(citizen.getColony());
         String key = key(citizen, player);
+        gifts.computeIfAbsent(key, k -> new java.util.ArrayDeque<>()).addLast(new Given(items, now));
+        while (gifts.get(key).size() > MAX_GIFTS_KEPT) {
+            gifts.get(key).removeFirst();
+        }
+        keptByGift(citizen, player, now);
         if (now - lastGift.getOrDefault(key, Long.MIN_VALUE / 2) < Gifts.WARMS_EVERY) {
             return false;
         }
@@ -806,6 +837,23 @@ public final class BondsService {
                     (old, fresh) -> old.with(delta, note, now));
         }
         data.setDirty();
+    }
+
+    /**
+     * Moves two colonists' rapport by {@code delta} without a note (#59); the rapport before and after. A note
+     * is written only when the change means something, by the caller.
+     */
+    public int[] nudge(IColony colony, int first, int second, int delta) {
+        if (data == null || delta == 0) {
+            int now = rapport(colony, first, second);
+            return new int[] {now, now};
+        }
+        String key = pair(colony.getID(), first, second);
+        Relation old = data.colonists.getOrDefault(key, Relation.EMPTY);
+        Relation next = new Relation(Math.max(-100, Math.min(100, old.rapport() + delta)), old.notes());
+        data.colonists.put(key, next);
+        data.setDirty();
+        return new int[] {old.rapport(), next.rapport()};
     }
 
     /** -100 to 100: how two colonists of the colony get along, 0 without history. */

@@ -29,9 +29,10 @@ public final class PromptLibrary {
     public static final String MEMORY_PLAYER = "memory-player.txt";
     public static final String MEMORY_COLONISTS = "memory-colonists.txt";
     public static final String VOICE = "voice.txt";
+    public static final String STORY = "story.txt";
 
     public static final List<String> ALL = List.of(REPLY_PRIVATE, REPLY_COLONY, CHARACTER, BACKGROUND, ROUTE_COLONY,
-            BIO, BIO_CHILD, BIO_GROWNUP, MEMORY, MEMORY_PLAYER, MEMORY_COLONISTS, VOICE);
+            BIO, BIO_CHILD, BIO_GROWNUP, MEMORY, MEMORY_PLAYER, MEMORY_COLONISTS, VOICE, STORY);
 
     /** Data colonists draw on (#40), kept beside the prompts in {@code content/} and followed the same way. */
     public static final String HANDBOOK = "handbook.json";

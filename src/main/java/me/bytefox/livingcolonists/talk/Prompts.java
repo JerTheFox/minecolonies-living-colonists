@@ -150,7 +150,18 @@ public final class Prompts {
         return out.toString();
     }
 
+    /**
+     * Whether a reply is a function call the model wrote out as text (DeepSeek's DSML or an XML-like
+     * invoke), which happens when it wants one more look-up than it was offered (31.10.2026).
+     */
+    public static boolean callMarkup(String text) {
+        return text.contains("DSML") || text.contains("\uff5c") || text.contains("<invoke") || text.contains("<function_calls");
+    }
+
     public static String cleanReply(String text, String name) {
+        if (callMarkup(text)) {
+            return "";
+        }
         String line = fixMixedWords(text.replaceAll("§.?", "").strip().replaceAll("\\s*\\R+\\s*", " "));
         String prefix = name + ":";
         if (line.regionMatches(true, 0, prefix, 0, prefix.length())) {

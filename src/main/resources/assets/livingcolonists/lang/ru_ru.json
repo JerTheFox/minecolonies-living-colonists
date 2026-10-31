@@ -4,26 +4,20 @@
   "key.livingcolonists.talk": "Лично с колонистом",
   "key.livingcolonists.focus": "Фокус на колонисте (без чата)",
   "key.livingcolonists.mode": "Чат: игроки / колония",
-
   "livingcolonists.talk.nobody": "Не с кем поговорить.",
   "livingcolonists.talk.no_key": "У Living Colonists нет API-ключа: задайте apiKey в config/livingcolonists-common.toml на сервере.",
   "livingcolonists.talk.busy": "%s ещё обдумывает ваши прошлые слова.",
   "livingcolonists.talk.failed": "%s не отвечает. Подробности — в логе сервера.",
-
   "livingcolonists.partner.locked": "Разговор с: %s",
   "livingcolonists.partner.released": "Разговор с %s окончен",
-
   "livingcolonists.mode.players": "Чат: игроки",
   "livingcolonists.mode.colony": "Чат: колония",
   "livingcolonists.colony.outside": "Вы за границами колонии, колонисты вас не слышат.",
-
   "livingcolonists.indicator.players": "Игроки",
   "livingcolonists.indicator.colony": "Колония",
   "livingcolonists.indicator.partner": "→ %s (%s) ✕",
-
   "livingcolonists.chat.click_to_answer": "Нажмите, чтобы поговорить лично",
   "livingcolonists.job.unemployed": "Безработный",
-
   "livingcolonists.debug.stats.empty": "Запросов к модели ещё не было.",
   "livingcolonists.debug.stats.title": "Расход языковой модели",
   "livingcolonists.debug.stats.model": "%s",
@@ -238,5 +232,13 @@
   "livingcolonists.help.3": "Владелец и офицеры могут отдавать приказы: «построй таверну», «иди сюда», «безработные, ко мне», «передай Алексу, что хлеб готов», «напомни через десять минут проверить ферму».",
   "livingcolonists.help.4": "Приказ ждёт вашего «да» — кнопкой или коротким словом в чате; /lc undo отменяет последний.",
   "livingcolonists.help.5": "Настройки — кнопка настроек у Living Colonists в списке модов или клавиша настроек, если она назначена.",
-  "livingcolonists.help.first_visit": "Колонисты колонии %s говорят в чате: Y — написать колонии, U — колонисту, на которого смотрите. Подробнее — /lc help."
+  "livingcolonists.help.first_visit": "Колонисты колонии %s говорят в чате: Y — написать колонии, U — колонисту, на которого смотрите. Подробнее — /lc help.",
+  "livingcolonists.configuration.enabled": "Мод включён",
+  "livingcolonists.configuration.enabled.tooltip": "Вкл.: колонисты разговаривают. Выкл.: мод молчит на всём сервере — ни ответов, ни реплик колонистов, ни запросов к модели; чат игроков работает как обычно. Владелец колонии выключает свою колонию командой /lc colony off. По умолчанию вкл.",
+  "livingcolonists.talk.off": "Колонисты колонии %s не разговаривают: Living Colonists здесь выключен.",
+  "livingcolonists.colony.off": "Living Colonists выключен в колонии %s: её колонисты молчат. Включить снова — /lc colony on.",
+  "livingcolonists.colony.on": "Living Colonists снова включён в колонии %s.",
+  "livingcolonists.colony.owner_only": "Включать и выключать Living Colonists в колонии %s может только её владелец.",
+  "livingcolonists.configuration.colonyChatLines": "Реплики колонии в чате",
+  "livingcolonists.configuration.colonyChatLines.tooltip": "Вкл.: реплики колонистов в чате колонии видны и в чате, и облачками. Выкл.: только облачками; ответы на ваши сообщения, личные разговоры и вопросы приказов остаются в чате. Ваш личный выбор, на вашем компьютере."
 }

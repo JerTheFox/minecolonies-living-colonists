@@ -11,6 +11,7 @@ import java.util.Set;
 import me.bytefox.livingcolonists.network.SettingsRequest;
 import me.bytefox.livingcolonists.network.SettingsState;
 import me.bytefox.livingcolonists.settings.Setting;
+import me.bytefox.livingcolonists.client.ClientConfig;
 import me.bytefox.livingcolonists.settings.Presets;
 import me.bytefox.livingcolonists.settings.SettingsSchema;
 import me.bytefox.livingcolonists.settings.SettingsService;
@@ -185,6 +186,9 @@ public final class SettingsScreen extends Screen {
         for (Setting setting : SettingsSchema.ALL) {
             if (setting.tab() == tab) {
                 rows.add(new SettingRow(setting));
+                if (setting.id().equals("speechBubbles")) {
+                    rows.add(new ClientRow());
+                }
             }
         }
     }
@@ -305,6 +309,47 @@ public final class SettingsScreen extends Screen {
         @Override
         public List<? extends NarratableEntry> narratables() {
             return buttons;
+        }
+    }
+
+    /**
+     * The player's own choice of colony chat lines (#58), next to the speech bubbles: kept on this client, saved at
+     * once, open to every player whatever the server's settings.
+     */
+    private final class ClientRow extends Row {
+        private static final String KEY = "livingcolonists.configuration.colonyChatLines";
+        private final Component label = Component.translatable(KEY);
+        private final CycleButton<Boolean> button = CycleButton.onOffBuilder(ClientConfig.COLONY_CHAT_LINES.get())
+                .displayOnlyValue().create(0, 0, 100, 20, label, (b, on) -> {
+                    ClientConfig.COLONY_CHAT_LINES.set(on);
+                    ClientConfig.SPEC.save();
+                });
+
+        @Override
+        public void render(GuiGraphics graphics, int index, int top, int left, int rowWidth, int rowHeight, int mouseX,
+                           int mouseY, boolean hovered, float partialTick) {
+            int labelWidth = rowWidth * 2 / 5;
+            String help = " (?)";
+            String name = font.substrByWidth(label, labelWidth - 4 - font.width(help)).getString();
+            graphics.drawString(font, name, left, top + 6, 0xFFFFFFFF);
+            graphics.drawString(font, help, left + font.width(name), top + 6, 0xFF808080);
+            button.setX(left + labelWidth);
+            button.setY(top + 1);
+            button.setWidth(rowWidth - labelWidth);
+            button.render(graphics, mouseX, mouseY, partialTick);
+            if (mouseX >= left && mouseX < left + rowWidth && mouseY >= top && mouseY < top + rowHeight && I18n.exists(KEY + ".tooltip")) {
+                setTooltipForNextRenderPass(font.split(Component.translatable(KEY + ".tooltip"), 240));
+            }
+        }
+
+        @Override
+        public List<? extends GuiEventListener> children() {
+            return List.of(button);
+        }
+
+        @Override
+        public List<? extends NarratableEntry> narratables() {
+            return List.of(button);
         }
     }
 

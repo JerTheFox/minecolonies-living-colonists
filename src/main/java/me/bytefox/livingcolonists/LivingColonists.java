@@ -146,6 +146,9 @@ public final class LivingColonists {
         });
         NeoForge.EVENT_BUS.addListener((ServerTickEvent.Post event) -> {
             conversations.tick(event.getServer());
+            if (!TalkService.enabled()) {
+                return;
+            }
             talk.tick(event.getServer());
             memory.tick(event.getServer());
             ItemNames.tick(event.getServer());
@@ -301,7 +304,7 @@ public final class LivingColonists {
      */
     private void onServerChat(ServerChatEvent event) {
         ServerPlayer player = event.getPlayer();
-        if (!conversations.wantsChat(player)) {
+        if (!TalkService.enabled() || !conversations.wantsChat(player)) {
             if (Config.PLAYER_BUBBLES.get()) {
                 String said = event.getRawText();
                 player.server.execute(() -> Bubbles.line(player, said, player.server.getPlayerList().getPlayers()));

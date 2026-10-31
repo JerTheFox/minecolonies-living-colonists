@@ -72,7 +72,7 @@ import net.minecraft.world.phys.Vec3;
  */
 public final class TalkService {
     /** Rounds of colony function calls per reply before the model has to answer. */
-    private static final int MAX_TOOL_ROUNDS = 2;
+    private static final int MAX_TOOL_ROUNDS = 3;
     /**
      * Token room for a reply: the line is short, but DeepSeek's reasoning sometimes took the whole
      * usual 2000 and cut the line off mid-word.
@@ -96,6 +96,7 @@ public final class TalkService {
     private final Errands errands;
     private final Initiative initiative;
     private final Arrivals arrivals;
+    private InitiativeData initiativeData;
     private final GiftWatch gifts;
     private final PlayerDeeds deeds;
     /** One budget for every line colonists say unprompted (#40). */
@@ -143,6 +144,7 @@ public final class TalkService {
         this.initiative = new Initiative(this, threads, perception, memory, bonds);
         this.arrivals = new Arrivals(this, threads, events, initiative, bonds, perception, memory);
         ModEvents.BUS.on(GameEvents.JobChanged.class, this::jobChanged);
+        ModEvents.BUS.on(GameEvents.FellIll.class, this::fellIll);
         this.gifts = new GiftWatch(this, bonds, memory);
         this.deeds = new PlayerDeeds(events);
     }
@@ -169,12 +171,14 @@ public final class TalkService {
 
     /** Colonists writing first: what they already brought up, kept with the world. */
     public void attachInitiative(InitiativeData data) {
+        initiativeData = data;
         initiative.attach(data);
         arrivals.attach(data);
         events.attach(data);
     }
 
     public void detachInitiative() {
+        initiativeData = null;
         initiative.detach();
         arrivals.detach();
         events.detach();
@@ -193,6 +197,46 @@ public final class TalkService {
         }
         memory.rememberSeen(colony, List.of(citizen.getId()), citizen.getName(), citizen.getName() + " became the colony's "
                 + change.to() + (change.from() == null ? "" : ", no longer a " + change.from()) + ".", 3);
+        // Now and then the people close to them remark on it (#57).
+        if (random.nextDouble() < LIFE_NEWS_CHANCE) {
+            events.announce(colony.getWorld().getServer(), colony, citizen.getName() + " has just become the colony's "
+                    + change.to() + ".", closeTo(citizen));
+        }
+    }
+
+    /** How often something in a colonist's life (a new job, an illness) becomes something the others remark on. */
+    private static final double LIFE_NEWS_CHANCE = 0.5;
+
+    /** A colonist fell ill: now and then their family or coworkers bring it up (#57). */
+    private void fellIll(GameEvents.FellIll ill) {
+        ICitizenData citizen = ill.citizen();
+        IColony colony = citizen.getColony();
+        if (colony.getWorld() == null || random.nextDouble() >= LIFE_NEWS_CHANCE) {
+            return;
+        }
+        events.announce(colony.getWorld().getServer(), colony, citizen.getName() + " has fallen ill with " + ill.illness()
+                + ".", closeTo(citizen));
+    }
+
+    /** Family and coworkers of a colonist, the likeliest to remark on their life; never the colonist. */
+    private static List<Integer> closeTo(ICitizenData citizen) {
+        List<Integer> close = new ArrayList<>();
+        var parents = citizen.getParents();
+        for (ICitizenData other : citizen.getColony().getCitizenManager().getCitizens()) {
+            if (other.getId() == citizen.getId()) {
+                continue;
+            }
+            var theirParents = other.getParents();
+            boolean family = parents != null && (other.getName().equals(parents.getA()) || other.getName().equals(parents.getB()))
+                    || theirParents != null && (citizen.getName().equals(theirParents.getA())
+                    || citizen.getName().equals(theirParents.getB()));
+            boolean coworker = citizen.getWorkBuilding() != null && citizen.getWorkBuilding().equals(other.getWorkBuilding());
+            if (family || coworker) {
+                close.add(other.getId());
+            }
+        }
+        java.util.Collections.shuffle(close);
+        return close;
     }
 
     /** Drops what gone colonists brought up, by their {@code colonyId:citizenId} key. */
@@ -210,6 +254,31 @@ public final class TalkService {
 
     public GiftWatch gifts() {
         return gifts;
+    }
+
+    /** Whether colonists talk at all: the mod is on for the server (#55). */
+    public static boolean enabled() {
+        return !Config.SPEC.isLoaded() || Config.ENABLED.get();
+    }
+
+    /** Whether this colony's colonists talk: the mod is on, and not turned off for the colony (#55). */
+    public boolean active(IColony colony) {
+        return enabled() && (initiativeData == null || !initiativeData.off.contains(colony.getID()));
+    }
+
+    /** Turns the mod off or on for one colony; whether that changed anything. */
+    public boolean setColonyOff(IColony colony, boolean off) {
+        if (initiativeData == null) {
+            return false;
+        }
+        boolean changed = off ? initiativeData.off.add(colony.getID()) : initiativeData.off.remove(colony.getID());
+        if (changed) {
+            initiativeData.setDirty();
+            if (off) {
+                threads.stop(colony);
+            }
+        }
+        return changed;
     }
 
     /** A player killed something: raiders or monsters fought off in the colony are news (#50). */
@@ -247,11 +316,60 @@ public final class TalkService {
         errands.tick(server);
         initiative.tick(server);
         arrivals.tick(server);
+        drift(server);
         if (now % SWEEP_TICKS == 0) {
             sweep(server, now);
         }
         events.tick(server);
         typing.tick(server);
+    }
+
+    /** The game day relations last drifted (#59). */
+    private long driftDay = -1;
+
+    /**
+     * Once a game day, relations between colonists drift from real life (#59): coworkers grow closer,
+     * housemates closer or apart by their characters. Crossing into friends or at odds is a fact for both.
+     */
+    private void drift(MinecraftServer server) {
+        long day = server.overworld().getGameTime() / 24000L;
+        if (day == driftDay) {
+            return;
+        }
+        boolean first = driftDay < 0;
+        driftDay = day;
+        if (first) {
+            return;
+        }
+        for (IColony colony : me.bytefox.livingcolonists.colony.Colonies.all()) {
+            if (!active(colony)) {
+                continue;
+            }
+            List<ICitizenData> citizens = colony.getCitizenManager().getCitizens().stream().filter(c -> !c.isChild()).toList();
+            for (int i = 0; i < citizens.size(); i++) {
+                for (int j = i + 1; j < citizens.size(); j++) {
+                    ICitizenData a = citizens.get(i);
+                    ICitizenData b = citizens.get(j);
+                    boolean coworkers = a.getWorkBuilding() != null && a.getWorkBuilding().equals(b.getWorkBuilding());
+                    boolean housemates = a.getHomeBuilding() != null && a.getHomeBuilding().equals(b.getHomeBuilding());
+                    boolean compatible = threads.contrariness(a) < me.bytefox.livingcolonists.bonds.Drift.CONTRARY
+                            || threads.contrariness(b) < me.bytefox.livingcolonists.bonds.Drift.CONTRARY;
+                    int[] change = bonds.nudge(colony, a.getId(), b.getId(),
+                            me.bytefox.livingcolonists.bonds.Drift.daily(coworkers, housemates, compatible));
+                    me.bytefox.livingcolonists.bonds.Drift.crossed(change[0], change[1]).ifPresent(turn -> {
+                        String where = coworkers && a.getWorkBuilding().getBuildingType() != null
+                                ? " working together at the " + Component.translatable(
+                                a.getWorkBuilding().getBuildingType().getTranslationKey()).getString()
+                                : housemates ? " living under one roof" : "";
+                        String fact = turn == me.bytefox.livingcolonists.bonds.Drift.Turn.FRIENDS
+                                ? a.getName() + " and " + b.getName() + " became friends" + where + "."
+                                : a.getName() + " and " + b.getName() + " got on each other's nerves" + where + ".";
+                        memory.rememberSeen(colony, List.of(a.getId(), b.getId()), a.getName(), fact, 3);
+                        ModLog.action("{}", fact);
+                    });
+                }
+            }
+        }
     }
 
     /** How often what is kept for gone players and long-past timers is dropped (ten minutes). */
@@ -390,6 +508,9 @@ public final class TalkService {
                 || client.overDailyLimit() || Config.llmSettings(ModelRole.CHAT).isEmpty()) {
             return Notes.Delivery.NEVER;
         }
+        if (!active(colony)) {
+            return Notes.Delivery.NEVER;
+        }
         boolean inside = isInside(player, colony);
         if (inColonyOnly && !inside || thinking.contains(key)) {
             return Notes.Delivery.LATER;
@@ -477,6 +598,13 @@ public final class TalkService {
         values.put("mood", plain ? "calm and busy with your work" : Prompts.mood(citizen.getId(),
                 citizen.getColony().getWorld().getDayTime() / 24000, happiness(citizen)));
         values.put("situation", perception.situation(citizen));
+        List<String> lately = errands.lookups(citizen.getColony().getID(),
+                citizen.getColony().getWorld().getGameTime() - me.bytefox.livingcolonists.errands.Errands.CACHE_TICKS);
+        if (!lately.isEmpty()) {
+            // What anyone in the colony looked up lately is known to all (#56).
+            values.put("situation", values.get("situation") + "\nLooked up in the colony lately, true whatever anyone says:\n- "
+                    + String.join("\n- ", lately));
+        }
         if (player != null && Config.level(Module.PERCEPTION) != me.bytefox.livingcolonists.behaviour.Level.OFF) {
             String look = look(citizen, player);
             if (!look.isEmpty()) {
@@ -531,6 +659,16 @@ public final class TalkService {
      */
     void generateFresh(ICitizenData citizen, String prompt, List<ChatMessage> conversation, UUID asker,
                        MinecraftServer server, List<String> recent, Consumer<ChatResult> done) {
+        generateFresh(citizen, prompt, conversation, asker, false, server, recent, done);
+    }
+
+    /** The same; {@code lookups}: a colonist asked by another colonist may look things up once, no orders (#56). */
+    void generateFresh(ICitizenData citizen, String prompt, List<ChatMessage> conversation, UUID asker, boolean lookups,
+                       MinecraftServer server, List<String> recent, Consumer<ChatResult> done) {
+        if (lookups) {
+            generate(citizen, prompt, conversation, asker, true, server, done);
+            return;
+        }
         if (asker != null || recent.isEmpty()) {
             generate(citizen, prompt, conversation, asker, server, done);
             return;
@@ -562,6 +700,11 @@ public final class TalkService {
 
     void generate(ICitizenData citizen, String prompt, List<ChatMessage> conversation, UUID asker,
                   MinecraftServer server, Consumer<ChatResult> done) {
+        generate(citizen, prompt, conversation, asker, false, server, done);
+    }
+
+    void generate(ICitizenData citizen, String prompt, List<ChatMessage> conversation, UUID asker, boolean lookups,
+                  MinecraftServer server, Consumer<ChatResult> done) {
         Optional<LlmSettings> settings = Config.llmSettings(ModelRole.CHAT);
         if (settings.isEmpty()) {
             done.accept(new ChatResult.Failure("no API key", false));
@@ -576,11 +719,16 @@ public final class TalkService {
         if (asker != null && Config.toolsEnabled()) {
             offered.addAll(tools.specs());
             offered.addAll(errands.specs(citizen));
+        } else if (lookups && Config.toolsEnabled()) {
+            offered.addAll(tools.specs());
+            offered.addAll(errands.lookupSpecs(citizen));
         }
         // A line nobody waits for (no player to answer) gives way to players' answers.
         LlmSettings reply = asker == null ? settings.get().withMinTokens(REPLY_TOKENS).inBackground()
                 : settings.get().withMinTokens(REPLY_TOKENS);
-        converse(reply, messages, offered, 0, server, citizen.getColony().getDimension(), speaker,
+        // A colonist asked by another colonist gets one look-up at most: the last round offers nothing.
+        converse(reply, messages, offered, asker == null && lookups ? MAX_TOOL_ROUNDS - 1 : 0, server,
+                citizen.getColony().getDimension(), speaker,
                 asker, new StringBuilder(), done);
     }
 
@@ -608,6 +756,14 @@ public final class TalkService {
                           StringBuilder trace, Consumer<ChatResult> done) {
         List<ToolSpec> now = round < MAX_TOOL_ROUNDS ? offered : List.of();
         client.complete(settings, messages, now).thenAccept(result -> server.execute(() -> {
+            if (result instanceof ChatResult.Reply written && now.isEmpty() && Prompts.callMarkup(written.text())
+                    && round == MAX_TOOL_ROUNDS) {
+                // Out of look-ups, the model wrote one more call as text: once more, told to answer in words.
+                List<ChatMessage> again = new ArrayList<>(messages);
+                again.add(ChatMessage.user("[You can't look anything more up now. Answer in words, from what you found.]"));
+                converse(settings, again, offered, round + 1, server, dimension, speaker, asker, trace, done);
+                return;
+            }
             if (!(result instanceof ChatResult.Reply reply) || !reply.wantsTools()) {
                 done.accept(result);
                 return;
@@ -619,6 +775,11 @@ public final class TalkService {
             }
             List<ChatMessage> next = new ArrayList<>(messages);
             next.add(ChatMessage.assistantCalling(reply.toolCalls()));
+            if (asker == null) {
+                // A look-up in colonists' own talk costs from the colony's budget like a long line.
+                airtime.spend(Airtime.colony(speaker.colonyId()), server.getTickCount(), 0.25);
+                Counters.add("lookups.colonists");
+            }
             for (ToolCall call : reply.toolCalls()) {
                 String output = errands.handles(call.name())
                         ? errands.run(call, errandContext(citizen, server.getPlayerList().getPlayer(asker)))
@@ -649,6 +810,10 @@ public final class TalkService {
 
     /** Whether the player may talk to this colony's colonists right now; tells them if not. */
     private boolean admit(ServerPlayer player, IColony colony) {
+        if (!active(colony)) {
+            player.sendSystemMessage(Component.translatable("livingcolonists.talk.off", colony.getName()));
+            return false;
+        }
         if (!mayTalk(player, colony)) {
             return false;
         }

@@ -5,6 +5,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- `enabled` in the config and on the settings screen turns the mod off on the whole server: no replies, no lines of their own, no requests to the model, and the chat works as without the mod. A colony's owner turns their own colony off and on with `/lc colony off` and `/lc colony on`.
+- Colonists' life stories: once a colonist has a few memories, and then once a game week, the character model sums up their life in the colony in a few sentences (how long they've been here, their work, who they get along with, what players did for them), kept with the world. Replies see the story before the latest memories, so colonists remember the colony's past after the facts themselves fade.
+- A colonist asked something by name by another colonist ("Darcy, how much bread is left?") answers next and may look it up once. Look-ups are shared: the same one within ten in-game minutes comes from what was found, and every colonist's prompt lists what the colony looked up lately.
+- When a colonist falls ill or gets a new job, their family or coworkers sometimes bring it up in the colony chat.
+- "Colony chat lines" on the Behaviour tab, under the speech bubbles: each player can turn colonists' colony chat lines off on their own client and keep only the bubbles. Answers to your own messages for a minute after you write, private talks and order questions stay in the chat.
+- Relations between colonists change by themselves once a game day: coworkers grow closer, housemates grow closer or, when both are contrary characters, get on each other's nerves. When two colonists become friends or fall out, both remember it with the reason. No requests to the model.
+
+### Changed
+
+- A colonist may look things up three times for one answer instead of two.
+
+### Fixed
+
+- A colonist who wanted one more look-up than allowed could send its function call as text into the chat (`<｜DSML｜…`). Now they're asked once more to answer in words, and such text is never said.
+- A deadline named in a talk ("через минуту", "in ten minutes") counted from when the talk was written down, a few minutes later, instead of from when it was said.
+- A gift of what was promised now keeps the promise, also when the promise is written down after the gift: no more reminders of an emerald already given.
+
 ## [0.3.1] - 2026-10-31
 
 ### Added

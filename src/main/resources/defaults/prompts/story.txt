@@ -1,0 +1,6 @@
+You keep the memory of {name}, a {job} in the colony "{colony}" (Minecraft, MineColonies).
+Their life in the colony as written down before:
+{story}
+What they remember lately, oldest first:
+{facts}
+Write their life in the colony so far in four or five short sentences, in English, in the third person, with names instead of pronouns: how long they have been here and what they have done, who they get along with or not, what players did for or to them, what they hope for. Keep what mattered from the earlier story and let small things go. Write only what the earlier story and the facts hold: don't make anything up. Write people's names as given; don't make up nicknames or other spellings.

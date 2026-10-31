@@ -89,6 +89,10 @@ public final class PerceptionService {
     private final BuildLedger ledger = new BuildLedger();
     /** Each colonist's day as code saw it, by {@code colonyId:citizenId}; not saved, a day is short. */
     private final Map<String, DiaryBook> diaries = new HashMap<>();
+    /** Colonists seen ill at the last check, by {@code colonyId:citizenId}, to notice who just fell ill (#57). */
+    private final java.util.Set<String> ill = new java.util.HashSet<>();
+    /** Colonies checked once since the server started: who was ill before that is no news. */
+    private final java.util.Set<Integer> illChecked = new java.util.HashSet<>();
     /** Each colonist's job as last seen, by {@code colonyId:citizenId}, for a job given or taken just now. */
     private final JobLog jobs = new JobLog();
     /** The facts last read for each colonist, by {@code colonyId:citizenId}, with the game time. */
@@ -140,6 +144,18 @@ public final class PerceptionService {
                 } catch (RuntimeException e) {
                     // A job MineColonies can't name now is noted next time.
                 }
+                try {
+                    String key = colony.getID() + ":" + citizen.getId();
+                    boolean sick = citizen.getCitizenDiseaseHandler().isSick();
+                    if (sick && ill.add(key) && illChecked.contains(colony.getID())) {
+                        var disease = citizen.getCitizenDiseaseHandler().getDisease();
+                        ModEvents.BUS.post(new GameEvents.FellIll(citizen, disease == null ? "an illness" : disease.name().getString()));
+                    } else if (!sick) {
+                        ill.remove(key);
+                    }
+                } catch (RuntimeException e) {
+                    // Noted next time.
+                }
                 if (citizen.getEntity().isEmpty()) {
                     continue;
                 }
@@ -154,6 +170,7 @@ public final class PerceptionService {
                             .note(gameTime, dayTime, doing);
                 }
             }
+            illChecked.add(colony.getID());
         }
     }
 
@@ -166,6 +183,8 @@ public final class PerceptionService {
     public void clear() {
         diaries.clear();
         jobs.clear();
+        ill.clear();
+        illChecked.clear();
         recent.clear();
     }
 

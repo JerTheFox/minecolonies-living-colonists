@@ -31,6 +31,10 @@ public final class GameEvents {
     public record JobChanged(ICitizenData citizen, String from, String to) {
     }
 
+    /** A colonist fell ill; {@code illness} as MineColonies names it. */
+    public record FellIll(ICitizenData citizen, String illness) {
+    }
+
     /**
      * Something happened in a colony that colonists talk about: a death, a birth, a building, a raid,
      * a milestone. {@code what} is how it is told at once ("The Tavern was just finished.").

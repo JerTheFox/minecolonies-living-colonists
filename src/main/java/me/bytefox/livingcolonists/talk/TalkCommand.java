@@ -38,7 +38,31 @@ public final class TalkCommand {
                         talk.errands().cancel(context.getSource().getPlayerOrException())))
                 .then(Commands.literal("undo").executes(context ->
                         talk.errands().undo(context.getSource().getPlayerOrException())))
-                .then(Commands.literal("help").executes(context -> help(context.getSource()))));
+                .then(Commands.literal("help").executes(context -> help(context.getSource())))
+                .then(Commands.literal("colony")
+                        .then(Commands.literal("off").executes(context -> colonyOff(context.getSource(), talk, true)))
+                        .then(Commands.literal("on").executes(context -> colonyOff(context.getSource(), talk, false)))));
+    }
+
+    /** The colony's owner turns the mod off or on for the colony they stand in (#55). */
+    private static int colonyOff(net.minecraft.commands.CommandSourceStack source, TalkService talk, boolean off)
+            throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        net.minecraft.server.level.ServerPlayer player = source.getPlayerOrException();
+        com.minecolonies.api.colony.IColony colony = me.bytefox.livingcolonists.colony.Colonies.at(player);
+        if (colony == null) {
+            source.sendFailure(net.minecraft.network.chat.Component.translatable("livingcolonists.colony.outside"));
+            return 0;
+        }
+        if (me.bytefox.livingcolonists.colony.Colonies.role(player, colony)
+                != me.bytefox.livingcolonists.behaviour.ColonyAccess.Role.OWNER) {
+            source.sendFailure(net.minecraft.network.chat.Component.translatable("livingcolonists.colony.owner_only",
+                    colony.getName()));
+            return 0;
+        }
+        talk.setColonyOff(colony, off);
+        source.sendSuccess(() -> net.minecraft.network.chat.Component.translatable(
+                off ? "livingcolonists.colony.off" : "livingcolonists.colony.on", colony.getName()), true);
+        return 1;
     }
 
     /** What players can do with colonists, in a few lines (#48). */

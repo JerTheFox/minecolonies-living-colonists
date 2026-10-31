@@ -171,4 +171,13 @@ class PromptsTest {
         assertEquals("Голодный колонист просит еду.", Prompts.fixMixedWords("Голодный колонist просит еду."));
         assertEquals("Builder's Hut and Хижина stay as they are.", Prompts.fixMixedWords("Builder's Hut and Хижина stay as they are."));
     }
+
+    @Test
+    void aFunctionCallWrittenAsTextIsNeverSaid() {
+        String leaked = "<\uff5c\uff5cDSML\uff5c\uff5c calls> <\uff5c\uff5cDSML\uff5c\uff5c invoke name=\"check_stock\"> wheat";
+        assertTrue(Prompts.callMarkup(leaked));
+        assertEquals("", Prompts.cleanReply(leaked, "Randolph"));
+        assertTrue(Prompts.callMarkup("<function_calls><invoke name=\"check_stock\">"));
+        assertEquals("Доски есть, немного.", Prompts.cleanReply("Доски есть, немного.", "Fiona"));
+    }
 }

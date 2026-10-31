@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
+import me.bytefox.livingcolonists.bonds.Deadlines;
 import me.bytefox.livingcolonists.ModLog;
 import me.bytefox.livingcolonists.Citizens;
 import me.bytefox.livingcolonists.Config;
@@ -274,7 +275,9 @@ public final class MemoryService {
         List<UUID> players = present.stream().filter(key -> key.startsWith("p:"))
                 .map(key -> UUID.fromString(key.substring(2))).toList();
         String names = formerNames(players);
-        return names.isEmpty() ? facts : facts.isEmpty() ? names : facts + "\n" + names;
+        MemoryData.Story story = data == null ? null : data.stories.get(key(citizen));
+        return LifeStories.withStory(names.isEmpty() ? facts : facts.isEmpty() ? names : facts + "\n" + names,
+                story == null ? null : PlayerMarks.resolve(story.text()));
     }
 
     /** Facts the colonist still remembers, oldest first. */
@@ -318,6 +321,7 @@ public final class MemoryService {
         int before = data.privateTalks.size();
         data.privateTalks.keySet().removeIf(key -> key.startsWith(prefix));
         FactBook book = data.facts.remove(key(citizen));
+        data.stories.remove(key(citizen));
         data.setDirty();
         return before - data.privateTalks.size() + (book == null ? 0 : book.all().size());
     }
@@ -348,6 +352,59 @@ public final class MemoryService {
             cleanup();
         }
         digest(server, false);
+        if (server.getTickCount() % STORY_CHECK == 0) {
+            writeStory(server);
+        }
+    }
+
+    /** How often a colonist's life story may be started, in server ticks (two minutes); one at a time. */
+    private static final int STORY_CHECK = 2 * 60 * 20;
+    private boolean writingStory;
+
+    /**
+     * Writes the life story (#51) of the first colonist whose story is due: enough facts and none yet, or the
+     * last a game week old. The character model sums up the earlier story and the facts in a few sentences.
+     */
+    private void writeStory(MinecraftServer server) {
+        Optional<LlmSettings> settings = Config.llmSettings(ModelRole.CHARACTER);
+        if (writingStory || settings.isEmpty() || FactLimits.of(level()).facts() == 0) {
+            return;
+        }
+        for (String key : List.copyOf(data.facts.keySet())) {
+            String[] parts = key.split(":");
+            IColony colony = Citizens.colony(Integer.parseInt(parts[0]));
+            ICitizenData citizen = colony == null ? null : colony.getCitizenManager().getCivilian(Integer.parseInt(parts[1]));
+            if (citizen == null) {
+                continue;
+            }
+            List<Fact> facts = facts(citizen);
+            MemoryData.Story old = data.stories.get(key);
+            long now = now(colony);
+            if (!LifeStories.due(old == null ? -1 : old.written(), now, facts.size())) {
+                continue;
+            }
+            Map<String, String> values = new HashMap<>();
+            values.put("name", citizen.getName());
+            values.put("job", jobOf(citizen));
+            values.put("colony", colony.getName());
+            values.put("story", old == null ? "(nothing yet)" : old.text());
+            values.put("facts", Digests.memories(facts, now));
+            String prompt = Templates.render(prompts.get(PromptLibrary.STORY), values);
+            MemoryData target = data;
+            writingStory = true;
+            client.complete(settings.get().withMinTokens(DIGEST_TOKENS).inBackground(), List.of(ChatMessage.user(prompt)))
+                    .thenAccept(result -> server.execute(() -> {
+                        writingStory = false;
+                        if (data != target || !(result instanceof ChatResult.Reply reply) || reply.text().isBlank()) {
+                            return;
+                        }
+                        data.stories.put(key, new MemoryData.Story(PlayerMarks.markNames(reply.text().strip(),
+                                data.playerNames), now));
+                        data.setDirty();
+                        ModLog.action("Wrote the life story of {}", citizen.getName());
+                    }));
+            return;
+        }
     }
 
     /**
@@ -417,7 +474,8 @@ public final class MemoryService {
                     ICitizenData owner = current.getCitizenManager().getCivilian(citizenId);
                     if (owner != null) {
                         bonds.apply(owner, playerId, playerName, digest, open, lines.stream()
-                                .filter(line -> !line.speaker().equals(name)).map(MemoryLine::text).toList());
+                                .filter(line -> !line.speaker().equals(name))
+                                .map(line -> new Deadlines.Said(line.text(), line.gameTime())).toList());
                     }
                 });
     }
@@ -459,7 +517,8 @@ public final class MemoryService {
                             .map(id -> current.getCitizenManager().getCivilian(id)).filter(Objects::nonNull).toList(),
                             digest.colonists());
                     bonds.applyColony(server, current, digest, open, lines.stream().collect(Collectors.groupingBy(
-                            MemoryLine::speaker, Collectors.mapping(MemoryLine::text, Collectors.toList()))));
+                            MemoryLine::speaker, Collectors.mapping(line -> new Deadlines.Said(line.text(), line.gameTime()),
+                                    Collectors.toList()))));
                 });
     }
 
@@ -686,6 +745,7 @@ public final class MemoryService {
         int before = data.facts.size() + data.privateTalks.size();
         List<String> gone = data.facts.keySet().stream().filter(key).toList();
         data.facts.keySet().removeIf(key);
+        data.stories.keySet().removeIf(key);
         data.privateTalks.keySet().removeIf(key);
         // Nobody keeps remembering things about a colonist who is gone; their id may be given to a newcomer.
         boolean forgotAbout = false;

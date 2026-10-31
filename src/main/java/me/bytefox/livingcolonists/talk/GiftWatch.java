@@ -57,19 +57,21 @@ public final class GiftWatch {
             return;
         }
         List<String> named = new ArrayList<>();
+        List<String> english = new ArrayList<>();
         int worth = 1;
         for (Map.Entry<String, Integer> gift : added.entrySet()) {
             ItemStack stack = sample(citizen.getInventory(), gift.getKey());
             named.add(gift.getValue() + " " + (stack.isEmpty() ? gift.getKey() : ItemNames.of(stack)));
             if (!stack.isEmpty()) {
                 worth = Math.max(worth, BondsService.worthOf(stack, gift.getValue()));
+                english.add(stack.getItem().getDescription().getString());
             }
         }
         String what = String.join(", ", named);
         String playerName = TalkService.playerName(player);
         Counters.add("gifts");
         ModLog.action("{} gave {} {}", playerName, citizen.getName(), what);
-        boolean warmed = bonds.gift(citizen, player.getUUID(), playerName, playerName + " gave me " + what, worth);
+        boolean warmed = bonds.gift(citizen, player.getUUID(), playerName, playerName + " gave me " + what, worth, english);
         memory.rememberSeen(citizen.getColony(), List.of(citizen.getId()), playerName,
                 playerName + " gave " + citizen.getName() + " " + what + ".", Math.min(5, 1 + worth));
         if (warmed) {

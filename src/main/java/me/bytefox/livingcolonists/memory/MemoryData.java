@@ -30,6 +30,11 @@ public final class MemoryData extends SavedData {
     final Map<Integer, Transcript> colonyChats = new HashMap<>();
     /** Key: {@code colonyId:citizenId}. */
     final Map<String, FactBook> facts = new HashMap<>();
+    /** {@code colonyId:citizenId}: the colonist's life story (#51) and the game time it was written. */
+    final Map<String, Story> stories = new HashMap<>();
+
+    record Story(String text, long written) {
+    }
     /** The names colonists knew each player by, the current one first. */
     final Map<UUID, List<String>> playerNames = new HashMap<>();
 
@@ -59,6 +64,11 @@ public final class MemoryData extends SavedData {
                         fact.getLong("expires"), fact.getString("source"), fact.getBoolean("told"), fact.getString("about")));
             }
             data.facts.put(key, book);
+        }
+        CompoundTag stories = tag.getCompound("stories");
+        for (String key : stories.getAllKeys()) {
+            CompoundTag story = stories.getCompound(key);
+            data.stories.put(key, new Story(story.getString("text"), story.getLong("written")));
         }
         CompoundTag players = tag.getCompound("players");
         for (String key : players.getAllKeys()) {
@@ -133,6 +143,14 @@ public final class MemoryData extends SavedData {
             players.put(id.toString(), list);
         });
         tag.put("players", players);
+        CompoundTag stories = new CompoundTag();
+        this.stories.forEach((key, story) -> {
+            CompoundTag entry = new CompoundTag();
+            entry.putString("text", story.text());
+            entry.putLong("written", story.written());
+            stories.put(key, entry);
+        });
+        tag.put("stories", stories);
         return tag;
     }
 

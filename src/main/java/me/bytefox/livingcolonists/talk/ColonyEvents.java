@@ -124,11 +124,16 @@ public final class ColonyEvents {
 
     /** A colony milestone (#39): told in the colony chat if players are around, and kept for those away. */
     void announce(MinecraftServer server, IColony colony, String what) {
+        announce(server, colony, what, List.of());
+    }
+
+    /** The same, with the colonists likeliest to bring it up first. */
+    void announce(MinecraftServer server, IColony colony, String what, List<Integer> speakers) {
         if (colony.getWorld() == null) {
             return;
         }
         ModEvents.BUS.post(new GameEvents.ColonyHappened(colony, what, false, false));
-        queue(colony.getID(), new Event(what, List.of()), server.getTickCount());
+        queue(colony.getID(), new Event(what, speakers), server.getTickCount());
     }
 
     private void queue(int colonyId, Event event, long now) {

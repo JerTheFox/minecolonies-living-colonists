@@ -4,26 +4,20 @@
   "key.livingcolonists.talk": "Talk to colonist privately",
   "key.livingcolonists.focus": "Focus on colonist (no chat)",
   "key.livingcolonists.mode": "Chat: players / colony",
-
   "livingcolonists.talk.nobody": "There is no colonist to talk to.",
   "livingcolonists.talk.no_key": "Living Colonists has no API key: set apiKey in config/livingcolonists-common.toml on the server.",
   "livingcolonists.talk.busy": "%s is still thinking about the last thing you said.",
   "livingcolonists.talk.failed": "%s doesn't answer. The server log has the details.",
-
   "livingcolonists.partner.locked": "Talking to %s",
   "livingcolonists.partner.released": "Conversation with %s ended",
-
   "livingcolonists.mode.players": "Chat: players",
   "livingcolonists.mode.colony": "Chat: colony",
   "livingcolonists.colony.outside": "You're outside the colony's borders, the colonists can't hear you.",
-
   "livingcolonists.indicator.players": "Players",
   "livingcolonists.indicator.colony": "Colony",
   "livingcolonists.indicator.partner": "→ %s (%s) ✕",
-
   "livingcolonists.chat.click_to_answer": "Click to talk to them privately",
   "livingcolonists.job.unemployed": "Unemployed",
-
   "livingcolonists.debug.stats.empty": "No requests to the language model yet.",
   "livingcolonists.debug.stats.title": "Language model usage",
   "livingcolonists.debug.stats.model": "%s",
@@ -238,5 +232,13 @@
   "livingcolonists.help.3": "Owners and officers can give orders: \"build the tavern\", \"come here\", \"gather the unemployed\", \"tell Alex the bread is ready\", \"remind me in ten minutes to check the farm\".",
   "livingcolonists.help.4": "An order waits for your Yes (the button or a short \"yes\"); /lc undo takes your last one back.",
   "livingcolonists.help.5": "Settings: the config button for Living Colonists in the mod list, or the settings key if you set one.",
-  "livingcolonists.help.first_visit": "The colonists of %s talk in chat: Y writes to the colony, U to the colonist you look at. /lc help for more."
+  "livingcolonists.help.first_visit": "The colonists of %s talk in chat: Y writes to the colony, U to the colonist you look at. /lc help for more.",
+  "livingcolonists.configuration.enabled": "Mod on",
+  "livingcolonists.configuration.enabled.tooltip": "On: colonists talk. Off: the mod is quiet on the whole server: no replies, no lines of their own, no requests to the model; players' chat goes on as usual. A colony's owner turns their own colony off with /lc colony off. Default on.",
+  "livingcolonists.talk.off": "The colonists of %s don't talk: Living Colonists is turned off here.",
+  "livingcolonists.colony.off": "Living Colonists is off in %s: its colonists stay quiet. /lc colony on turns it back on.",
+  "livingcolonists.colony.on": "Living Colonists is on in %s again.",
+  "livingcolonists.colony.owner_only": "Only the owner of %s can turn Living Colonists off or on there.",
+  "livingcolonists.configuration.colonyChatLines": "Colony chat lines",
+  "livingcolonists.configuration.colonyChatLines.tooltip": "On: colonists' lines in the colony chat show in the chat and as speech bubbles. Off: as speech bubbles only; answers to your own messages, your private talks and order questions stay in the chat. Your own choice, on your computer."
 }

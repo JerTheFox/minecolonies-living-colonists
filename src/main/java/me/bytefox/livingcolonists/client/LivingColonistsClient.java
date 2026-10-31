@@ -46,6 +46,7 @@ public final class LivingColonistsClient {
     public LivingColonistsClient(IEventBus modEventBus, ModContainer container) {
         // The mod list's "Config" button (NeoForge, Catalogue and the like) opens our own screen.
         container.registerExtensionPoint(IConfigScreenFactory.class, (mod, parent) -> new SettingsScreen(parent));
+        container.registerConfig(net.neoforged.fml.config.ModConfig.Type.CLIENT, ClientConfig.SPEC);
         modEventBus.addListener((RegisterKeyMappingsEvent event) -> {
             event.register(COLONY);
             event.register(TALK);
@@ -54,6 +55,8 @@ public final class LivingColonistsClient {
             event.register(SETTINGS);
         });
         NeoForge.EVENT_BUS.addListener(LivingColonistsClient::onClientTick);
+        NeoForge.EVENT_BUS.addListener(ColonyChatFilter::sent);
+        NeoForge.EVENT_BUS.addListener(ColonyChatFilter::received);
         NeoForge.EVENT_BUS.addListener(LivingColonistsClient::onKey);
         NeoForge.EVENT_BUS.addListener(ConversationIndicator::render);
         NeoForge.EVENT_BUS.addListener(ConversationIndicator::click);

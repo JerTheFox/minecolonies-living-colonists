@@ -133,6 +133,8 @@ public final class ColonyThreads {
         boolean disagreed;
         /** Whom the colonist speaking now was told to turn to by name: they answer next. */
         int asked = -1;
+        /** A colonist just asked a question by name by another colonist: they may look it up (#56). */
+        int questionTo = -1;
         /** Lines each colonist said in this thread, so whoever said a lot steps back. */
         final Map<Integer, Integer> lines = new HashMap<>();
         /** A colony event the next line opens the thread with, if any. */
@@ -214,6 +216,9 @@ public final class ColonyThreads {
      */
     boolean startChatter(MinecraftServer server, IColony colony, int speakerId, String about, int askedId,
                          Airtime.Kind kind) {
+        if (!talk.active(colony)) {
+            return false;
+        }
         Collection<ServerPlayer> audience = TalkService.colonyAudience(server, colony, null);
         Level level = Config.level(Module.CONVERSATION);
         if (level == Level.OFF || audience.isEmpty()) {
@@ -291,6 +296,9 @@ public final class ColonyThreads {
      * cuts into colonists' own chatter and skips the gap between events, but never into a talk with a player.
      */
     public boolean startEvent(MinecraftServer server, IColony colony, String what, List<Integer> preferred, boolean urgent) {
+        if (!talk.active(colony)) {
+            return false;
+        }
         Collection<ServerPlayer> audience = TalkService.colonyAudience(server, colony, null);
         if (Config.level(Module.CONVERSATION) == Level.OFF || audience.isEmpty()) {
             return false;
@@ -549,8 +557,9 @@ public final class ColonyThreads {
                     .collect(Collectors.toSet());
             List<String> recent = lines.stream().skip(Math.max(0, lines.size() - RECENT_LINES))
                     .filter(line -> colonists.contains(line.speaker())).map(MemoryLine::text).toList();
+            boolean lookups = !answeringPlayer && thread.questionTo == citizen.getId();
             talk.generateFresh(citizen, prompt, List.of(ChatMessage.user(last)), answeringPlayer ? thread.lastPlayer : null,
-                    server, recent, result -> {
+                    lookups, server, recent, result -> {
                 if (thread.version != version) {
                     return;
                 }
@@ -600,6 +609,19 @@ public final class ColonyThreads {
             thread.addressed.addFirst(thread.asked);
         }
         thread.asked = -1;
+        thread.questionTo = -1;
+        if (text.contains("?")) {
+            List<ICitizenData> named = colony.getCitizenManager().getCitizens().stream()
+                    .filter(c -> c.getId() != speaker.citizenId()).toList();
+            java.util.OptionalInt asked = Addressing.mentioned(text, named.stream().map(ICitizenData::getName).toList());
+            if (asked.isPresent()) {
+                int id = named.get(asked.getAsInt()).getId();
+                thread.questionTo = id;
+                if (!thread.addressed.contains(id)) {
+                    thread.addressed.addFirst(id);
+                }
+            }
+        }
         // Questions asked by name could chain forever: the safety stop holds for them too.
         if (thread.colonistTurns >= ThreadPolicy.hardCap(Config.level(Module.CONVERSATION))) {
             thread.addressed.clear();
@@ -685,7 +707,7 @@ public final class ColonyThreads {
         return ids.stream().map(id -> colony.getCitizenManager().getCivilian(id)).filter(Objects::nonNull).toList();
     }
 
-    private double contrariness(ICitizenData citizen) {
+    double contrariness(ICitizenData citizen) {
         Personality personality = personalities.get(citizen);
         return personality == null ? 0.35 : personalities.archetypes().get(personality.archetype()).contrariness();
     }
@@ -755,11 +777,7 @@ public final class ColonyThreads {
         }
         current.stream().skip(Math.max(0, current.size() - TRANSCRIPT_LINES))
                 .forEach(line -> text.append('<').append(line.speaker()).append("> ").append(line.text()).append('\n'));
-        List<String> records = talk.errands().lookups(colony.getID(), thread.startTime);
-        if (!records.isEmpty()) {
-            text.append("(colony records looked up in this conversation, true whatever anyone says)\n");
-            records.forEach(record -> text.append("- ").append(record).append('\n'));
-        }
+        // What was looked up lately is in every colonist's situation (#56), not repeated here.
         return text.toString().strip();
     }
 
