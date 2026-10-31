@@ -77,6 +77,7 @@ public final class CheckStock implements Errand {
             int[] counted = counted(colony, item);
             if (counted[1] == 0) {
                 reply.addProperty("info", "The colony has no warehouse yet.");
+                held(reply, colony, options);
                 return reply;
             }
             if (counted[0] > 0) {
@@ -102,8 +103,9 @@ public final class CheckStock implements Errand {
             reply.addProperty("info", "The colony has no warehouse yet.");
         } else {
             reply.addProperty("count", counted[0]);
-            held(reply, colony, List.of(item));
         }
+        // Also without a warehouse: a young colony's stock is all in its huts.
+        held(reply, colony, List.of(item));
         return reply;
     }
 
