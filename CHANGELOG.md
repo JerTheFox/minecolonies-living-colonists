@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-10-31
+
 ### Added
 
 - `enabled` in the config and on the settings screen turns the mod off on the whole server: no replies, no lines of their own, no requests to the model, and the chat works as without the mod. A colony's owner turns their own colony off and on with `/lc colony off` and `/lc colony on`.
@@ -276,7 +278,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A colony conversation that ended while a reply was still on its way no longer comes back to life.
 - Old conversations that are fully written down no longer pile up in the world's data.
 
-[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.2.2...v0.2.3
