@@ -5,8 +5,36 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-31
+
+### Added
+
+- One budget for every line colonists say unprompted, per colony chat and per player: a death or a raid always goes through, then notes and reminders, then news, then greetings, first lines and chatter, which give way first. Answers to players are never held back.
+- Players' answers go to the model first: background work (chatter, first lines, memory, backgrounds) waits for a free slot, at most four requests run at once, and when too much is waiting, background requests are dropped. If the provider keeps failing, background work pauses for a few minutes while answers to players keep trying.
+- The chat topics, the advancements colonists hear about and the mechanics handbook are files in `config/livingcolonists/content/` (`topics.txt`, `rumours.json`, `handbook.json`), laid out on first start and followed on updates like the prompts. A pack can add its own topics, advancements and articles; `/lcdebug reload` rereads them.
+- A reply prompt stays within a size: in a big colony with a long memory and a busy chat, the least relevant remembered facts go first, then the oldest chat lines, instead of the prompt and its cost growing without end.
+- What happened in the colony while you were away, and word of your big deeds, are kept with the world, so colonists still tell you after a server restart.
+- `/lcdebug stats` also shows what happened since the server started: lines said and held back by kind, events that went stale, repeats caught, look-ups, orders turned down, model requests dropped or paused.
+- Colonists now and then notice a colony member coming back. When you return after a while, a colonist may tell you what happened while you were away (a building finished, a newcomer, a death, a raid), ask how you are after you died out there, remark on a trip to the Nether or the End, or ask about something new in your hand. With nothing to tell, they only rarely say hello. When you log off while others are still in the colony, someone may mention that you left.
+- Colonists see what the player they talk with holds and wears, and whether they look hurt.
+- News from while you were away goes to the colony chat, where other colonists can join in; everything else comes privately.
+- Word of your big deeds gets around: killing the Ender Dragon, summoning the Wither, finding diamonds, netherite armour, an elytra, saving a village from raiders and more. Colonists bring it up as hearsay when you come back. The colony's milestones (25, 50 and 75 colonists, a growing guard, a mine down to the bottom) are colony news. `extraAdvancements` adds your own, as `id` or `id=what colonists say`.
+- A job the colony gives a colonist is remembered by them, unless it came with a building just finished, which is the news then.
+- Leaving while something is still being built is remembered by the colonist who remarked on it, as a small thing that fades in a day or two.
+- `logLevel` in the config and on the settings screen sets how much the mod writes to the server log: `ALL` (the default, as before), `NO_CHAT` (without colonists' chat lines), `TECHNICAL` (start-up, settings changes, warnings and errors) or `OFF` (errors only).
+- Limits keep this rare: per player, per colony, never during a talk, an order or a raid, and not for a quick reconnect. The `initiative` level sets how often; `minimal` turns it off.
+
+### Changed
+
+- The mod's saved files carry a format version, so later changes can bring old worlds up to date.
+- What colonists know of themselves is read once every few seconds instead of on every look-up, and what is kept for players long gone is dropped, so big colonies and long-running servers stay light.
+
 ### Fixed
 
+- "Take the order for the hut" for a placed, unbuilt building is taken as the order to build it, and a tired or moody colonist still carries out an order.
+- "What are you complaining about?" with no name goes to whoever just spoke, like "you" does.
+- Promise reminders and delivered notes are written to the server log.
+- A colonist's death or a raid that came while colonists were chatting among themselves was never talked about. Such news now cuts into their chatter (never into a talk with a player), and other events wait their turn for a few minutes instead of being dropped.
 - Colonists called over several at once ("the unemployed, come to me") come instead of asking where the player is.
 - Right after a build order, a builder no longer says everything has been delivered. A builder with no order of his own knows which orders nobody has taken yet, and that their materials aren't counted until one is started.
 - A reply with "you" and no name, soon after a colonist's line, goes to that colonist.
@@ -205,7 +233,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A colony conversation that ended while a reply was still on its way no longer comes back to life.
 - Old conversations that are fully written down no longer pile up in the world's data.
 
-[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.2.0...v0.2.1
