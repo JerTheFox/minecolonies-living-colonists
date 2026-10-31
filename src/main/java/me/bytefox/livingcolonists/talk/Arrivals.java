@@ -237,13 +237,15 @@ final class Arrivals {
         Long seen = data.seen.get(key);
         boolean session = fresh.remove(id) && now - loginAt.getOrDefault(id, Long.MIN_VALUE / 2) <= ArrivalPolicy.SESSION_WINDOW;
         if (seen == null) {
-            // Never here before: nothing to come back to.
+            // Never here before: nothing to come back to, but a word on how to talk to the colonists (#48).
+            player.sendSystemMessage(net.minecraft.network.chat.Component.translatable("livingcolonists.help.first_visit",
+                    colony.getName()).withStyle(net.minecraft.ChatFormatting.GRAY));
             return;
         }
         ItemStack hand = player.getMainHandItem();
         String held = null;
         if (!hand.isEmpty() && (hand.getRarity() != Rarity.COMMON || hand.isEnchanted() || hand.has(DataComponents.CUSTOM_NAME))) {
-            String item = hand.getItem().builtInRegistryHolder().key().location().toString();
+            String item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(hand.getItem()).toString();
             if (!item.equals(lastHeld.put(id, item))) {
                 held = ItemNames.of(hand);
             }

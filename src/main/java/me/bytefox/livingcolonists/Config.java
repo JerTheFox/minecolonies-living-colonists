@@ -202,14 +202,14 @@ public final class Config {
 
     public static final ModConfigSpec.BooleanValue SPEECH_BUBBLES = BUILDER
             .translation("livingcolonists.configuration.speechBubbles")
-            .comment("On: colonists' lines also show as speech bubbles over their heads, and dots while they type, for",
-                    "players with the mod; the chat line stays. Private lines bubble only for their player. Default on.")
+            .comment("On: colonists' lines also show as speech bubbles over their heads, and dots while they type; the",
+                    "chat line stays. Private lines bubble only for their player. Default on.")
             .define("speechBubbles", true);
 
     public static final ModConfigSpec.BooleanValue PLAYER_BUBBLES = BUILDER
             .translation("livingcolonists.configuration.playerBubbles")
             .comment("On: players get speech bubbles too, for their chat and colony chat lines, and dots while they type.",
-                    "Only players with the mod see bubbles. Default off.")
+                    "Default off.")
             .define("playerBubbles", false);
 
     public static final ModConfigSpec.IntValue BUBBLE_RANGE = BUILDER

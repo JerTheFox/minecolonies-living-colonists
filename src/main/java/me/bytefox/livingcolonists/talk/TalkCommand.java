@@ -11,6 +11,8 @@ import net.minecraft.commands.Commands;
  * ({@code /lc lock <colony> <citizen>}; without them, with the one looked at).
  */
 public final class TalkCommand {
+    private static final int HELP_LINES = 5;
+
     private TalkCommand() {
     }
 
@@ -35,6 +37,16 @@ public final class TalkCommand {
                 .then(Commands.literal("no").executes(context ->
                         talk.errands().cancel(context.getSource().getPlayerOrException())))
                 .then(Commands.literal("undo").executes(context ->
-                        talk.errands().undo(context.getSource().getPlayerOrException()))));
+                        talk.errands().undo(context.getSource().getPlayerOrException())))
+                .then(Commands.literal("help").executes(context -> help(context.getSource()))));
+    }
+
+    /** What players can do with colonists, in a few lines (#48). */
+    private static int help(net.minecraft.commands.CommandSourceStack source) {
+        for (int i = 1; i <= HELP_LINES; i++) {
+            String key = "livingcolonists.help." + i;
+            source.sendSuccess(() -> net.minecraft.network.chat.Component.translatable(key), false);
+        }
+        return HELP_LINES;
     }
 }

@@ -123,7 +123,8 @@ public final class BondsService {
      *
      * @param numbered the open promises as they were numbered for the model
      */
-    public void apply(ICitizenData citizen, UUID player, String playerName, Digests.Digest digest, List<Promise> numbered) {
+    public void apply(ICitizenData citizen, UUID player, String playerName, Digests.Digest digest, List<Promise> numbered,
+                      List<String> playerLines) {
         if (data == null) {
             return;
         }
@@ -153,7 +154,7 @@ public final class BondsService {
                 break;
             }
             Promise.About about = Promise.About.of(made.about());
-            long due = made.days() > 0 ? now + Math.min(made.days(), MAX_DUE_DAYS) * DAY : 0;
+            long due = due(citizen.getColony(), playerLines, made.days(), now);
             list.add(new Promise(data.nextId++, player, playerName, made.text(), made.worth(), about, now, due, Promise.Status.OPEN, 0,
                     needUnmet(citizen, about), false, ""));
         }
@@ -161,6 +162,19 @@ public final class BondsService {
             note(citizen, player, conduct.kind() ? Bonds.KIND : Bonds.RUDE, conduct.note(), now);
         }
         data.setDirty();
+    }
+
+    /**
+     * A new promise's deadline: from the player's own words when they name a time ("in ten minutes",
+     * "к вечеру", "tomorrow"), else the model's guess in days; 0 for none (#11).
+     */
+    private static long due(IColony colony, List<String> playerLines, int modelDays, long now) {
+        long dayTime = colony.getWorld() == null ? now : colony.getWorld().getDayTime();
+        java.util.OptionalLong said = Deadlines.due(playerLines, now, dayTime);
+        if (said.isPresent()) {
+            return Math.min(said.getAsLong(), now + MAX_DUE_DAYS * DAY);
+        }
+        return modelDays > 0 ? now + Math.min(modelDays, MAX_DUE_DAYS) * DAY : 0;
     }
 
     /**
@@ -174,6 +188,11 @@ public final class BondsService {
         }
         ItemStack stack = asked.getDisplayStacks().get(0);
         int count = asked.getRequest() instanceof IDeliverable deliverable ? deliverable.getCount() : stack.getCount();
+        return worthOf(stack, count);
+    }
+
+    /** What {@code count} of an item is worth, 1 (a trifle) to 5 (something precious), by code. */
+    public static int worthOf(ItemStack stack, int count) {
         Worth.Kind kind = stack.is(Tags.Items.STORAGE_BLOCKS) ? Worth.Kind.STORAGE_BLOCK
                 : stack.is(Tags.Items.GEMS) ? Worth.Kind.GEM
                 : stack.is(Tags.Items.INGOTS) ? Worth.Kind.INGOT
@@ -354,7 +373,8 @@ public final class BondsService {
      * Applies what the character model wrote down about a colony conversation: promises players made
      * to a named colonist, and open promises the chat says were kept, broken or let off.
      */
-    public void applyColony(MinecraftServer server, IColony colony, Digests.Digest digest, List<Owned> numbered) {
+    public void applyColony(MinecraftServer server, IColony colony, Digests.Digest digest, List<Owned> numbered,
+                            Map<String, List<String>> linesBySpeaker) {
         if (data == null) {
             return;
         }
@@ -390,7 +410,7 @@ public final class BondsService {
                 continue;
             }
             Promise.About about = Promise.About.of(made.about());
-            long due = made.days() > 0 ? now + Math.min(made.days(), MAX_DUE_DAYS) * DAY : 0;
+            long due = due(colony, linesBySpeaker.getOrDefault(made.player(), List.of()), made.days(), now);
             String playerName = data.playerNames.getOrDefault(player, made.player());
             list.add(new Promise(data.nextId++, player, playerName, Digests.cleanFact(made.text()), made.worth(), about, now, due,
                     Promise.Status.OPEN, 0, needUnmet(citizen, about), false, ""));
@@ -698,6 +718,28 @@ public final class BondsService {
     }
 
     // ---- for /lcdebug
+
+    /** When each colonist last warmed to each player for a gift, game time; not saved. */
+    private final Map<String, Long> lastGift = new java.util.HashMap<>();
+
+    /**
+     * A player gave the colonist something (#11): a kind act worth what the gift is worth, at most once a
+     * game day per colonist and player, so gifts of dirt can't be farmed. Whether it warmed them.
+     */
+    public boolean gift(ICitizenData citizen, UUID player, String playerName, String text, int worth) {
+        if (data == null) {
+            return false;
+        }
+        long now = now(citizen.getColony());
+        String key = key(citizen, player);
+        if (now - lastGift.getOrDefault(key, Long.MIN_VALUE / 2) < Gifts.WARMS_EVERY) {
+            return false;
+        }
+        lastGift.put(key, now);
+        data.playerNames.put(player, playerName);
+        note(citizen, player, Gifts.warmth(worth), text, now);
+        return true;
+    }
 
     public List<Promise> promises(ICitizenData citizen) {
         List<Promise> list = data == null ? null : data.promises.get(key(citizen));

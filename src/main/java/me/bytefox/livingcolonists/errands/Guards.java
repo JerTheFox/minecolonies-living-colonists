@@ -212,7 +212,7 @@ public final class Guards {
         for (ICitizenData guard : tower.getAllAssignedCitizen()) {
             AbstractJobGuard<?> job = guard.getJob(AbstractJobGuard.class);
             if (job != null && job.getWorkerAI() instanceof AbstractEntityAIGuard<?, ?> ai) {
-                ai.registerTarget(new AIOneTimeEventTarget(AIWorkerState.PREPARING));
+                ai.registerTarget(new AIOneTimeEventTarget<>(AIWorkerState.PREPARING));
             }
         }
     }

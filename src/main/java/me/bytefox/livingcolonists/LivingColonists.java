@@ -61,6 +61,7 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.ServerChatEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import net.neoforged.neoforge.event.entity.player.AdvancementEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerContainerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
@@ -139,6 +140,9 @@ public final class LivingColonists {
             if (event.getEntity() instanceof ServerPlayer player) {
                 ModEvents.BUS.post(new GameEvents.PlayerDied(player));
             }
+            if (event.getSource().getEntity() instanceof ServerPlayer killer) {
+                talk.playerKilled(killer, event.getEntity());
+            }
         });
         NeoForge.EVENT_BUS.addListener((ServerTickEvent.Post event) -> {
             conversations.tick(event.getServer());
@@ -196,6 +200,16 @@ public final class LivingColonists {
                 var holder = event.getAdvancement();
                 ModEvents.BUS.post(new GameEvents.AdvancementEarned(player, holder.id().toString(), holder.value().display()
                         .map(display -> display.getTitle().getString()).orElse(holder.id().getPath())));
+            }
+        });
+        NeoForge.EVENT_BUS.addListener((PlayerContainerEvent.Open event) -> {
+            if (event.getEntity() instanceof ServerPlayer player) {
+                talk.gifts().opened(player, event.getContainer());
+            }
+        });
+        NeoForge.EVENT_BUS.addListener((PlayerContainerEvent.Close event) -> {
+            if (event.getEntity() instanceof ServerPlayer player) {
+                talk.gifts().closed(player, event.getContainer());
             }
         });
         NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerChangedDimensionEvent event) -> {

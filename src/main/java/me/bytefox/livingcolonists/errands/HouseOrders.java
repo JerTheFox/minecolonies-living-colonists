@@ -67,7 +67,7 @@ public final class HouseOrders {
         @Override
         public Result run(Context context, JsonObject arguments) {
             IBuilding restaurant = first(context.colony(), "cook");
-            RestaurantMenuModule menu = restaurant == null ? null : restaurant.getFirstModuleOccurance(RestaurantMenuModule.class);
+            RestaurantMenuModule menu = restaurant == null ? null : module(restaurant, RestaurantMenuModule.class);
             if (menu == null) {
                 return new Result.Answer(Errand.error("The colony has no restaurant with a menu yet."));
             }
@@ -164,13 +164,13 @@ public final class HouseOrders {
             }
             String words = Errand.string(arguments, "home");
             List<ItemMatch.Candidate<IBuilding>> homes = UpgradeBuilding.candidates(colony, context.player().clientInformation().language())
-                    .stream().filter(c -> c.value().getFirstModuleOccurance(LivingBuildingModule.class) != null).toList();
+                    .stream().filter(c -> module(c.value(), LivingBuildingModule.class) != null).toList();
             IBuilding home;
             switch (ItemMatch.find(words, homes)) {
                 case ItemMatch.Result.Found<IBuilding> found -> home = found.value();
                 case ItemMatch.Result.Ambiguous<IBuilding> ambiguous -> {
                     home = ambiguous.options().stream().map(ItemMatch.Candidate::value)
-                            .filter(b -> !b.getFirstModuleOccurance(LivingBuildingModule.class).isFull()).findFirst().orElse(null);
+                            .filter(b -> !module(b, LivingBuildingModule.class).isFull()).findFirst().orElse(null);
                     if (home == null) {
                         return new Result.Answer(Errand.error("Every home that fits \"" + words + "\" is full."));
                     }
@@ -179,7 +179,7 @@ public final class HouseOrders {
                     return new Result.Answer(Errand.notFound("home in the colony", words));
                 }
             }
-            LivingBuildingModule beds = home.getFirstModuleOccurance(LivingBuildingModule.class);
+            LivingBuildingModule beds = module(home, LivingBuildingModule.class);
             if (home.equals(citizen.getHomeBuilding())) {
                 return new Result.Answer(Errand.error(citizen.getName() + " already lives there."));
             }
@@ -192,7 +192,7 @@ public final class HouseOrders {
             Component name = nameOf(target);
             return new Result.Proposal(new Order(name(), "move " + mover.getName() + " into the " + name.getString(),
                     Component.translatable("livingcolonists.order.home.ask", mover.getName(), name), player -> {
-                LivingBuildingModule oldBeds = old == null ? null : old.getFirstModuleOccurance(LivingBuildingModule.class);
+                LivingBuildingModule oldBeds = old == null ? null : module(old, LivingBuildingModule.class);
                 if (oldBeds != null) {
                     oldBeds.removeCitizen(mover);
                 }
@@ -210,5 +210,11 @@ public final class HouseOrders {
                 });
             }));
         }
+    }
+
+    /** The building's first module of the kind, or null: MineColonies' getFirstModuleOccurance is deprecated. */
+    private static <M extends com.minecolonies.api.colony.buildings.modules.IBuildingModule> M module(IBuilding building,
+                                                                                                      Class<M> kind) {
+        return building.getModules(kind).stream().findFirst().orElse(null);
     }
 }

@@ -96,6 +96,8 @@ public final class TalkService {
     private final Errands errands;
     private final Initiative initiative;
     private final Arrivals arrivals;
+    private final GiftWatch gifts;
+    private final PlayerDeeds deeds;
     /** One budget for every line colonists say unprompted (#40). */
     private final Airtime airtime = new Airtime();
     /** How close a colonist must be to see what a player holds and wears, in blocks. */
@@ -141,6 +143,8 @@ public final class TalkService {
         this.initiative = new Initiative(this, threads, perception, memory, bonds);
         this.arrivals = new Arrivals(this, threads, events, initiative, bonds, perception, memory);
         ModEvents.BUS.on(GameEvents.JobChanged.class, this::jobChanged);
+        this.gifts = new GiftWatch(this, bonds, memory);
+        this.deeds = new PlayerDeeds(events);
     }
 
     public ColonyThreads threads() {
@@ -202,6 +206,15 @@ public final class TalkService {
 
     Airtime airtime() {
         return airtime;
+    }
+
+    public GiftWatch gifts() {
+        return gifts;
+    }
+
+    /** A player killed something: raiders or monsters fought off in the colony are news (#50). */
+    public void playerKilled(ServerPlayer player, net.minecraft.world.entity.Entity victim) {
+        deeds.killed(player, victim);
     }
 
     /** The level the shared budget for unprompted lines runs at. */
@@ -273,6 +286,8 @@ public final class TalkService {
         initiative.clear();
         arrivals.clear();
         airtime.clear();
+        gifts.clear();
+        deeds.clear();
         lastMessage.clear();
     }
 

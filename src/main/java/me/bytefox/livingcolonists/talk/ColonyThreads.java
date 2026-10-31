@@ -77,6 +77,9 @@ public final class ColonyThreads {
     private static final long INTERJECT_TICKS = 12 * 20;
     /** How many colonists in a row may stay silent on a player's message before the colony lets it be. */
     private static final int MAX_SILENT = 2;
+    /** Lines of a talk among colonists that cost nothing; each further one takes {@link #LONG_TALK_COST}. */
+    private static final int FREE_LINES = 4;
+    private static final double LONG_TALK_COST = 0.25;
     /** A "you" without a name this soon after a colonist's line answers that colonist, in ticks. */
     private static final long REPLY_TICKS = 60 * 20;
     /** A thread with no line for this long (one minute) is over. */
@@ -219,6 +222,8 @@ public final class ColonyThreads {
         long now = server.getTickCount();
         Thread existing = threads.get(colony.getID());
         if (existing != null && now - existing.lastLineTick < IDLE_TICKS
+                || existing != null && existing.lastPlayer == null
+                && now - existing.lastLineTick < ThreadPolicy.pauseAfterTalk(level)
                 || !talk.airtime().allows(kind, Airtime.colony(colony.getID()), now, TalkService.airtimeLevel())) {
             return false;
         }
@@ -367,23 +372,18 @@ public final class ColonyThreads {
         String locale = player.clientInformation().language();
         List<String> names = citizens.stream().map(ICitizenData::getName).toList();
         thread.language = Languages.reply(message, locale, names, Optional.ofNullable(thread.language)).orElse(null);
-        List<Integer> byJob = new ArrayList<>(Addressing.byJob(message,
-                citizens.stream().map(citizen -> jobNames.of(citizen, locale)).toList()));
-        Collections.shuffle(byJob, random);
-        List<Integer> chosen = new ArrayList<>(Addressing.allMentioned(message, names));
-        byJob.stream().filter(index -> !chosen.contains(index)).forEach(chosen::add);
-        if (chosen.isEmpty() && previousSpeaker >= 0 && server.getTickCount() - previousLine <= REPLY_TICKS
-                && Addressing.secondPerson(message)) {
-            // "You first make the ground floor livable" answers whoever just spoke, not the router's guess.
+        int justSpoke = -1;
+        if (previousSpeaker >= 0 && server.getTickCount() - previousLine <= REPLY_TICKS) {
             for (int i = 0; i < citizens.size(); i++) {
                 if (citizens.get(i).getId() == previousSpeaker) {
-                    chosen.add(i);
+                    justSpoke = i;
                 }
             }
         }
-        // A question to everyone still goes to the router: it may be about one profession's work.
-        if (!chosen.isEmpty() || Addressing.toEveryone(message) && !message.contains("?")) {
-            List<Integer> picked = chosen.stream().limit(MAX_ADDRESSED).toList();
+        Optional<List<Integer>> byCode = MessageRouting.byCode(message, names,
+                citizens.stream().map(citizen -> jobNames.of(citizen, locale)).toList(), justSpoke, MAX_ADDRESSED, random);
+        if (byCode.isPresent()) {
+            List<Integer> picked = byCode.get();
             picked.forEach(index -> thread.addressed.add(citizens.get(index).getId()));
             thread.askedByPlayer.addAll(thread.addressed);
             ModLog.action("Colony {} message is for {}, found by code; reply in {}", colony.getName(),
@@ -609,7 +609,12 @@ public final class ColonyThreads {
         List<String> others = colony.getCitizenManager().getCitizens().stream()
                 .filter(c -> c.getId() != speaker.citizenId()).map(ICitizenData::getName).toList();
         thread.energy = ThreadPolicy.afterLine(thread.energy, new ThreadPolicy.LineTraits(text.contains("?"),
-                Addressing.mentioned(text, others).isPresent(), thread.disagreed, text.split("\\s+").length <= 4), random);
+                Addressing.mentioned(text, others).isPresent(), thread.disagreed, text.split("\\s+").length <= 4),
+                thread.colonistTurns, random);
+        if (thread.lastPlayer == null && thread.colonistTurns > FREE_LINES) {
+            // A long talk among colonists takes from the colony's budget, so the next one comes later.
+            talk.airtime().spend(Airtime.colony(colony.getID()), server.getTickCount(), LONG_TALK_COST);
+        }
         if (!thread.addressed.isEmpty()) {
             nextTurn(server, colony, thread, version);
             return;

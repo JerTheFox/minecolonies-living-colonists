@@ -240,7 +240,8 @@ final class Initiative {
         if (random.nextDouble() < ASK_SOMEONE) {
             Optional<ICitizenData> other = threads.pickAddressee(colony, speaker);
             if (other.isPresent()) {
-                about += " Turn to " + other.get().getName() + " by name with it.";
+                about += " Turn to " + other.get().getName() + " by name with it. Don't make up anything that passed between you"
+                        + " two: no promise, quarrel or talk your notes don't hold.";
                 asked = other.get().getId();
             }
         }

@@ -95,6 +95,25 @@ class ConversationLogicTest {
     }
 
     @Test
+    void questionsByNameDoNotKeepATalkAliveForever() {
+        Random random = new Random(7);
+        int capped = 0;
+        int total = 0;
+        for (int i = 0; i < 2000; i++) {
+            double energy = ThreadPolicy.startEnergy(Level.HIGH, random);
+            int turns = 0;
+            do {
+                turns++;
+                energy = ThreadPolicy.afterLine(energy, new ThreadPolicy.LineTraits(true, true, false, false), turns, random);
+            } while (ThreadPolicy.goesOn(energy, turns, Level.HIGH));
+            total += turns;
+            capped += turns >= ThreadPolicy.hardCap(Level.HIGH) ? 1 : 0;
+        }
+        assertTrue(capped < 100, "talks that hit the safety stop: " + capped);
+        assertTrue(total / 2000.0 < 14, "average length: " + total / 2000.0);
+    }
+
+    @Test
     void questionsAndArgumentsKeepATalkGoing() {
         Random random = new Random(1);
         double plain = ThreadPolicy.afterLine(3, new ThreadPolicy.LineTraits(false, false, false, false), random);

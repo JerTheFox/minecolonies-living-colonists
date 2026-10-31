@@ -84,6 +84,8 @@
   "livingcolonists.settings.test_character": "Тест модели характеров",
   "livingcolonists.settings.load_models": "Загрузить модели",
   "livingcolonists.settings.loading": "Загружаю настройки…",
+  "livingcolonists.settings.preset": "Пресет: %s",
+  "livingcolonists.settings.preset_set": "%s подставлен: впишите ключ API и сохраните.",
   "livingcolonists.settings.saving": "Сохраняю…",
   "livingcolonists.settings.working": "Спрашиваю API…",
   "livingcolonists.settings.saved": "Сохранено. Изменения действуют сразу.",
@@ -226,9 +228,15 @@
   "livingcolonists.configuration.initiative": "Инициатива",
   "livingcolonists.configuration.initiative.tooltip": "Как часто колонисты пишут игроку первыми, без вопроса: о своей проблеме (настойчивее, если она не решается, пока не перестанут просить), о том, что игрок им рассказывал, о новостях или просто так. Любой колонист, пока игрок в колонии и ни с кем не разговаривает, в неровные моменты. profile — как в профиле. off — никогда. low — примерно раз в полчаса. default — примерно раз в 12 минут. high — примерно раз в 6 минут.",
   "livingcolonists.configuration.speechBubbles": "Облачка над головой",
-  "livingcolonists.configuration.speechBubbles.tooltip": "Вкл.: реплики колонистов видны и облачками над головой, а пока они печатают — точками; строка в чате остаётся. Видят игроки с модом. Личные реплики — только своему игроку. По умолчанию вкл.",
+  "livingcolonists.configuration.speechBubbles.tooltip": "Вкл.: реплики колонистов видны и облачками над головой, а пока они печатают — точками; строка в чате остаётся. Личные реплики — только своему игроку. По умолчанию вкл.",
   "livingcolonists.configuration.playerBubbles": "Облачка над игроками",
-  "livingcolonists.configuration.playerBubbles.tooltip": "Вкл.: облачка и над игроками — для их сообщений в чат и в чат колонии, и точки, пока они печатают. Видят игроки с модом. По умолчанию выкл.",
+  "livingcolonists.configuration.playerBubbles.tooltip": "Вкл.: облачка и над игроками — для их сообщений в чат и в чат колонии, и точки, пока они печатают. По умолчанию выкл.",
   "livingcolonists.configuration.bubbleRange": "Дальность облачков",
-  "livingcolonists.configuration.bubbleRange.tooltip": "С какого расстояния, в блоках, видны облачки. От 8 до 64, по умолчанию 24."
+  "livingcolonists.configuration.bubbleRange.tooltip": "С какого расстояния, в блоках, видны облачки. От 8 до 64, по умолчанию 24.",
+  "livingcolonists.help.1": "Колонисты здесь говорят в чате. Y — написать всей колонии, U — поговорить наедине с колонистом, на которого смотрите, T — вернуться в чат игроков.",
+  "livingcolonists.help.2": "Спрашивайте о чём угодно: как дела, что нужно колонии, сколько железа на складе, где пекарня, кто сгодится в строители.",
+  "livingcolonists.help.3": "Владелец и офицеры могут отдавать приказы: «построй таверну», «иди сюда», «безработные, ко мне», «передай Алексу, что хлеб готов», «напомни через десять минут проверить ферму».",
+  "livingcolonists.help.4": "Приказ ждёт вашего «да» — кнопкой или коротким словом в чате; /lc undo отменяет последний.",
+  "livingcolonists.help.5": "Настройки — кнопка настроек у Living Colonists в списке модов или клавиша настроек, если она назначена.",
+  "livingcolonists.help.first_visit": "Колонисты колонии %s говорят в чате: Y — написать колонии, U — колонисту, на которого смотрите. Подробнее — /lc help."
 }

@@ -101,12 +101,31 @@ public final class ThreadPolicy {
      * gives the others something to answer; a bare reaction lets the talk wind down.
      */
     public static double afterLine(double energy, LineTraits line, Random random) {
+        return afterLine(energy, line, 0, random);
+    }
+
+    /**
+     * The same, {@code turns} lines into the talk: what livens it up counts for less the longer it runs,
+     * so a talk where everyone keeps asking the next one by name still winds down instead of running
+     * to the safety stop (seen on a server, 31.10.2026).
+     */
+    public static double afterLine(double energy, LineTraits line, int turns, Random random) {
+        double fading = Math.pow(0.85, Math.max(0, turns - 1));
         double change = -1 + (random.nextDouble() - 0.5) * 0.6;
-        change += line.question() ? 0.8 : 0;
-        change += line.namesSomeone() ? 0.6 : 0;
-        change += line.disagreed() ? 0.6 : 0;
+        change += (line.question() ? 0.8 : 0) * fading;
+        change += (line.namesSomeone() ? 0.6 : 0) * fading;
+        change += (line.disagreed() ? 0.6 : 0) * fading;
         change -= line.shortReaction() ? 0.4 : 0;
         return energy + change;
+    }
+
+    /** How long colonists wait after a talk among themselves before starting another one, in ticks. */
+    public static long pauseAfterTalk(Level level) {
+        return switch (level) {
+            case LOW -> 10 * 60 * 20;
+            case HIGH -> 3 * 60 * 20;
+            default -> 5 * 60 * 20;
+        };
     }
 
     /** A safety stop only: conversations end by losing their energy, not by counting. */

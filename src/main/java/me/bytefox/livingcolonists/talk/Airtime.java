@@ -64,8 +64,17 @@ public final class Airtime {
 
     /** A line went out: one token less. */
     void spend(String bucketKey, long now) {
-        Bucket bucket = buckets.computeIfAbsent(bucketKey, key -> new Bucket());
-        bucket.tokens = Math.max(0, bucket.tokens - 1);
+        spend(bucketKey, now, 1);
+    }
+
+    /** A part of a token, for what costs less than a line of its own (each line of a long talk). */
+    void spend(String bucketKey, long now, double amount) {
+        Bucket bucket = buckets.computeIfAbsent(bucketKey, key -> {
+            Bucket fresh = new Bucket();
+            fresh.at = now;
+            return fresh;
+        });
+        bucket.tokens = Math.max(0, bucket.tokens - amount);
     }
 
     void clear() {

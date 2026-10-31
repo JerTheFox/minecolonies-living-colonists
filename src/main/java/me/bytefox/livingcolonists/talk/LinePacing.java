@@ -7,16 +7,16 @@ import java.util.Random;
  * message, and several answers in one colony a moment apart instead of one wall of text.
  */
 public final class LinePacing {
-    /** Shortest pause: 2 seconds. */
-    public static final long MIN_GAP_TICKS = 40;
-    /** Longest pause: 4 seconds. */
-    public static final long MAX_GAP_TICKS = 80;
-    /** Shortest time to type a line: 1 second. */
-    public static final long MIN_TYPING_TICKS = 20;
-    /** Longest time to type a line: 6 seconds. */
-    public static final long MAX_TYPING_TICKS = 120;
-    /** Typing speed: ticks per character. */
-    private static final double TICKS_PER_CHAR = 0.4;
+    /** Shortest pause: 3.5 seconds. */
+    public static final long MIN_GAP_TICKS = 70;
+    /** Longest pause: 7 seconds. */
+    public static final long MAX_GAP_TICKS = 140;
+    /** Shortest time to type a line: 2 seconds. */
+    public static final long MIN_TYPING_TICKS = 40;
+    /** Longest time to type a line: 10.5 seconds. */
+    public static final long MAX_TYPING_TICKS = 210;
+    /** Typing speed: ticks per character, about 29 characters a second. */
+    private static final double TICKS_PER_CHAR = 0.7;
 
     private LinePacing() {
     }

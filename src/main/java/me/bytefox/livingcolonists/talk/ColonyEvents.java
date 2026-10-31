@@ -118,6 +118,7 @@ public final class ColonyEvents {
         seen.clear();
         raided.clear();
         lastBuilt.clear();
+        sites.clear();
         waiting.clear();
     }
 
@@ -200,8 +201,24 @@ public final class ColonyEvents {
         }
     }
 
+    /** Each colony's building positions as last seen, to notice a new hut being set out (#50). */
+    private final Map<Integer, Set<net.minecraft.core.BlockPos>> sites = new HashMap<>();
+
     private List<Event> newEvents(IColony colony) {
         List<Event> events = new ArrayList<>();
+        Set<net.minecraft.core.BlockPos> placed = new java.util.HashSet<>(colony.getServerBuildingManager().getBuildings().keySet());
+        Set<net.minecraft.core.BlockPos> known = sites.put(colony.getID(), placed);
+        if (known != null) {
+            for (net.minecraft.core.BlockPos pos : placed) {
+                var building = colony.getServerBuildingManager().getBuilding(pos);
+                if (!known.contains(pos) && building != null && building.getBuildingLevel() == 0
+                        && building.getBuildingType() != null) {
+                    events.add(new Event("Someone has just set out the place for a new "
+                            + Component.translatable(building.getBuildingType().getTranslationKey()).getString()
+                            + " in the colony.", builders(colony)));
+                }
+            }
+        }
         boolean raid = Colonies.isRaided(colony);
         Boolean wasRaided = raided.put(colony.getID(), raid);
         if (wasRaided != null && raid != wasRaided) {
@@ -292,6 +309,12 @@ public final class ColonyEvents {
             Tuple<String, String> names = c.getParents();
             return names != null && (parent.equals(names.getA()) || parent.equals(names.getB()));
         }).map(ICitizenData::getId).toList();
+    }
+
+    private static List<Integer> builders(IColony colony) {
+        return colony.getCitizenManager().getCitizens().stream()
+                .filter(c -> c.getJob() != null && c.getJob().getJobRegistryEntry().getKey().getPath().equals("builder"))
+                .map(ICitizenData::getId).toList();
     }
 
     private static List<Integer> guards(IColony colony) {

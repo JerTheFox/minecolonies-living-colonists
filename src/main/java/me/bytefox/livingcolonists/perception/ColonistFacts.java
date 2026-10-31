@@ -12,7 +12,7 @@ import java.util.List;
  * @param availableWork   kinds of work the colony has a built workplace for, e.g. "chopping wood (the Forester's Hut)"
  * @param missingWork     kinds of work nobody in the colony can do yet
  * @param homeLevel       0 if the colonist has no home
- * @param saturation      0 to 20, below 8 is hungry
+ * @param saturation      0 to 60 as MineColonies counts it (its bar shows one icon per 6), below 8 is hungry
  * @param health          0 to 1, or -1 if the colonist isn't loaded
  * @param sickness        name of the disease, null if healthy
  * @param happiness       0 to 10, or -1 if unknown

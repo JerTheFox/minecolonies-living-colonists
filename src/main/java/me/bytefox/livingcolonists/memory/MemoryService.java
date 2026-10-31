@@ -416,7 +416,8 @@ public final class MemoryService {
                 Fact.privateTalk(playerId), (current, digest) -> {
                     ICitizenData owner = current.getCitizenManager().getCivilian(citizenId);
                     if (owner != null) {
-                        bonds.apply(owner, playerId, playerName, digest, open);
+                        bonds.apply(owner, playerId, playerName, digest, open, lines.stream()
+                                .filter(line -> !line.speaker().equals(name)).map(MemoryLine::text).toList());
                     }
                 });
     }
@@ -457,7 +458,8 @@ public final class MemoryService {
                     bonds.noteColonists(current, participantIds.stream()
                             .map(id -> current.getCitizenManager().getCivilian(id)).filter(Objects::nonNull).toList(),
                             digest.colonists());
-                    bonds.applyColony(server, current, digest, open);
+                    bonds.applyColony(server, current, digest, open, lines.stream().collect(Collectors.groupingBy(
+                            MemoryLine::speaker, Collectors.mapping(MemoryLine::text, Collectors.toList()))));
                 });
     }
 

@@ -2,6 +2,7 @@ package me.bytefox.livingcolonists.talk;
 
 import java.util.Collection;
 
+import me.bytefox.livingcolonists.debug.Counters;
 import me.bytefox.livingcolonists.ModLog;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
@@ -23,6 +24,7 @@ public final class ChatSpeechOutput implements SpeechOutput {
 
     @Override
     public void colonistSaid(Speaker speaker, String text, Collection<ServerPlayer> recipients) {
+        Counters.add("lines.colony");
         ModLog.chat("[Colony {}] <{}> {}", speaker.colony(), speaker.name(), text);
         send(Component.translatable("chat.type.text", name(speaker), text), recipients);
     }
@@ -37,6 +39,7 @@ public final class ChatSpeechOutput implements SpeechOutput {
 
     @Override
     public void colonistWhispered(Speaker colonist, ServerPlayer player, String text) {
+        Counters.add("lines.private");
         ModLog.chat("[Private {}] <{}> -> <{}> {}", colonist.colony(), colonist.name(),
                 player.getGameProfile().getName(), text);
         player.sendSystemMessage(whisper(Component.literal("<").append(name(colonist)).append(">"),

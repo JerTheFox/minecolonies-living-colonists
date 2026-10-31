@@ -11,6 +11,7 @@ import java.util.Set;
 import me.bytefox.livingcolonists.network.SettingsRequest;
 import me.bytefox.livingcolonists.network.SettingsState;
 import me.bytefox.livingcolonists.settings.Setting;
+import me.bytefox.livingcolonists.settings.Presets;
 import me.bytefox.livingcolonists.settings.SettingsSchema;
 import me.bytefox.livingcolonists.settings.SettingsService;
 import net.minecraft.ChatFormatting;
@@ -164,6 +165,18 @@ public final class SettingsScreen extends Screen {
         }
         Setting.Tab tab = Setting.Tab.valueOf(page.name());
         if (page == Page.CONNECTION) {
+            List<Button> presets = new java.util.ArrayList<>();
+            for (Presets preset : Presets.values()) {
+                Button button = Button.builder(Component.translatable("livingcolonists.settings.preset", preset.label()), b -> {
+                    // Fills the fields like typing would; nothing is saved until Save.
+                    preset.fields().forEach((id, value) -> SettingsSchema.find(id).ifPresent(setting -> edit(setting, value)));
+                    status = Component.translatable("livingcolonists.settings.preset_set", preset.label());
+                    rebuildWidgets();
+                }).size(120, 20).build();
+                button.active = state.canEdit();
+                presets.add(button);
+            }
+            rows.add(new ButtonsRow(presets));
             rows.add(new ButtonsRow(List.of(
                     action("livingcolonists.settings.test_chat", SettingsRequest.Action.TEST_CHAT),
                     action("livingcolonists.settings.test_character", SettingsRequest.Action.TEST_CHARACTER),

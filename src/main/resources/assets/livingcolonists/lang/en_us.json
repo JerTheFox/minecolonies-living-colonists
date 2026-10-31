@@ -84,6 +84,8 @@
   "livingcolonists.settings.test_character": "Test character model",
   "livingcolonists.settings.load_models": "Load models",
   "livingcolonists.settings.loading": "Loading settings…",
+  "livingcolonists.settings.preset": "Preset: %s",
+  "livingcolonists.settings.preset_set": "%s filled in: enter the API key and save.",
   "livingcolonists.settings.saving": "Saving…",
   "livingcolonists.settings.working": "Asking the API…",
   "livingcolonists.settings.saved": "Saved. Changes apply at once.",
@@ -226,9 +228,15 @@
   "livingcolonists.configuration.initiative": "Initiative",
   "livingcolonists.configuration.initiative.tooltip": "How often colonists write to a player first, unprompted: about a problem of theirs (more pointed if it stays unsolved, until they give up asking), something the player told them, news or small talk. Any colonist, while the player is in the colony and not in a conversation, at uneven times. profile: as the profile says. off: never. low: about every half hour. default: about every 12 minutes. high: about every 6 minutes.",
   "livingcolonists.configuration.speechBubbles": "Speech bubbles",
-  "livingcolonists.configuration.speechBubbles.tooltip": "On: colonists' lines also show as speech bubbles over their heads, and dots while they type, for players with the mod; the chat line stays. Private lines bubble only for their player. Default on.",
+  "livingcolonists.configuration.speechBubbles.tooltip": "On: colonists' lines also show as speech bubbles over their heads, and dots while they type; the chat line stays. Private lines bubble only for their player. Default on.",
   "livingcolonists.configuration.playerBubbles": "Player bubbles",
-  "livingcolonists.configuration.playerBubbles.tooltip": "On: players get speech bubbles too, for their chat and colony chat lines, and dots while they type. Only players with the mod see bubbles. Default off.",
+  "livingcolonists.configuration.playerBubbles.tooltip": "On: players get speech bubbles too, for their chat and colony chat lines, and dots while they type. Default off.",
   "livingcolonists.configuration.bubbleRange": "Bubble range",
-  "livingcolonists.configuration.bubbleRange.tooltip": "How far away, in blocks, speech bubbles are seen. From 8 to 64, default 24."
+  "livingcolonists.configuration.bubbleRange.tooltip": "How far away, in blocks, speech bubbles are seen. From 8 to 64, default 24.",
+  "livingcolonists.help.1": "Colonists here talk in chat. Y writes to the whole colony, U talks privately to the colonist you look at, T goes back to the players' chat.",
+  "livingcolonists.help.2": "Ask them anything: how they are, what the colony needs, how much iron there is, where the bakery is, who would make a good builder.",
+  "livingcolonists.help.3": "Owners and officers can give orders: \"build the tavern\", \"come here\", \"gather the unemployed\", \"tell Alex the bread is ready\", \"remind me in ten minutes to check the farm\".",
+  "livingcolonists.help.4": "An order waits for your Yes (the button or a short \"yes\"); /lc undo takes your last one back.",
+  "livingcolonists.help.5": "Settings: the config button for Living Colonists in the mod list, or the settings key if you set one.",
+  "livingcolonists.help.first_visit": "The colonists of %s talk in chat: Y writes to the colony, U to the colonist you look at. /lc help for more."
 }

@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
+import me.bytefox.livingcolonists.debug.Counters;
 import me.bytefox.livingcolonists.Config;
 import me.bytefox.livingcolonists.llm.ChatMessage;
 import me.bytefox.livingcolonists.llm.ChatResult;
@@ -70,7 +71,7 @@ public final class SettingsService {
         return refused;
     }
 
-    /** Requests and tokens per model, for this run and in total, one line each. */
+    /** Requests and tokens per model, for this run and in total, one line each, then what colonists did this run. */
     public List<String> usage() {
         List<String> lines = new ArrayList<>();
         usage.total().forEach((model, total) -> {
@@ -79,6 +80,12 @@ public final class SettingsService {
                     + total.failures() + " failed, " + total.promptTokens() + " prompt + " + total.completionTokens()
                     + " reply tokens, " + total.cachedTokens() + " from cache, about " + total.averageLatencyMillis() + " ms");
         });
+        // What colonists did since the server started, as in /lcdebug stats (#49).
+        StringBuilder counts = new StringBuilder();
+        Counters.snapshot().forEach((key, count) -> counts.append(counts.isEmpty() ? "" : ", ").append(key).append(' ').append(count));
+        if (!counts.isEmpty()) {
+            lines.add("Since the server started: " + counts);
+        }
         return lines;
     }
 
