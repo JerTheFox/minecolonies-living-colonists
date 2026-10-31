@@ -5,6 +5,30 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-31
+
+### Added
+
+- Provider presets on the settings screen: DeepSeek, OpenRouter and Ollama fill in the address and the models with one click; the API key is left for you to enter.
+- `/lc help` lists the keys, what colonists can be asked and how orders are confirmed. The first time you come into a colony, a short line in chat points to it.
+- The Usage tab of the settings screen also shows what colonists did since the server started, as `/lcdebug stats` does.
+- Gifts: what you put into a colonist's inventory through their inventory window is a gift. They remember it, warm to you (at most once a game day, more for something precious than for a trifle) and thank you privately.
+- A promise's deadline comes from your own words when you name a time: "in ten minutes", "через два часа", "by evening", "tomorrow", "через неделю". Minutes and hours are real time, evenings and days follow the game clock.
+- Colonists notice what goes on in the colony without being told: the place for a new building set out, a player fighting off raiders or clearing the monsters that crept in.
+
+### Changed
+
+- The reply prompts keep their fixed rules ahead of everything that changes, so much more of each request can come from the provider's cache, which costs several times less.
+- The speech bubble settings no longer speak of "players with the mod": every player has it.
+- No more calls to MineColonies functions marked for removal, so a newer MineColonies is less likely to break orders for homes and the menu.
+- Colonists take longer to read and type, about 1.75 times as long as before, so replies don't come back the moment a player hits enter.
+- `/lcdebug stats` also counts the lines colonists said, in the colony chat and privately, not only the talks they started.
+
+### Fixed
+
+- Colonists chatting among themselves could talk for ten minutes without a break: every line asked the next one something by name, which kept the talk alive up to its safety stop, and a new talk began a minute later. What livens a talk up now counts for less the longer it runs, a new talk among colonists waits 3 to 10 minutes after the last one (by the `conversation` level), and each line of a long talk takes a little from the colony's budget.
+- A colonist starting a colony chat and turning to a neighbour no longer makes up a promise or a quarrel between them that never happened. Three chat topics that invited shared history with people in the colony (a promise made to you, an argument, a bet) are now about life before the colony.
+
 ## [0.3.0] - 2026-10-31
 
 ### Added
@@ -233,7 +257,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A colony conversation that ended while a reply was still on its way no longer comes back to life.
 - Old conversations that are fully written down no longer pile up in the world's data.
 
-[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.2.1...v0.2.2
