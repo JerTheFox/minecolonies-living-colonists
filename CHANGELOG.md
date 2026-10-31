@@ -5,10 +5,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- The reply prompts put what a colonist knows about people (relations, memories) before the time, mood and situation, which change from one reply to the next, so more of each prompt can come from the provider's cache. Prompt files you edited keep the old order.
+
 ### Fixed
 
 - Asked how much food there is, colonists counted only the warehouse and said there was none while the restaurant was full. The restaurant's food now counts too.
 - Asked how much of an item there is, colonists now also say which buildings keep some of it for their work (up to three, most first), apart from the warehouse count ("none in the warehouse, the smeltery has 64"). This works in a colony without a warehouse too.
+- A builder asking for materials named them in English in the middle of a Russian sentence ("bring dirt"). Construction materials now come with their names in the players' languages, like other items.
+- A colonist no longer passes on, as something they heard, a fact about themself.
 - "All clear" or "back to work" after "everyone go home" now sends the colonists back to work at once; before, they stayed home until the order ran out. When some colonists can't go home (no home, too far away), the answer names them.
 - News of a raid no longer waits for a long talk with a player to end: it comes as soon as a colonist has answered the player's last message. A raid that is over before anyone brought it up is not told as happening "right now".
 

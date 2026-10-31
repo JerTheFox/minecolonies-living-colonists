@@ -112,6 +112,17 @@ class FactsLogicTest {
     }
 
     @Test
+    void aColonistDoesNotPassOnGossipAboutThemself() {
+        List<Fact> facts = List.of(
+                new Fact("Ephraim hasn't decided where to start cutting.", 3, 0, DAY, Fact.privateTalk("Max"), false,
+                        Fact.aboutCitizen(7)),
+                new Fact("Ephraim Lowe likes the night shift.", 3, 0, DAY, Fact.privateTalk("Max"), false));
+        assertTrue(Digests.pickRumor(facts, fact -> false, Fact.aboutCitizen(7), "Ephraim Lowe", new Random(1)).isEmpty());
+        assertTrue(Digests.pickRumor(facts, fact -> false, Fact.aboutCitizen(8), "Idris Vale", new Random(1)).isPresent(),
+                "for another colonist it is gossip");
+    }
+
+    @Test
     void secretsAreNotPassedOnAsGossip() {
         List<Fact> facts = List.of(new Fact("Max plans a tavern (secret).", 4, 0, DAY, Fact.privateTalk("Max"), false),
                 new Fact("Max plans a tower (Secret)", 4, 0, DAY, Fact.privateTalk("Max"), false));

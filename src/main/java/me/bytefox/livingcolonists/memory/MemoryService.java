@@ -301,7 +301,8 @@ public final class MemoryService {
             return Optional.empty();
         }
         List<String> names = listener == null ? List.of() : namesOf(listener);
-        return Digests.pickRumor(facts(citizen), fact -> listener != null && fact.toldBy(listener, names), random);
+        return Digests.pickRumor(facts(citizen), fact -> listener != null && fact.toldBy(listener, names),
+                Fact.aboutCitizen(citizen.getId()), citizen.getName(), random);
     }
 
     /** The colonist passed the fact on, so it won't be retold. */

@@ -517,7 +517,11 @@ public final class PerceptionService {
                     resource.getAmountInDelivery()));
         }
         // What the resource scroll shows: how far along it is, what is used, at hand and on the way.
-        List<String> ledgerLines = ledger.lines(key, materials, MAX_MATERIALS);
+        // Names in the players' languages too, or a colonist says "bring dirt" in the middle of Russian (0.3.2).
+        Map<String, net.minecraft.world.item.ItemStack> stacks = new HashMap<>();
+        builder.getNeededResources().values().forEach(resource -> stacks.putIfAbsent(resource.getName(), resource.getItemStack()));
+        List<String> ledgerLines = ledger.lines(key, materials, MAX_MATERIALS).stream()
+                .map(line -> translated(line, stacks)).toList();
         int used = ledger.percentUsed(key, materials);
         var progress = builder.getProgress();
         String stage = progress == null || progress.getB() == null ? ""
@@ -533,7 +537,7 @@ public final class PerceptionService {
                 onTheWay++;
             }
             if (missing > 0) {
-                lacking.add(Map.entry(missing, missing + " " + resource.getName()));
+                lacking.add(Map.entry(missing, missing + " " + ItemNames.of(resource.getItemStack())));
             }
         }
         List<String> missing = lacking.stream()
@@ -542,6 +546,13 @@ public final class PerceptionService {
                 .map(Map.Entry::getValue)
                 .toList();
         facts.construction(project, missing, onTheWay);
+    }
+
+    /** A ledger line with the material's English name followed by its names in the players' languages. */
+    private static String translated(String line, Map<String, net.minecraft.world.item.ItemStack> stacks) {
+        int colon = line.indexOf(':');
+        var stack = colon < 0 ? null : stacks.get(line.substring(0, colon));
+        return stack == null ? line : ItemNames.of(stack) + line.substring(colon);
     }
 
     private static List<ColonistFacts.Relative> family(ICitizenData citizen) {

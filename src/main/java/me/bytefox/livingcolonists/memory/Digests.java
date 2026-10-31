@@ -263,9 +263,20 @@ public final class Digests {
 
     /** The same; {@code fromListener} tells the facts the listener told themselves. */
     public static Optional<Fact> pickRumor(List<Fact> facts, Predicate<Fact> fromListener, Random random) {
+        return pickRumor(facts, fromListener, "", "", random);
+    }
+
+    /**
+     * The same for the colonist {@code self} ({@link Fact#aboutCitizen}) named {@code name}: a fact about themself
+     * is not gossip ("I heard I haven't decided yet", 0.3.2).
+     */
+    public static Optional<Fact> pickRumor(List<Fact> facts, Predicate<Fact> fromListener, String self, String name,
+                                           Random random) {
         List<Fact> eligible = facts.stream()
                 .filter(fact -> fact.isPrivate() && !fact.told() && fact.importance() >= 2
-                        && !fromListener.test(fact) && !isSecret(fact))
+                        && !fromListener.test(fact) && !isSecret(fact)
+                        && !(!self.isEmpty() && fact.about().equals(self))
+                        && !(!name.isEmpty() && fact.text().startsWith(name)))
                 .toList();
         int total = eligible.stream().mapToInt(Fact::importance).sum();
         if (total == 0) {
