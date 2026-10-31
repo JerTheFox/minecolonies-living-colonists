@@ -5,6 +5,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- Asked how much food there is, colonists counted only the warehouse and said there was none while the restaurant was full. The restaurant's food now counts too.
+- Asked how much of an item there is, colonists now also say which buildings keep some of it for their work (up to three, most first), apart from the warehouse count: "none in the warehouse, the smeltery has 64".
+- "All clear" or "back to work" after "everyone go home" now sends the colonists back to work at once; before, they stayed home until the order ran out. When some colonists can't go home (no home, too far away), the answer names them.
+- News of a raid no longer waits for a long talk with a player to end: it comes as soon as a colonist has answered the player's last message. A raid that is over before anyone brought it up is not told as happening "right now".
+
 ## [0.3.2] - 2026-10-31
 
 ### Added

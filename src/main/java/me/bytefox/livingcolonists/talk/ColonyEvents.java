@@ -86,6 +86,7 @@ public final class ColonyEvents {
     private final Map<Integer, Deque<Queued>> waiting = new HashMap<>();
     /** How long an event waits for its turn: five minutes, ten for a death or a raid. */
     private static final long WAIT_TICKS = 5 * 60 * 20;
+    private static final String RAID = "Raiders are attacking the colony right now!";
     private static final long URGENT_WAIT_TICKS = 10 * 60 * 20;
     private static final int MAX_WAITING = 5;
 
@@ -174,6 +175,7 @@ public final class ColonyEvents {
             try {
                 List<Event> events = newEvents(colony);
                 for (Event event : events) {
+                    ModLog.action("Colony {} noticed: {}", colony.getName(), event.what());
                     ModEvents.BUS.post(new GameEvents.ColonyHappened(colony, event.what(), event.building(), event.urgent()));
                 }
                 long now = server.getTickCount();
@@ -227,7 +229,14 @@ public final class ColonyEvents {
         boolean raid = Colonies.isRaided(colony);
         Boolean wasRaided = raided.put(colony.getID(), raid);
         if (wasRaided != null && raid != wasRaided) {
-            Event event = new Event(raid ? "Raiders are attacking the colony right now!"
+            if (!raid) {
+                // A raid over before anyone brought it up is no longer "right now" (0.3.1: told after the fight).
+                Deque<Queued> queue = waiting.get(colony.getID());
+                if (queue != null && queue.removeIf(queued -> queued.event().what().startsWith(RAID))) {
+                    Counters.add("events.expired");
+                }
+            }
+            Event event = new Event(raid ? RAID
                     : "The raid on the colony is over.", guards(colony));
             events.add(raid ? event.urgently() : event);
         }

@@ -151,6 +151,8 @@ public final class ColonyThreads {
         /** Server tick and game time of the player's last message. */
         long playerTick = Long.MIN_VALUE / 2;
         long playerGameTime;
+        /** Server tick a colonist last answered the player: after {@link #playerTick}, nobody's answer is pending. */
+        long answeredTick = Long.MIN_VALUE / 2;
     }
 
     ColonyThreads(TalkService talk, PromptLibrary prompts, MemoryService memory, PersonalityService personalities,
@@ -306,9 +308,10 @@ public final class ColonyThreads {
         long now = server.getTickCount();
         Thread existing = threads.get(colony.getID());
         if (existing != null) {
-            boolean playerTalking = now - existing.playerTick < ACTIVE_TICKS;
+            // A raid or a death waits only for the answer to the player's last message, not for the whole talk.
+            boolean playerWaiting = now - existing.playerTick < ACTIVE_TICKS && existing.answeredTick < existing.playerTick;
             boolean talking = now - existing.lastLineTick < IDLE_TICKS;
-            if (talking && (!urgent || playerTalking) || !urgent && now - existing.lastEventTick < EVENT_GAP_TICKS) {
+            if (talking && (!urgent || playerWaiting) || !urgent && now - existing.lastEventTick < EVENT_GAP_TICKS) {
                 return false;
             }
         }
@@ -593,6 +596,7 @@ public final class ColonyThreads {
         }
         if (answeringPlayer) {
             thread.lastAnswerer = speaker.citizenId();
+            thread.answeredTick = server.getTickCount();
         }
         ServerPlayer author = thread.lastPlayer == null ? null : server.getPlayerList().getPlayer(thread.lastPlayer);
         typing.stop(server, speaker);

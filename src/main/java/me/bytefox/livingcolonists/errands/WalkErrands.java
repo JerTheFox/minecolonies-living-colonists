@@ -45,7 +45,8 @@ public final class WalkErrands {
                 command("wait_here", "Stay where you are (\"wait here\") for a few minutes.",
                         Map.of(), (c, a) -> self(walks, c, Walks.Kind.WAIT, null, 5, 0, "on the spot")),
                 command("stop_walking", "Stop walking, following or waiting and go back to your work (\"stop\", "
-                        + "\"you can go\"); with everyone, all colonists the player sent off go back.",
+                        + "\"you can go\"); with everyone, all colonists the player sent off go back, also on the all clear after a raid "
+                        + "(\"all clear\", \"back to work\").",
                         Map.of("who", "me, or everyone"), (c, a) -> stop(walks, c, Errand.string(a, "who"))),
                 command("go_to", "Walk to a building of the colony (\"go to the hospital\") and stay there a minute.",
                         Map.of("building", "The building in plain English words, like hospital or warehouse"),
@@ -58,7 +59,8 @@ public final class WalkErrands {
                         Map.of("who", "everyone, unemployed, or a profession in plain English words",
                                 "where", "here, or a building in plain English words"),
                         (c, a) -> gather(walks, c, Errand.string(a, "who"), Errand.string(a, "where"))),
-                command("everyone_home", "Send every colonist but the guards home (\"everyone go home\").",
+                command("everyone_home", "Send every colonist but the guards home (\"everyone go home\", \"raid, hide\"); "
+                        + "they stay home a few minutes, or until the player gives the all clear (stop_walking with everyone).",
                         Map.of(), (c, a) -> home(walks, c)),
                 command("lead_me", "Lead the player to a building or a colonist (\"take me to the bakery\"), "
                         + "waiting when they fall behind.",
@@ -194,17 +196,26 @@ public final class WalkErrands {
         ServerPlayer player = context.player();
         MinecraftServer server = player.server;
         int going = 0;
+        List<String> homeless = new ArrayList<>();
+        List<String> away = new ArrayList<>();
         for (ICitizenData citizen : context.colony().getCitizenManager().getCitizens()) {
             IBuilding home = citizen.getHomeBuilding();
             if (citizen.getJob() != null && citizen.getJob().isGuard()) {
                 continue;
             }
-            if (home != null && walks.start(server, citizen, player.getUUID(), Walks.Kind.TO_POS, home.getPosition(),
+            if (home == null) {
+                homeless.add(citizen.getName());
+            } else if (walks.start(server, citizen, player.getUUID(), Walks.Kind.TO_POS, home.getPosition(),
                     5 * Walks.MINUTE, Walks.MINUTE, "home")) {
                 going++;
+            } else {
+                away.add(citizen.getName());
             }
         }
-        return ok(going + " colonists go home.");
+        // Whoever can't go home is named, so the answer doesn't promise everyone is safe (raid, 0.3.1).
+        return ok(going + " colonists go home."
+                + (homeless.isEmpty() ? "" : " No home to go to: " + String.join(", ", homeless) + ".")
+                + (away.isEmpty() ? "" : " Too far away to hear: " + String.join(", ", away) + "."));
     }
 
     private static JsonObject lead(Walks walks, Errand.Context context, String to) {

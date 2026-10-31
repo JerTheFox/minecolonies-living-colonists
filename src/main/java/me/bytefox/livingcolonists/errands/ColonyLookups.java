@@ -65,7 +65,7 @@ public final class ColonyLookups {
                 lookup("build_status", "What the builders are building or have waiting: each work order, who took it "
                         + "and what material it still lacks.", null, null,
                         (context, arguments) -> builds(context.colony(), perception)),
-                lookup("food_status", "How much food the warehouses hold, roughly how many days it lasts the colony, "
+                lookup("food_status", "How much food the warehouses and the restaurant hold, roughly how many days it lasts the colony, "
                         + "and who is hungry.", null, null,
                         (context, arguments) -> food(context.colony(), perception)),
                 lookup("fallen_colonists", "The colonists who died, newest last, and how, from the colony's own records.",
@@ -181,28 +181,23 @@ public final class ColonyLookups {
     }
 
     private static JsonObject food(IColony colony, PerceptionService perception) {
-        int items = 0;
-        int nutrition = 0;
+        // {items, nutrition} in the warehouses' racks and in the restaurant (its hut and racks).
+        int[] warehouses = new int[2];
+        int[] restaurants = new int[2];
         for (IBuilding building : colony.getServerBuildingManager().getBuildings().values()) {
-            if (!building.getBuildingType().getRegistryName().getPath().equals("warehouse")) {
-                continue;
-            }
-            for (BlockPos pos : building.getContainers()) {
-                BlockEntity entity = colony.getWorld().getBlockEntity(pos);
-                if (!(entity instanceof AbstractTileEntityRack rack)) {
-                    continue;
-                }
-                var inventory = rack.getInventory();
-                for (int slot = 0; slot < inventory.getSlots(); slot++) {
-                    var stack = inventory.getStackInSlot(slot);
-                    FoodProperties food = stack.get(DataComponents.FOOD);
-                    if (food != null) {
-                        items += stack.getCount();
-                        nutrition += food.nutrition() * stack.getCount();
+            String path = building.getBuildingType().getRegistryName().getPath();
+            if (path.equals("warehouse")) {
+                for (BlockPos pos : building.getContainers()) {
+                    BlockEntity entity = colony.getWorld().getBlockEntity(pos);
+                    if (entity instanceof AbstractTileEntityRack rack) {
+                        addFood(rack.getInventory(), warehouses);
                     }
                 }
+            } else if (path.equals("cook") && building.getItemHandlerCap() != null) {
+                addFood(building.getItemHandlerCap(), restaurants);
             }
         }
+        int nutrition = warehouses[1] + restaurants[1];
         int colonists = colony.getCitizenManager().getCitizens().size();
         JsonArray hungry = new JsonArray();
         boolean restaurant = colony.getServerBuildingManager().getBuildings().values().stream()
@@ -213,11 +208,23 @@ public final class ColonyLookups {
             }
         }
         JsonObject reply = ok();
-        reply.addProperty("food_items_in_warehouses", items);
+        reply.addProperty("food_items_in_warehouses", warehouses[0]);
+        reply.addProperty("food_items_in_restaurant", restaurants[0]);
         reply.addProperty("days_it_lasts_roughly", colonists == 0 ? 0 : nutrition / (colonists * NUTRITION_PER_DAY));
         reply.addProperty("restaurant", restaurant);
         reply.add("hungry_now", hungry);
         return reply;
+    }
+
+    private static void addFood(net.neoforged.neoforge.items.IItemHandler inventory, int[] into) {
+        for (int slot = 0; slot < inventory.getSlots(); slot++) {
+            var stack = inventory.getStackInSlot(slot);
+            FoodProperties food = stack.get(DataComponents.FOOD);
+            if (food != null) {
+                into[0] += stack.getCount();
+                into[1] += food.nutrition() * stack.getCount();
+            }
+        }
     }
 
     private static JsonObject where(Errand.Context context, String what) {
