@@ -24,6 +24,9 @@ import java.util.List;
  * @param missingMaterials materials the construction still lacks, e.g. "32 Oak Planks"
  * @param materialsOnTheWay kinds of material already being delivered to the builder
  * @param materialLedger  the construction's materials as the resource scroll shows them: used, at hand, on the way
+ * @param waitingOrders   for a builder with nothing to build: the colony's build orders no builder has taken yet
+ * @param newJob          the job MineColonies gave a moment ago, null if none or not new
+ * @param lostJob         the job MineColonies took a moment ago, null if none or not new
  */
 public record ColonistFacts(String job, int workplaceLevel, int workplaceMaxLevel, List<String> workNotes,
                             List<String> availableWork, List<String> missingWork,
@@ -31,7 +34,8 @@ public record ColonistFacts(String job, int workplaceLevel, int workplaceMaxLeve
                             boolean beingTreated, double happiness, List<String> unhappyAbout, int requestsUnderway,
                             List<String> stuckRequests, List<String> playerMustBring, String construction,
                             List<String> missingMaterials, int materialsOnTheWay, String weather, int colonySize, int unemployed, int homeless,
-                            boolean raid, List<Relative> family, List<Relative> coworkers, List<String> materialLedger) {
+                            boolean raid, List<Relative> family, List<Relative> coworkers, List<String> materialLedger,
+                            List<String> waitingOrders, String newJob, String lostJob) {
 
     /** Where a hungry colonist can get food without the player. */
     public enum Food {
@@ -81,6 +85,9 @@ public record ColonistFacts(String job, int workplaceLevel, int workplaceMaxLeve
         private List<Relative> family = List.of();
         private List<Relative> coworkers = List.of();
         private List<String> materialLedger = List.of();
+        private List<String> waitingOrders = List.of();
+        private String newJob;
+        private String lostJob;
 
         public Builder job(String job) { this.job = job; return this; }
         public Builder workplaceLevel(int level) { this.workplaceLevel = level; return this; }
@@ -112,6 +119,8 @@ public record ColonistFacts(String job, int workplaceLevel, int workplaceMaxLeve
             return this;
         }
         public Builder materialLedger(List<String> lines) { this.materialLedger = List.copyOf(lines); return this; }
+        public Builder waitingOrders(List<String> orders) { this.waitingOrders = List.copyOf(orders); return this; }
+        public Builder newJob(String given, String taken) { this.newJob = given; this.lostJob = taken; return this; }
         public Builder weather(String weather) { this.weather = weather; return this; }
         public Builder colony(int size, int unemployed, int homeless, boolean raid) {
             this.colonySize = size;
@@ -127,7 +136,7 @@ public record ColonistFacts(String job, int workplaceLevel, int workplaceMaxLeve
             return new ColonistFacts(job, workplaceLevel, workplaceMaxLevel, workNotes, availableWork, missingWork, homeLevel, saturation, food, health,
                     sickness, beingTreated, happiness, unhappyAbout, requestsUnderway, stuckRequests, playerMustBring,
                     construction, missingMaterials, materialsOnTheWay, weather, colonySize,
-                    unemployed, homeless, raid, family, coworkers, materialLedger);
+                    unemployed, homeless, raid, family, coworkers, materialLedger, waitingOrders, newJob, lostJob);
         }
     }
 }

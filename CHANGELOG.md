@@ -8,6 +8,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Fixed
 
 - Colonists called over several at once ("the unemployed, come to me") come instead of asking where the player is.
+- Right after a build order, a builder no longer says everything has been delivered. A builder with no order of his own knows which orders nobody has taken yet, and that their materials aren't counted until one is started.
+- A reply with "you" and no name, soon after a colonist's line, goes to that colonist.
+- Colonists no longer bring up a reminder early from memory; the note delivers it when it's due.
+- A colonist the colony has just given a job, or taken one from, knows it at once and doesn't argue otherwise.
 
 ## [0.2.3] - 2026-10-31
 

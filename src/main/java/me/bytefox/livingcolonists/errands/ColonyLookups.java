@@ -143,8 +143,9 @@ public final class ColonyLookups {
         for (ICitizenData citizen : colony.getCitizenManager().getCitizens()) {
             ColonistFacts facts = perception.facts(citizen);
             if (facts.construction() != null) {
-                add(lacking, citizen.getName() + " is on " + facts.construction() + (facts.missingMaterials().isEmpty()
-                        ? ", with everything at hand" : ", still lacking " + String.join(", ", facts.missingMaterials()))
+                add(lacking, citizen.getName() + " is on " + facts.construction() + (!facts.missingMaterials().isEmpty()
+                        ? ", still lacking " + String.join(", ", facts.missingMaterials())
+                        : facts.materialLedger().isEmpty() ? ", materials not counted yet" : ", with everything at hand")
                         + (facts.materialLedger().isEmpty() ? "" : ". Materials: " + String.join("; ", facts.materialLedger())));
             }
         }

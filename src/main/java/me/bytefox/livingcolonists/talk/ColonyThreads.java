@@ -75,6 +75,8 @@ public final class ColonyThreads {
     private static final long INTERJECT_TICKS = 12 * 20;
     /** How many colonists in a row may stay silent on a player's message before the colony lets it be. */
     private static final int MAX_SILENT = 2;
+    /** A "you" without a name this soon after a colonist's line answers that colonist, in ticks. */
+    private static final long REPLY_TICKS = 60 * 20;
     /** A thread with no line for this long (one minute) is over. */
     private static final long IDLE_TICKS = 1200;
     /** A colony brings up an event at most once in this many ticks (five minutes). */
@@ -328,6 +330,8 @@ public final class ColonyThreads {
         thread.chatter = null;
         thread.addressed.clear();
         thread.askedByPlayer.clear();
+        int previousSpeaker = thread.lastSpeaker;
+        long previousLine = thread.lastLineTick;
         thread.lastSpeaker = -1;
         thread.lastPlayer = player.getUUID();
         thread.playerTick = server.getTickCount();
@@ -348,6 +352,15 @@ public final class ColonyThreads {
         Collections.shuffle(byJob, random);
         List<Integer> chosen = new ArrayList<>(Addressing.allMentioned(message, names));
         byJob.stream().filter(index -> !chosen.contains(index)).forEach(chosen::add);
+        if (chosen.isEmpty() && previousSpeaker >= 0 && server.getTickCount() - previousLine <= REPLY_TICKS
+                && Addressing.secondPerson(message)) {
+            // "You first make the ground floor livable" answers whoever just spoke, not the router's guess.
+            for (int i = 0; i < citizens.size(); i++) {
+                if (citizens.get(i).getId() == previousSpeaker) {
+                    chosen.add(i);
+                }
+            }
+        }
         // A question to everyone still goes to the router: it may be about one profession's work.
         if (!chosen.isEmpty() || Addressing.toEveryone(message) && !message.contains("?")) {
             List<Integer> picked = chosen.stream().limit(MAX_ADDRESSED).toList();

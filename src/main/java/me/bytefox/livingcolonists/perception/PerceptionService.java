@@ -87,6 +87,8 @@ public final class PerceptionService {
     private final BuildLedger ledger = new BuildLedger();
     /** Each colonist's day as code saw it, by {@code colonyId:citizenId}; not saved, a day is short. */
     private final Map<String, DiaryBook> diaries = new HashMap<>();
+    /** Each colonist's job as last seen, by {@code colonyId:citizenId}, for a job given or taken just now. */
+    private final JobLog jobs = new JobLog();
 
     /** The {@code {situation}} block for a reply prompt, at the configured perception level. */
     public String situation(ICitizenData citizen) {
@@ -120,6 +122,11 @@ public final class PerceptionService {
             long gameTime = colony.getWorld().getGameTime();
             long dayTime = colony.getWorld().getDayTime();
             for (ICitizenData citizen : colony.getCitizenManager().getCitizens()) {
+                try {
+                    jobs.note(colony.getID() + ":" + citizen.getId(), jobTitle(citizen), gameTime);
+                } catch (RuntimeException e) {
+                    // A job MineColonies can't name now is noted next time.
+                }
                 if (citizen.getEntity().isEmpty()) {
                     continue;
                 }
@@ -139,10 +146,16 @@ public final class PerceptionService {
 
     public void forget(Predicate<String> key) {
         diaries.keySet().removeIf(key);
+        jobs.forget(key);
     }
 
     public void clear() {
         diaries.clear();
+        jobs.clear();
+    }
+
+    private static String jobTitle(ICitizenData citizen) {
+        return citizen.getJob() == null ? null : Prompts.jobName(citizen.getJob().getJobRegistryEntry().getKey().getPath());
     }
 
     /** What the colonist is doing, as MineColonies shows it over their head. */
@@ -180,8 +193,12 @@ public final class PerceptionService {
         ColonistFacts.Builder facts = ColonistFacts.builder();
         IColony colony = citizen.getColony();
         safely("job", () -> {
-            facts.job(citizen.getJob() == null ? null
-                    : Prompts.jobName(citizen.getJob().getJobRegistryEntry().getKey().getPath()));
+            facts.job(jobTitle(citizen));
+            JobLog.Change change = colony.getWorld() == null ? null
+                    : jobs.recent(colony.getID() + ":" + citizen.getId(), colony.getWorld().getGameTime());
+            if (change != null) {
+                facts.newJob(change.to(), change.from());
+            }
             IBuilding work = citizen.getWorkBuilding();
             facts.workplaceLevel(work == null ? 0 : work.getBuildingLevel());
             facts.workplaceMaxLevel(work == null ? 0 : work.getMaxBuildingLevel());
@@ -430,7 +447,16 @@ public final class PerceptionService {
 
     /** What a builder is building and which materials it still lacks, as the builder's hut tracks them. */
     private static void construction(ICitizenData citizen, ColonistFacts.Builder facts, BuildLedger ledger) {
-        if (!(citizen.getWorkBuilding() instanceof AbstractBuildingStructureBuilder builder) || !builder.hasWorkOrder()) {
+        if (!(citizen.getWorkBuilding() instanceof AbstractBuildingStructureBuilder builder)) {
+            return;
+        }
+        if (!builder.hasWorkOrder()) {
+            // Orders nobody took yet: their materials aren't counted until a builder starts one.
+            facts.waitingOrders(citizen.getColony().getWorkManager().getWorkOrders().values().stream()
+                    .filter(order -> !order.isClaimed())
+                    .limit(MAX_LISTED)
+                    .map(order -> ItemNames.named(order.getDisplayName()) + ", level " + order.getTargetLevel())
+                    .toList());
             return;
         }
         var order = builder.getWorkOrder();

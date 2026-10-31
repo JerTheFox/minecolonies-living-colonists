@@ -49,6 +49,12 @@ public final class Situation {
         } else {
             lines.add("- You are a " + facts.job() + workplace(facts) + ".");
         }
+        if (facts.newJob() != null) {
+            lines.add("- The colony just made you a " + facts.newJob() + (facts.lostJob() == null ? "" : " (you were a "
+                    + facts.lostJob() + " before)") + ". This is a fact, whatever was said in the talk before it.");
+        } else if (facts.lostJob() != null) {
+            lines.add("- You are no longer a " + facts.lostJob() + ": the colony took that job from you just now.");
+        }
         for (String note : facts.workNotes()) {
             lines.add("- " + note);
         }
@@ -72,15 +78,20 @@ public final class Situation {
 
     private static void supplies(ColonistFacts facts, List<String> lines) {
         if (facts.construction() != null) {
-            lines.add("- You are working on: " + facts.construction() + "." + (facts.missingMaterials().isEmpty()
-                    ? " You have all the materials for it."
+            boolean counted = !facts.missingMaterials().isEmpty() || !facts.materialLedger().isEmpty();
+            lines.add("- You are working on: " + facts.construction() + "." + (!counted
+                    ? " Your resource scroll has no materials for it yet, so you don't know yet what it needs: don't say"
+                    + " everything is there."
+                    : facts.missingMaterials().isEmpty() ? " You have all the materials for it."
                     : " Still missing: " + String.join(", ", facts.missingMaterials()) + ".")
                     + (facts.materialsOnTheWay() > 0 ? " Some of it is already being delivered." : ""));
             if (!facts.materialLedger().isEmpty()) {
                 lines.add("- Its materials, as your resource scroll shows them: " + String.join("; ", facts.materialLedger()) + ".");
             }
         } else if ("builder".equals(facts.job())) {
-            lines.add("- You have no construction order right now.");
+            lines.add("- You have no construction order right now." + (facts.waitingOrders().isEmpty() ? ""
+                    : " The colony has build orders no builder has taken yet: " + String.join(", ", facts.waitingOrders())
+                    + ". Nobody has started them, so you don't know yet what materials they need; say so if asked."));
         }
         if (!facts.playerMustBring().isEmpty()) {
             lines.add("- Nobody in the colony can provide " + String.join(", ", facts.playerMustBring())

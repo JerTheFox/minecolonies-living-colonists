@@ -1,6 +1,7 @@
 package me.bytefox.livingcolonists.talk;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -118,5 +119,15 @@ class AddressingTest {
         assertTrue(Addressing.toEveryone("Всем привет!"));
         assertTrue(Addressing.toEveryone("Hey everyone, raid tonight"));
         assertTrue(!Addressing.toEveryone("Adair, go plant some wheat"));
+    }
+
+    @Test
+    void youWithoutANameIsForOnePerson() {
+        assertTrue(Addressing.secondPerson("ты сначала первый этаж обживи"));
+        assertTrue(Addressing.secondPerson("А тебе это зачем?"));
+        assertTrue(Addressing.secondPerson("are you sure about that"));
+        assertFalse(Addressing.secondPerson("вы там живы?"));
+        assertFalse(Addressing.secondPerson("are you guys alive?"));
+        assertFalse(Addressing.secondPerson("строители стройте столовую"));
     }
 }

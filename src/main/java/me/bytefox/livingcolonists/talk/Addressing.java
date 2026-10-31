@@ -53,6 +53,15 @@ public final class Addressing {
         return words(message).stream().anyMatch(EVERYONE::contains);
     }
 
+    /** "You" to one person ("ты", "тебе", "you"), not to several ("вы", "you guys"): ё and э read as е. */
+    private static final Set<String> YOU_ONE = Set.of("ты", "тебя", "тебе", "тобой", "тобою", "твои", "твой",
+            "твоя", "твое", "твоего", "твоей", "твоих", "твоим", "твоими", "твою", "you", "your", "yours", "yourself");
+
+    /** Whether the message speaks to one person as "you", for a reply to whoever just spoke. */
+    public static boolean secondPerson(String message) {
+        return !toEveryone(message) && words(message).stream().anyMatch(YOU_ONE::contains);
+    }
+
     /** The first colonist named in the message, like {@link #allMentioned}. */
     public static OptionalInt mentioned(String message, List<String> names) {
         List<Integer> all = allMentioned(message, names);

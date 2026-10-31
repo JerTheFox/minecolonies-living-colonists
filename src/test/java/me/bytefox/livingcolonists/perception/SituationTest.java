@@ -92,6 +92,31 @@ class SituationTest {
     }
 
     @Test
+    void aBuilderWithoutTheMaterialsListDoesNotClaimEverythingIsThere() {
+        String text = Situation.render(builder().construction("the Dining Hall, level 1", List.of(), 0).build(), Level.LOW);
+        assertFalse(text.contains("all the materials"), text);
+        assertTrue(text.contains("don't know yet what it needs"), text);
+        String counted = Situation.render(builder().construction("the Dining Hall, level 1", List.of(), 0)
+                .materialLedger(List.of("Oak Planks: 64 of 64 used, nothing more to bring")).build(), Level.LOW);
+        assertTrue(counted.contains("all the materials"), counted);
+    }
+
+    @Test
+    void aBuilderKnowsOrdersNobodyHasTakenYet() {
+        String text = Situation.render(builder().waitingOrders(List.of("the Dining Hall, level 1")).build(), Level.LOW);
+        assertTrue(text.contains("no construction order"), text);
+        assertTrue(text.contains("the Dining Hall, level 1"), text);
+        assertTrue(text.contains("don't know yet what materials"), text);
+    }
+
+    @Test
+    void aJobGivenJustNowIsSaidPlainly() {
+        String text = Situation.render(builder().job("cook").newJob("cook", null).build(), Level.LOW);
+        assertTrue(text.contains("just made you a cook"), text);
+        assertTrue(Situation.render(builder().job(null).newJob(null, "cook").build(), Level.LOW).contains("no longer a cook"));
+    }
+
+    @Test
     void thingsNobodyCanProvideAreThePlayersJob() {
         String text = Situation.render(builder().playerMustBring(List.of("64 Cobblestone")).build(), Level.LOW);
         assertTrue(text.contains("64 Cobblestone"), text);
