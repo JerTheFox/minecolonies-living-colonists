@@ -5,7 +5,7 @@ import java.util.Optional;
 
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
-import com.minecolonies.api.colony.IColonyManager;
+import me.bytefox.livingcolonists.colony.Colonies;
 import me.bytefox.livingcolonists.Config;
 import me.bytefox.livingcolonists.network.SpeechBubble;
 import net.minecraft.server.level.ServerPlayer;
@@ -41,7 +41,7 @@ public final class Bubbles {
 
     /** A colonist's entity, if it is loaded. */
     static Optional<Entity> colonist(int colonyId, int citizenId) {
-        for (IColony colony : IColonyManager.getInstance().getAllColonies()) {
+        for (IColony colony : Colonies.all()) {
             if (colony.getID() == colonyId) {
                 ICitizenData citizen = colony.getCitizenManager().getCivilian(citizenId);
                 return citizen == null ? Optional.empty() : citizen.getEntity().map(entity -> entity);

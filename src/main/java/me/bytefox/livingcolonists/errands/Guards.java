@@ -26,7 +26,7 @@ import com.minecolonies.core.colony.buildings.modules.settings.GuardTaskSetting;
 import com.minecolonies.core.colony.buildings.modules.settings.StringSetting;
 import com.minecolonies.core.colony.jobs.AbstractJobGuard;
 import com.minecolonies.core.entity.ai.workers.guard.AbstractEntityAIGuard;
-import me.bytefox.livingcolonists.LivingColonists;
+import me.bytefox.livingcolonists.ModLog;
 import me.bytefox.livingcolonists.llm.ToolSpec;
 import me.bytefox.livingcolonists.talk.TalkService;
 import net.minecraft.core.BlockPos;
@@ -198,7 +198,7 @@ public final class Guards {
                 .map(Map.Entry::getKey).toList();
         for (BlockPos pos : over) {
             restore(pos);
-            LivingColonists.LOGGER.info("Guard tower at {} is back to its own duty", pos.toShortString());
+            ModLog.action("Guard tower at {} is back to its own duty", pos.toShortString());
         }
     }
 

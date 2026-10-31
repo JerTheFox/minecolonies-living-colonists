@@ -118,9 +118,9 @@ class PromptsTest {
     @Test
     void changingTheSubjectPicksATopicTheThreadHasntHad() {
         Random random = new Random(3);
-        java.util.Set<String> used = new java.util.HashSet<>(Prompts.TOPICS.subList(1, Prompts.TOPICS.size()));
+        java.util.Set<String> used = new java.util.HashSet<>(Prompts.topics().subList(1, Prompts.topics().size()));
         String steer = Prompts.steer(random, used);
-        assertEquals(Prompts.TOPICS.get(0), Prompts.topicOf(steer));
+        assertEquals(Prompts.topics().get(0), Prompts.topicOf(steer));
         java.util.Set<String> seen = new java.util.HashSet<>();
         for (int i = 0; i < 300; i++) {
             seen.add(Prompts.topicOf(Prompts.steer(random, java.util.List.of())));

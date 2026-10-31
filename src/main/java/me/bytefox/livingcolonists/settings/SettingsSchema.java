@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import me.bytefox.livingcolonists.Config;
 import me.bytefox.livingcolonists.behaviour.Levels;
+import me.bytefox.livingcolonists.behaviour.LogLevel;
 import me.bytefox.livingcolonists.behaviour.Profile;
 import me.bytefox.livingcolonists.settings.Setting.Kind;
 import me.bytefox.livingcolonists.settings.Setting.Tab;
@@ -51,11 +52,17 @@ public final class SettingsSchema {
             new Setting("playerNames", Tab.BEHAVIOUR, Kind.of(Type.LIST),
                     () -> String.join("\n", Config.PLAYER_NAMES.get()),
                     value -> Config.PLAYER_NAMES.set(value.isEmpty() ? List.of() : List.of(value.split("\n")))),
+            new Setting("extraAdvancements", Tab.BEHAVIOUR, Kind.of(Type.LIST),
+                    () -> String.join("\n", Config.EXTRA_ADVANCEMENTS.get()),
+                    value -> Config.EXTRA_ADVANCEMENTS.set(value.isEmpty() ? List.of() : List.of(value.split("\n")))),
             bool("speechBubbles", Tab.BEHAVIOUR, Config.SPEECH_BUBBLES),
             bool("playerBubbles", Tab.BEHAVIOUR, Config.PLAYER_BUBBLES),
             number("bubbleRange", Tab.BEHAVIOUR, Config.BUBBLE_RANGE, 8, 64),
             bool("colonyChatAnywhere", Tab.BEHAVIOUR, Config.COLONY_CHAT_ANYWHERE),
             bool("membersOnly", Tab.BEHAVIOUR, Config.MEMBERS_ONLY),
+            new Setting("logLevel", Tab.BEHAVIOUR, new Kind(Type.CHOICE, 0, 0,
+                    Arrays.stream(LogLevel.values()).map(Enum::name).toList()),
+                    () -> Config.LOG_LEVEL.get().name(), value -> Config.LOG_LEVEL.set(LogLevel.valueOf(value))),
             number("messagesPerPlayerPerHour", Tab.LIMITS, Config.MESSAGES_PER_PLAYER_PER_HOUR, 0, 100000),
             new Setting("tokensPerDay", Tab.LIMITS, new Kind(Type.LONG, 0, Long.MAX_VALUE, List.of()),
                     () -> String.valueOf(Config.TOKENS_PER_DAY.get()), value -> Config.TOKENS_PER_DAY.set(Long.parseLong(value))));

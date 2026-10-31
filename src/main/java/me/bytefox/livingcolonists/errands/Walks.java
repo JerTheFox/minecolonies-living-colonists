@@ -26,7 +26,7 @@ import com.minecolonies.api.entity.ai.statemachine.states.IState;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
 import com.minecolonies.core.entity.citizen.EntityCitizen;
 import com.minecolonies.core.entity.pathfinding.navigation.EntityNavigationUtils;
-import me.bytefox.livingcolonists.LivingColonists;
+import me.bytefox.livingcolonists.ModLog;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -113,7 +113,7 @@ public final class Walks {
         Walk walk = new Walk(citizen, player, kind, target, server.getTickCount() + duration, holdAfter, what);
         walk.arrived = arrived;
         walks.put(entity.get().getUUID(), walk);
-        LivingColonists.LOGGER.info("{} walks: {} {}", citizen.getName(), kind, what);
+        ModLog.action("{} walks: {} {}", citizen.getName(), kind, what);
         return true;
     }
 

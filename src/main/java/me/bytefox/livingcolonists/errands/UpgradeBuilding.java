@@ -30,7 +30,8 @@ public final class UpgradeBuilding implements Errand {
     @Override
     public ToolSpec spec() {
         return Errands.orderSpec(name(), "Order the builders to build a colony building's next level. A building placed but not built yet "
-                + "(level 0) gets built for the first time this way: \"build the hut\", \"start building it\" mean this too.",
+                + "(level 0) gets built for the first time this way: \"build the hut\", \"start building it\", \"take the order for "
+                + "the hut\" mean this too: the order is placed by calling this, it doesn't exist before.",
                 Map.of("building", "The building in plain words, in English, like bakery, warehouse or town hall"));
     }
 

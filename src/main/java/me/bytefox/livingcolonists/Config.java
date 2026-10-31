@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import me.bytefox.livingcolonists.behaviour.LogLevel;
 import me.bytefox.livingcolonists.behaviour.Level;
 import me.bytefox.livingcolonists.behaviour.Levels;
 import me.bytefox.livingcolonists.behaviour.Module;
@@ -230,6 +231,15 @@ public final class Config {
                     "Steve=Steven,Stevie; Alex=Alexandra,Alex. Empty: nicknames.")
             .defineListAllowEmpty("playerNames", List.of(), () -> "Nickname=Name", value -> value instanceof String);
 
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> EXTRA_ADVANCEMENTS = BUILDER
+            .translation("livingcolonists.configuration.extraAdvancements")
+            .comment("More advancements colonists hear about and bring up as hearsay when a player comes back, besides",
+                    "the big ones built in (the dragon, the Wither, diamonds, netherite and more). One entry per advancement:",
+                    "id, or id=what colonists say, in English after \"word has it they\". In this file it is a list, like",
+                    "[\"create:andesite_alloy=learned to make andesite alloy\", \"mymod:boss\"]; on the settings screen",
+                    "separate entries with ';'. Without words, the advancement's title is used. Empty: only the built-in ones.")
+            .defineListAllowEmpty("extraAdvancements", List.of(), () -> "modid:advancement", value -> value instanceof String);
+
     public static final ModConfigSpec.BooleanValue COLONY_CHAT_ANYWHERE = BUILDER
             .translation("livingcolonists.configuration.colonyChatAnywhere")
             .comment("On: colony members (owner, officers, friends) read their colony's chat and write to it from",
@@ -241,6 +251,13 @@ public final class Config {
             .comment("On: only the colony's owner, officers and friends may talk to its colonists, and only the owner and",
                     "officers may give orders. Off: any player inside the colony may. Default on.")
             .define("membersOnly", true);
+
+    public static final ModConfigSpec.EnumValue<LogLevel> LOG_LEVEL = BUILDER
+            .translation("livingcolonists.configuration.logLevel")
+            .comment("How much the mod writes to the server log. ALL: colonists' chat lines, what they do (look-ups, orders,",
+                    "promises, memory) and technical lines. NO_CHAT: the same without the chat lines. TECHNICAL: start-up,",
+                    "settings changes, warnings and errors. OFF: errors only.")
+            .defineEnum("logLevel", LogLevel.ALL);
 
     static {
         BUILDER.pop();

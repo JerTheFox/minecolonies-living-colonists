@@ -164,7 +164,7 @@ public final class ColonyLookups {
             // Placed huts nobody ordered yet: upgrade_building builds them, if the player asks.
             reply.add("placed_not_built_no_order", unbuilt);
             reply.addProperty("info", "Buildings in placed_not_built_no_order exist, at level 0: if the player asks to "
-                    + "build one, that is upgrade_building for it.");
+                    + "build, start or take the order for one, that is upgrade_building for it: no order exists until it is called.");
         }
         return reply;
     }

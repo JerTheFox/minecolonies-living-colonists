@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-import me.bytefox.livingcolonists.LivingColonists;
+import me.bytefox.livingcolonists.ModLog;
 import me.bytefox.livingcolonists.prompt.PromptLibrary;
 
 /**
@@ -40,7 +40,7 @@ public final class ArchetypeLibrary {
                 }
             }
         } catch (IOException e) {
-            LivingColonists.LOGGER.warn("Could not write the default archetypes to {}: {}", directory, e.toString());
+            ModLog.warn("Could not write the default archetypes to {}: {}", directory, e.toString());
         }
         List<Archetype> loaded = new ArrayList<>();
         try (Stream<Path> files = Files.list(directory)) {
@@ -51,11 +51,11 @@ public final class ArchetypeLibrary {
                     loaded.add(Archetypes.parse(id, Files.readString(file, StandardCharsets.UTF_8)));
                 } catch (RuntimeException | IOException e) {
                     // A value of the wrong JSON type (an object for a number) throws more than IllegalArgumentException.
-                    LivingColonists.LOGGER.warn("Skipping archetype {}: {}", file, e.getMessage());
+                    ModLog.warn("Skipping archetype {}: {}", file, e.getMessage());
                 }
             }
         } catch (IOException e) {
-            LivingColonists.LOGGER.warn("Could not read archetypes from {}: {}", directory, e.toString());
+            ModLog.warn("Could not read archetypes from {}: {}", directory, e.toString());
         }
         archetypes = List.copyOf(loaded);
     }

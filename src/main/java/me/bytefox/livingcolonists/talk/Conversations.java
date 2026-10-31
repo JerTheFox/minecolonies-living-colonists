@@ -8,8 +8,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
-import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
+import me.bytefox.livingcolonists.colony.Colonies;
 import me.bytefox.livingcolonists.behaviour.ColonyAccess;
 import me.bytefox.livingcolonists.network.ConversationAction;
 import me.bytefox.livingcolonists.network.ConversationState;
@@ -230,7 +230,7 @@ public final class Conversations {
 
     /** Owner, officer or friend of any colony. */
     private static boolean isMember(ServerPlayer player) {
-        for (IColony colony : IColonyManager.getInstance().getAllColonies()) {
+        for (IColony colony : Colonies.all()) {
             if (TalkService.role(player, colony) != ColonyAccess.Role.OTHER) {
                 return true;
             }

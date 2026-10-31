@@ -386,9 +386,21 @@ public final class DebugCommand {
         return Config.level(module).name().toLowerCase(Locale.ROOT);
     }
 
+    /** What the mod did since the server started: lines by kind, lines held back, events gone stale and more. */
+    private static void showCounters(CommandSourceStack source) {
+        Map<String, Long> counts = Counters.snapshot();
+        if (counts.isEmpty()) {
+            return;
+        }
+        StringBuilder text = new StringBuilder();
+        counts.forEach((key, count) -> text.append(text.isEmpty() ? "" : ", ").append(key).append(' ').append(count));
+        source.sendSuccess(() -> Component.translatable("livingcolonists.debug.stats.counters", text.toString()), false);
+    }
+
     private static int showStats(CommandSourceStack source, UsageStats stats) {
         Map<String, UsageStats.Counts> session = stats.session();
         Map<String, UsageStats.Counts> total = stats.total();
+        showCounters(source);
         if (total.isEmpty()) {
             source.sendSuccess(() -> Component.translatable("livingcolonists.debug.stats.empty"), false);
             return 0;

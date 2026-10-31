@@ -2,7 +2,7 @@ package me.bytefox.livingcolonists.talk;
 
 import java.util.Collection;
 
-import me.bytefox.livingcolonists.LivingColonists;
+import me.bytefox.livingcolonists.ModLog;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -17,19 +17,19 @@ import net.minecraft.server.level.ServerPlayer;
 public final class ChatSpeechOutput implements SpeechOutput {
     @Override
     public void playerSaid(ServerPlayer player, String colony, String text, Collection<ServerPlayer> recipients) {
-        LivingColonists.LOGGER.info("[Colony {}] <{}> {}", colony, player.getGameProfile().getName(), text);
+        ModLog.chat("[Colony {}] <{}> {}", colony, player.getGameProfile().getName(), text);
         send(Component.translatable("chat.type.text", player.getDisplayName(), text), recipients);
     }
 
     @Override
     public void colonistSaid(Speaker speaker, String text, Collection<ServerPlayer> recipients) {
-        LivingColonists.LOGGER.info("[Colony {}] <{}> {}", speaker.colony(), speaker.name(), text);
+        ModLog.chat("[Colony {}] <{}> {}", speaker.colony(), speaker.name(), text);
         send(Component.translatable("chat.type.text", name(speaker), text), recipients);
     }
 
     @Override
     public void playerWhispered(ServerPlayer player, Speaker colonist, String text) {
-        LivingColonists.LOGGER.info("[Private {}] <{}> -> <{}> {}", colonist.colony(), player.getGameProfile().getName(),
+        ModLog.chat("[Private {}] <{}> -> <{}> {}", colonist.colony(), player.getGameProfile().getName(),
                 colonist.name(), text);
         player.sendSystemMessage(whisper(Component.literal("<").append(player.getDisplayName()).append(">"),
                 Component.literal("<").append(name(colonist)).append(">"), accent(colonist), text));
@@ -37,7 +37,7 @@ public final class ChatSpeechOutput implements SpeechOutput {
 
     @Override
     public void colonistWhispered(Speaker colonist, ServerPlayer player, String text) {
-        LivingColonists.LOGGER.info("[Private {}] <{}> -> <{}> {}", colonist.colony(), colonist.name(),
+        ModLog.chat("[Private {}] <{}> -> <{}> {}", colonist.colony(), colonist.name(),
                 player.getGameProfile().getName(), text);
         player.sendSystemMessage(whisper(Component.literal("<").append(name(colonist)).append(">"),
                 Component.literal("<").append(player.getDisplayName()).append(">"), accent(colonist), text));

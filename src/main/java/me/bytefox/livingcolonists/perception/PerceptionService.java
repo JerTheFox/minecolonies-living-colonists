@@ -36,6 +36,8 @@ import com.minecolonies.core.colony.buildings.workerbuildings.BuildingHospital;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingCook;
 import com.minecolonies.core.colony.jobs.JobDeliveryman;
 import com.minecolonies.core.colony.requestsystem.management.IStandardRequestManager;
+import me.bytefox.livingcolonists.events.ModEvents;
+import me.bytefox.livingcolonists.events.GameEvents;
 import me.bytefox.livingcolonists.Config;
 import me.bytefox.livingcolonists.LivingColonists;
 import me.bytefox.livingcolonists.behaviour.Level;
@@ -89,6 +91,13 @@ public final class PerceptionService {
     private final Map<String, DiaryBook> diaries = new HashMap<>();
     /** Each colonist's job as last seen, by {@code colonyId:citizenId}, for a job given or taken just now. */
     private final JobLog jobs = new JobLog();
+    /** The facts last read for each colonist, by {@code colonyId:citizenId}, with the game time. */
+    private final Map<String, Cached> recent = new HashMap<>();
+    /** How long read facts are kept, in game ticks (five seconds). */
+    private static final long CACHE_TICKS = 100;
+
+    private record Cached(long at, ColonistFacts facts) {
+    }
 
     /** The {@code {situation}} block for a reply prompt, at the configured perception level. */
     public String situation(ICitizenData citizen) {
@@ -115,6 +124,7 @@ public final class PerceptionService {
         if (server.getTickCount() % DIARY_INTERVAL != 0) {
             return;
         }
+        recent.clear();
         for (IColony colony : IColonyManager.getInstance().getAllColonies()) {
             if (colony.getWorld() == null) {
                 continue;
@@ -123,7 +133,10 @@ public final class PerceptionService {
             long dayTime = colony.getWorld().getDayTime();
             for (ICitizenData citizen : colony.getCitizenManager().getCitizens()) {
                 try {
-                    jobs.note(colony.getID() + ":" + citizen.getId(), jobTitle(citizen), gameTime);
+                    JobLog.Change change = jobs.note(colony.getID() + ":" + citizen.getId(), jobTitle(citizen), gameTime);
+                    if (change != null) {
+                        ModEvents.BUS.post(new GameEvents.JobChanged(citizen, change.from(), change.to()));
+                    }
                 } catch (RuntimeException e) {
                     // A job MineColonies can't name now is noted next time.
                 }
@@ -147,11 +160,13 @@ public final class PerceptionService {
     public void forget(Predicate<String> key) {
         diaries.keySet().removeIf(key);
         jobs.forget(key);
+        recent.keySet().removeIf(key);
     }
 
     public void clear() {
         diaries.clear();
         jobs.clear();
+        recent.clear();
     }
 
     private static String jobTitle(ICitizenData citizen) {
@@ -189,7 +204,23 @@ public final class PerceptionService {
         return work == null && !citizen.isChild() ? "had no work to do" : null;
     }
 
+    /**
+     * What the colonist knows of themselves and the colony now. Kept a few seconds (#40): one round of
+     * first lines, greetings and look-ups asks for every colonist several times, and a big colony has many.
+     */
     public ColonistFacts facts(ICitizenData citizen) {
+        String key = citizen.getColony().getID() + ":" + citizen.getId();
+        long now = citizen.getColony().getWorld() == null ? 0 : citizen.getColony().getWorld().getGameTime();
+        Cached cached = recent.get(key);
+        if (cached != null && now >= cached.at() && now - cached.at() < CACHE_TICKS) {
+            return cached.facts();
+        }
+        ColonistFacts facts = read(citizen);
+        recent.put(key, new Cached(now, facts));
+        return facts;
+    }
+
+    private ColonistFacts read(ICitizenData citizen) {
         ColonistFacts.Builder facts = ColonistFacts.builder();
         IColony colony = citizen.getColony();
         safely("job", () -> {

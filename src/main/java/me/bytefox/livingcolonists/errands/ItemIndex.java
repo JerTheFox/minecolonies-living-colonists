@@ -8,7 +8,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
-import me.bytefox.livingcolonists.LivingColonists;
+import me.bytefox.livingcolonists.ModLog;
 import me.bytefox.livingcolonists.talk.Translations;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -30,7 +30,7 @@ public final class ItemIndex {
      */
     public void warmUp(String locale) {
         CompletableFuture.runAsync(() -> candidates(locale)).exceptionally(e -> {
-            LivingColonists.LOGGER.warn("Could not prepare the item names for {}: {}", locale, e.toString());
+            ModLog.warn("Could not prepare the item names for {}: {}", locale, e.toString());
             return null;
         });
     }

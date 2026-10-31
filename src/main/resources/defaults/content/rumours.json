@@ -1,0 +1,36 @@
+{
+  "_about": "Advancements colonists hear about. deeds: a player's big deeds, by advancement id, as colonists say it after \"word has it they\". colony: the colony's milestones, as news told in the colony chat.",
+  "deeds": {
+    "minecraft:end/kill_dragon": "killed the Ender Dragon",
+    "minecraft:end/respawn_dragon": "brought the Ender Dragon back to life",
+    "minecraft:nether/summon_wither": "summoned the Wither",
+    "minecraft:nether/create_beacon": "built a beacon",
+    "minecraft:story/mine_diamond": "found diamonds",
+    "minecraft:nether/obtain_ancient_debris": "dug up ancient debris",
+    "minecraft:nether/netherite_armor": "wears a full set of netherite armour",
+    "minecraft:end/elytra": "found a pair of wings, an elytra",
+    "minecraft:end/find_end_city": "found a city at the End",
+    "minecraft:nether/find_fortress": "found a fortress in the Nether",
+    "minecraft:adventure/hero_of_the_village": "saved a village from raiders",
+    "minecraft:adventure/totem_of_undying": "cheated death with a totem",
+    "minecraft:adventure/kill_all_mobs": "has hunted down every kind of monster",
+    "minecraft:adventure/adventuring_time": "has travelled through every land there is",
+    "minecolonies:minecolonies/citizen_resurrect": "brought a dead colonist back to life",
+    "minecraft:husbandry/obtain_netherite_hoe": "made a hoe out of netherite",
+    "minecraft:nether/uneasy_alliance": "dragged a ghast into our world",
+    "minecraft:adventure/very_very_frightening": "struck a villager with lightning",
+    "minecraft:adventure/summon_iron_golem": "built an iron golem",
+    "minecraft:adventure/voluntary_exile": "killed a raid captain",
+    "minecraft:adventure/minecraft_trials_edition": "went through the trial chambers",
+    "minecraft:adventure/overoverkill": "struck a terrible blow with a mace"
+  },
+  "colony": {
+    "minecolonies:minecolonies/colony_population_25": "The colony has just grown to 25 colonists: a hamlet now.",
+    "minecolonies:minecolonies/colony_population_50": "The colony has just grown to 50 colonists: a village now.",
+    "minecolonies:minecolonies/colony_population_75": "The colony has just grown to 75 colonists: a town now.",
+    "minecolonies:military/army_8": "The colony's guard has just grown to eight.",
+    "minecolonies:military/army_30": "The colony's guard has just grown to thirty: a small army.",
+    "minecolonies:military/army_80": "The colony's guard has just grown to eighty: a real army now.",
+    "minecolonies:production/deep_mine": "The colony's mine has just reached the bottom of the world."
+  }
+}

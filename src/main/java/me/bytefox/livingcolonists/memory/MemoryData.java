@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import me.bytefox.livingcolonists.data.DataVersions;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -20,6 +21,8 @@ import net.minecraft.world.level.saveddata.SavedData;
  */
 public final class MemoryData extends SavedData {
     public static final String NAME = "livingcolonists_memory";
+    /** Format of the saved file; raise it with a migration step in {@link DataVersions#read}. */
+    static final int VERSION = 1;
 
     /** Key: {@code colonyId:citizenId:playerUuid}. */
     final Map<String, Transcript> privateTalks = new HashMap<>();
@@ -31,7 +34,7 @@ public final class MemoryData extends SavedData {
     final Map<UUID, List<String>> playerNames = new HashMap<>();
 
     public static SavedData.Factory<MemoryData> factory() {
-        return new SavedData.Factory<>(MemoryData::new, (tag, provider) -> load(tag), null);
+        return new SavedData.Factory<>(MemoryData::new, (tag, provider) -> load(DataVersions.read(NAME, tag, VERSION)), null);
     }
 
     private static MemoryData load(CompoundTag tag) {
@@ -83,6 +86,7 @@ public final class MemoryData extends SavedData {
 
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+        DataVersions.stamp(tag, VERSION);
         CompoundTag talks = new CompoundTag();
         CompoundTag talksDigested = new CompoundTag();
         privateTalks.forEach((key, transcript) -> {

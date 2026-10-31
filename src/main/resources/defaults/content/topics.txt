@@ -1,0 +1,49 @@
+# Broad subjects a colony chat turns to when a colonist changes the subject, one per line, in English.
+# Lines starting with # are skipped. Add your own or delete some; an empty file brings back the defaults.
+something that happened at your work today
+a trick of your trade you are proud of
+a tool or piece of equipment you like or hate
+a mistake you made once and learned from
+a neighbour's habit
+someone in the colony you admire
+an old friend you miss
+your family
+a childhood memory
+a place you lived before the colony
+a dream you had
+something you'd like to learn
+a small thing that annoyed you today
+something funny you saw
+a rumour you only half believe
+what you'd build if you could
+a plan for your day off
+a dish you like or one you can't stand
+a recipe from home
+an animal you noticed around the colony
+a plant or flower somewhere near
+a song or a tune stuck in your head
+a story or a legend you know
+a superstition
+how the colony has changed since you came
+what the colony needs most, in your view
+a bet or a little contest with someone
+a gift you'd like to give someone
+something you lost or found
+your health or a small ache
+how you slept
+something you want to buy or trade for
+a skill someone else has that you envy
+an argument you had and who was right
+a promise someone made you
+a job you'd never want to do
+what makes a good day for you
+the night sky or the stars
+the season and what it brings
+a festival or celebration you'd like
+a hobby of yours
+a question you've wondered about for a while
+advice you'd give a newcomer
+something you're secretly afraid of
+a compliment you got or gave
+a habit you want to drop
+the weather

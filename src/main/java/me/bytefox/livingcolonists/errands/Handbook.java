@@ -1,9 +1,5 @@
 package me.bytefox.livingcolonists.errands;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -18,7 +14,8 @@ import me.bytefox.livingcolonists.llm.ToolSpec;
  * and sounds sure of it; with this it retells what is true, in the colonist's own words.
  */
 public final class Handbook implements Errand {
-    private static final Map<String, String> ARTICLES = load();
+    /** Articles by topic, from {@code content/handbook.json}. */
+    private static volatile Map<String, String> articles = Map.of();
 
     @Override
     public String name() {
@@ -29,7 +26,7 @@ public final class Handbook implements Errand {
     public ToolSpec spec() {
         return Errands.spec(name(), "How things work in the colony, from the colony's handbook: use it when someone asks how "
                 + "something works (where colonists get food, what couriers carry, how building or hiring works) instead "
-                + "of guessing.", "topic", "One of: " + String.join(", ", ARTICLES.keySet()));
+                + "of guessing.", "topic", "One of: " + String.join(", ", articles.keySet()));
     }
 
     @Override
@@ -40,13 +37,13 @@ public final class Handbook implements Errand {
     @Override
     public Result run(Context context, JsonObject arguments) {
         String topic = Errand.string(arguments, "topic").toLowerCase(Locale.ROOT).strip();
-        String article = ARTICLES.get(topic);
+        String article = articles.get(topic);
         if (article == null) {
-            article = ARTICLES.entrySet().stream().filter(e -> topic.contains(e.getKey()) || e.getKey().contains(topic))
+            article = articles.entrySet().stream().filter(e -> topic.contains(e.getKey()) || e.getKey().contains(topic))
                     .map(Map.Entry::getValue).findFirst().orElse(null);
         }
         if (article == null) {
-            return new Result.Answer(Errand.error("No such topic. Topics: " + String.join(", ", ARTICLES.keySet())));
+            return new Result.Answer(Errand.error("No such topic. Topics: " + String.join(", ", articles.keySet())));
         }
         JsonObject reply = new JsonObject();
         reply.addProperty("success", true);
@@ -56,16 +53,11 @@ public final class Handbook implements Errand {
         return new Result.Answer(reply);
     }
 
-    private static Map<String, String> load() {
-        Map<String, String> articles = new LinkedHashMap<>();
-        try (InputStream in = Handbook.class.getResourceAsStream("/defaults/handbook.json")) {
-            if (in != null) {
-                JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject()
-                        .entrySet().forEach(e -> articles.put(e.getKey(), e.getValue().getAsString()));
-            }
-        } catch (IOException | RuntimeException e) {
-            throw new IllegalStateException("bundled handbook unreadable", e);
-        }
-        return articles;
+    /** Takes {@code content/handbook.json}: a topic to its article. */
+    public static void use(String json) {
+        Map<String, String> read = new LinkedHashMap<>();
+        JsonParser.parseString(json).getAsJsonObject().entrySet()
+                .forEach(e -> read.put(e.getKey(), e.getValue().getAsString()));
+        articles = read;
     }
 }

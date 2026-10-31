@@ -1,11 +1,16 @@
 package me.bytefox.livingcolonists.talk;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Predicate;
 
+import me.bytefox.livingcolonists.data.DataVersions;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.saveddata.SavedData;
 
 /**
@@ -15,6 +20,8 @@ import net.minecraft.world.level.saveddata.SavedData;
  */
 public final class InitiativeData extends SavedData {
     public static final String NAME = "livingcolonists_initiative";
+    /** Format of the saved file; raise it with a migration step in {@link DataVersions#read}. */
+    static final int VERSION = 1;
 
     record Raised(int times, long last) {
     }
@@ -44,9 +51,20 @@ public final class InitiativeData extends SavedData {
     final Map<String, Long> done = new HashMap<>();
     /** {@code colonyId:citizenId}. */
     final Map<String, Goal> goals = new HashMap<>();
+    /** {@code colonyId:playerUuid}: game time the player was last seen in the colony. */
+    final Map<String, Long> seen = new HashMap<>();
+    /** What happened in each colony lately, as told later, oldest first (#34). */
+    final Map<Integer, Deque<Told>> history = new HashMap<>();
+    /** Big deeds colonists heard each player did, by player UUID, oldest first (#39). */
+    final Map<String, Deque<Told>> deeds = new HashMap<>();
+
+    /** Something to tell later and the game time it happened. */
+    record Told(String what, long gameTime) {
+    }
 
     public static SavedData.Factory<InitiativeData> factory() {
         return new SavedData.Factory<>(InitiativeData::new, (tag, provider) -> {
+            DataVersions.read(NAME, tag, VERSION);
             InitiativeData data = new InitiativeData();
             CompoundTag complaints = tag.getCompound("complaints");
             for (String key : complaints.getAllKeys()) {
@@ -61,12 +79,19 @@ public final class InitiativeData extends SavedData {
                 data.goals.put(key, new Goal(g.getString("kind"), g.getInt("level"), g.getLong("since"),
                         g.getLong("doneAt"), g.getBoolean("told")));
             }
+            CompoundTag seen = tag.getCompound("seen");
+            seen.getAllKeys().forEach(key -> data.seen.put(key, seen.getLong(key)));
+            CompoundTag history = tag.getCompound("history");
+            history.getAllKeys().forEach(key -> data.history.put(Integer.parseInt(key), readTold(history.getList(key, Tag.TAG_COMPOUND))));
+            CompoundTag deeds = tag.getCompound("deeds");
+            deeds.getAllKeys().forEach(key -> data.deeds.put(key, readTold(deeds.getList(key, Tag.TAG_COMPOUND))));
             return data;
         }, null);
     }
 
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider provider) {
+        DataVersions.stamp(tag, VERSION);
         CompoundTag complaints = new CompoundTag();
         this.complaints.forEach((key, raised) -> {
             CompoundTag c = new CompoundTag();
@@ -89,7 +114,36 @@ public final class InitiativeData extends SavedData {
             goals.put(key, g);
         });
         tag.put("goals", goals);
+        CompoundTag seen = new CompoundTag();
+        this.seen.forEach(seen::putLong);
+        tag.put("seen", seen);
+        CompoundTag history = new CompoundTag();
+        this.history.forEach((colony, list) -> history.put(String.valueOf(colony), writeTold(list)));
+        tag.put("history", history);
+        CompoundTag deeds = new CompoundTag();
+        this.deeds.forEach((player, list) -> deeds.put(player, writeTold(list)));
+        tag.put("deeds", deeds);
         return tag;
+    }
+
+    private static Deque<Told> readTold(ListTag list) {
+        Deque<Told> out = new ArrayDeque<>();
+        for (int i = 0; i < list.size(); i++) {
+            CompoundTag t = list.getCompound(i);
+            out.addLast(new Told(t.getString("what"), t.getLong("at")));
+        }
+        return out;
+    }
+
+    private static ListTag writeTold(Deque<Told> told) {
+        ListTag list = new ListTag();
+        for (Told t : told) {
+            CompoundTag entry = new CompoundTag();
+            entry.putString("what", t.what());
+            entry.putLong("at", t.gameTime());
+            list.add(entry);
+        }
+        return list;
     }
 
     /** Drops gone colonists' records, by their {@code colonyId:citizenId} key. */

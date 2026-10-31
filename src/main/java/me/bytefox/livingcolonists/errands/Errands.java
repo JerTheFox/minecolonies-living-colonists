@@ -19,8 +19,9 @@ import com.google.gson.JsonParser;
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.core.colony.buildings.AbstractBuildingGuards;
+import me.bytefox.livingcolonists.debug.Counters;
+import me.bytefox.livingcolonists.ModLog;
 import me.bytefox.livingcolonists.Config;
-import me.bytefox.livingcolonists.LivingColonists;
 import me.bytefox.livingcolonists.behaviour.ColonyAccess;
 import me.bytefox.livingcolonists.llm.ToolCall;
 import me.bytefox.livingcolonists.llm.ToolSpec;
@@ -165,12 +166,13 @@ public final class Errands {
         try {
             result = errand.run(context, arguments);
         } catch (RuntimeException | LinkageError e) {
-            LivingColonists.LOGGER.warn("Errand {} failed", call.name(), e);
+            ModLog.warn("Errand {} failed", call.name(), e);
             return Errand.error("That couldn't be done right now.").toString();
         }
         if (result instanceof Errand.Result.Answer answer) {
             boolean done = answer.reply().has("success") && answer.reply().get("success").getAsBoolean();
-            LivingColonists.LOGGER.info("{} by {}: {}{} -> {}",
+            Counters.add(!errand.isOrder() ? "lookups" : done ? "commands" : "orders.turned_down");
+            ModLog.action("{} by {}: {}{} -> {}",
                     !errand.isOrder() ? "Look-up" : done ? "Command" : "Order turned down",
                     context.citizen().getName(), call.name(), call.arguments(), answer.reply());
         }
@@ -272,7 +274,7 @@ public final class Errands {
         try {
             outcome = order.execute().apply(player);
         } catch (RuntimeException | LinkageError e) {
-            LivingColonists.LOGGER.warn("Order {} failed", order.tool(), e);
+            ModLog.warn("Order {} failed", order.tool(), e);
             outcome = new Errand.Outcome(false, Component.translatable("livingcolonists.order.failed"), null);
         }
         if (outcome.done()) {
@@ -416,7 +418,7 @@ public final class Errands {
     private void line(String colony, String player, String citizen, String what) {
         String line = LocalTime.now().format(CLOCK) + " [" + colony + "] " + player + " -> " + citizen + ": " + what;
         book.log(line);
-        LivingColonists.LOGGER.info("Order {}", line);
+        ModLog.action("Order {}", line);
     }
 
     /** A function with one required text parameter, or none. */
@@ -439,7 +441,8 @@ public final class Errands {
     static ToolSpec orderSpec(String name, String description, Map<String, String> parameters) {
         Map<String, String> all = new LinkedHashMap<>(parameters);
         all.put(PLAYER_WORDS, "The player's own words asking for this, quoted exactly from their message");
-        return spec(name, description + " Only when the player asks for it themselves; they confirm before it happens.", all);
+        return spec(name, description + " Only when the player asks for it themselves; they confirm before it happens."
+                + " Being tired or in a mood never stops you from calling it: you may grumble, but you do it.", all);
     }
 
     static ToolSpec spec(String name, String description, Map<String, String> parameters) {

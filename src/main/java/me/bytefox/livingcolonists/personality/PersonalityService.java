@@ -15,8 +15,8 @@ import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.entity.citizen.Skill;
 import com.minecolonies.api.util.Tuple;
+import me.bytefox.livingcolonists.ModLog;
 import me.bytefox.livingcolonists.Config;
-import me.bytefox.livingcolonists.LivingColonists;
 import me.bytefox.livingcolonists.behaviour.Level;
 import me.bytefox.livingcolonists.behaviour.Module;
 import me.bytefox.livingcolonists.llm.ChatMessage;
@@ -157,7 +157,7 @@ public final class PersonalityService {
         IColony colony = citizen.getColony();
         int colonyId = colony.getID();
         int citizenId = citizen.getId();
-        client.complete(settings.get().withMinTokens(BIO_TOKENS), List.of(ChatMessage.user(prompt)))
+        client.complete(settings.get().withMinTokens(BIO_TOKENS).inBackground(), List.of(ChatMessage.user(prompt)))
                 .thenAccept(result -> server.execute(() -> {
                     writing.remove(key);
                     if (data == null) {
@@ -170,7 +170,7 @@ public final class PersonalityService {
                                 data.put(key, current.withBio(Prompts.cleanBio(reply.text()), child));
                             }
                         }
-                        case ChatResult.Failure failure -> LivingColonists.LOGGER.warn(
+                        case ChatResult.Failure failure -> ModLog.warn(
                                 "Could not write a background for colonist {} of colony {}: {}", citizenId, colonyId,
                                 failure.reason());
                     }
@@ -191,7 +191,7 @@ public final class PersonalityService {
         String prompt = Templates.render(prompts.get(PromptLibrary.VOICE), values);
         String citizenKey = key(citizen);
         String bio = personality.bio();
-        client.complete(settings.get().withMinTokens(BIO_TOKENS), List.of(ChatMessage.user(prompt)))
+        client.complete(settings.get().withMinTokens(BIO_TOKENS).inBackground(), List.of(ChatMessage.user(prompt)))
                 .thenAccept(result -> server.execute(() -> {
                     writing.remove(key);
                     if (data == null || !(result instanceof ChatResult.Reply reply)) {

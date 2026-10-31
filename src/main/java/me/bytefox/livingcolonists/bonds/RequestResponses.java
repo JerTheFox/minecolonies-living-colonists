@@ -2,7 +2,7 @@ package me.bytefox.livingcolonists.bonds;
 
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.requestsystem.token.IToken;
-import me.bytefox.livingcolonists.LivingColonists;
+import me.bytefox.livingcolonists.ModLog;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 
@@ -49,7 +49,7 @@ public final class RequestResponses {
         try {
             action.run();
         } catch (RuntimeException e) {
-            LivingColonists.LOGGER.warn("Could not note the answer to {}'s dialog", citizen.getName(), e);
+            ModLog.warn("Could not note the answer to {}'s dialog", citizen.getName(), e);
         }
     }
 }

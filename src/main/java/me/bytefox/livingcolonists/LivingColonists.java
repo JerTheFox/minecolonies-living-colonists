@@ -9,6 +9,12 @@ import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.requestsystem.token.IToken;
 import com.minecolonies.api.eventbus.events.colony.ColonyDeletedModEvent;
 import com.mojang.logging.LogUtils;
+import me.bytefox.livingcolonists.debug.Counters;
+import me.bytefox.livingcolonists.talk.Prompts;
+import me.bytefox.livingcolonists.talk.Rumours;
+import me.bytefox.livingcolonists.errands.Handbook;
+import me.bytefox.livingcolonists.events.ModEvents;
+import me.bytefox.livingcolonists.events.GameEvents;
 import me.bytefox.livingcolonists.debug.DebugCommand;
 import me.bytefox.livingcolonists.debug.UsageData;
 import me.bytefox.livingcolonists.llm.LlmClient;
@@ -54,6 +60,7 @@ import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.ServerChatEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+import net.neoforged.neoforge.event.entity.player.AdvancementEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
@@ -80,7 +87,7 @@ public final class LivingColonists {
     private final UsageStats usage = new UsageStats();
     private final LlmClient client = new LlmClient(
             HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).connectTimeout(Duration.ofSeconds(10)).build(),
-            usage, LlmClient.DEFAULT_BACKOFF, LOGGER::info);
+            usage, LlmClient.DEFAULT_BACKOFF, message -> ModLog.info("{}", message));
     private final PromptLibrary prompts = new PromptLibrary(FMLPaths.CONFIGDIR.get());
     private final PersonalityService personalities = new PersonalityService(prompts,
             new ArchetypeLibrary(FMLPaths.CONFIGDIR.get()), client);
@@ -96,6 +103,15 @@ public final class LivingColonists {
 
     public LivingColonists(IEventBus modEventBus, ModContainer modContainer) {
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+        prompts.onReload(() -> {
+            try {
+                Handbook.use(prompts.content(PromptLibrary.HANDBOOK));
+                Rumours.use(prompts.content(PromptLibrary.RUMOURS));
+                Prompts.useTopics(prompts.content(PromptLibrary.TOPICS));
+            } catch (RuntimeException e) {
+                ModLog.warn("A content file in config/livingcolonists/content is broken, fix or delete it", e);
+            }
+        });
         client.limitDailyTokens(() -> Config.SPEC.isLoaded() ? Config.TOKENS_PER_DAY.get() : 0);
         bonds.setReminder(talk::remindPromise);
         RequestResponses.listen(new RequestResponses.Listener() {
@@ -118,8 +134,12 @@ public final class LivingColonists {
                     memory, bonds);
         });
         NeoForge.EVENT_BUS.addListener(this::onServerChat);
-        NeoForge.EVENT_BUS.addListener((LivingDeathEvent event) -> talk.errands().tally().onDeath(event.getEntity(),
-                event.getSource().getEntity()));
+        NeoForge.EVENT_BUS.addListener((LivingDeathEvent event) -> {
+            talk.errands().tally().onDeath(event.getEntity(), event.getSource().getEntity());
+            if (event.getEntity() instanceof ServerPlayer player) {
+                ModEvents.BUS.post(new GameEvents.PlayerDied(player));
+            }
+        });
         NeoForge.EVENT_BUS.addListener((ServerTickEvent.Post event) -> {
             conversations.tick(event.getServer());
             talk.tick(event.getServer());
@@ -160,9 +180,31 @@ public final class LivingColonists {
             talk.errands().beforeStop();
             markUsageDirty();
         });
-        NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent event) ->
-                conversations.forget(event.getEntity().getUUID()));
+        NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent event) -> {
+            conversations.forget(event.getEntity().getUUID());
+            if (event.getEntity() instanceof ServerPlayer player) {
+                ModEvents.BUS.post(new GameEvents.PlayerLeft(player));
+            }
+        });
+        NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedInEvent event) -> {
+            if (event.getEntity() instanceof ServerPlayer player) {
+                ModEvents.BUS.post(new GameEvents.PlayerJoined(player));
+            }
+        });
+        NeoForge.EVENT_BUS.addListener((AdvancementEvent.AdvancementEarnEvent event) -> {
+            if (event.getEntity() instanceof ServerPlayer player) {
+                var holder = event.getAdvancement();
+                ModEvents.BUS.post(new GameEvents.AdvancementEarned(player, holder.id().toString(), holder.value().display()
+                        .map(display -> display.getTitle().getString()).orElse(holder.id().getPath())));
+            }
+        });
+        NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerChangedDimensionEvent event) -> {
+            if (event.getEntity() instanceof ServerPlayer player) {
+                ModEvents.BUS.post(new GameEvents.PlayerChangedWorld(player, event.getTo()));
+            }
+        });
         NeoForge.EVENT_BUS.addListener((ServerStoppedEvent event) -> {
+            Counters.clear();
             conversations.clear();
             talk.clear();
             usageData = null;
@@ -203,9 +245,9 @@ public final class LivingColonists {
 
     private void commonSetup(FMLCommonSetupEvent event) {
         IMinecoloniesAPI.getInstance().getEventBus().subscribe(ColonyDeletedModEvent.class, this::onColonyDeleted);
-        LOGGER.info("Living Colonists loaded, model {} at {}, API key {}", Config.CHAT_MODEL.get(), Config.BASE_URL.get(),
+        ModLog.info("Living Colonists loaded, model {} at {}, API key {}", Config.CHAT_MODEL.get(), Config.BASE_URL.get(),
                 Config.apiKey().isPresent() ? "found" : "missing: set apiKey in the config or " + Config.API_KEY_ENV.get());
-        LOGGER.info("Embeddings: {}", Config.embeddings().map(endpoint -> "model " + endpoint.model() + " at "
+        ModLog.info("Embeddings: {}", Config.embeddings().map(endpoint -> "model " + endpoint.model() + " at "
                 + endpoint.baseUrl()).orElse("off (no key), remembered facts are picked by words"));
     }
 

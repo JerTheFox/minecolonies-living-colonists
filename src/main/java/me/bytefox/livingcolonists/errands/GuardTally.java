@@ -10,6 +10,7 @@ import com.google.gson.JsonObject;
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
+import me.bytefox.livingcolonists.data.DataVersions;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.Entity;
@@ -27,10 +28,13 @@ public final class GuardTally {
     /** The saved counts, by {@code colonyId:citizenId}. */
     public static final class Data extends SavedData {
         public static final String NAME = "livingcolonists_guards";
+        /** Format of the saved file; raise it with a migration step in {@link DataVersions#read}. */
+        static final int VERSION = 1;
         final Map<String, Integer> kills = new HashMap<>();
 
         public static SavedData.Factory<Data> factory() {
             return new SavedData.Factory<>(Data::new, (tag, provider) -> {
+                DataVersions.read(NAME, tag, VERSION);
                 Data data = new Data();
                 CompoundTag kills = tag.getCompound("kills");
                 kills.getAllKeys().forEach(key -> data.kills.put(key, kills.getInt(key)));
@@ -40,6 +44,7 @@ public final class GuardTally {
 
         @Override
         public CompoundTag save(CompoundTag tag, HolderLookup.Provider provider) {
+            DataVersions.stamp(tag, VERSION);
             CompoundTag kills = new CompoundTag();
             this.kills.forEach(kills::putInt);
             tag.put("kills", kills);

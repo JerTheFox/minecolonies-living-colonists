@@ -20,7 +20,7 @@ import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.colony.buildings.IBuilding;
 import com.minecolonies.api.tileentities.AbstractTileEntityRack;
-import me.bytefox.livingcolonists.LivingColonists;
+import me.bytefox.livingcolonists.ModLog;
 import me.bytefox.livingcolonists.llm.ToolSpec;
 import me.bytefox.livingcolonists.perception.ItemNames;
 import me.bytefox.livingcolonists.talk.TalkService;
@@ -209,7 +209,7 @@ public final class Couriers {
                 }
             }
         }
-        LivingColonists.LOGGER.info("{} delivered {} {}", job.courier.getName(), given, job.item);
+        ModLog.action("{} delivered {} {}", job.courier.getName(), given, job.item);
         tell(player, Component.translatable(job.target == null ? "livingcolonists.courier.brought" : "livingcolonists.courier.stocked",
                 job.courier.getName(), given, new ItemStack(job.item).getHoverName(),
                 job.target == null ? "" : Component.translatable(job.target.getBuildingType().getTranslationKey())));

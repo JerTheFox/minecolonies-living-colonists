@@ -9,23 +9,27 @@ import java.util.function.Predicate;
  * Which job each colonist had when last seen, so a job MineColonies gave or took a moment ago is told
  * plainly: a talk about who should be the cook outweighs a quiet line saying you are one. Not saved.
  */
-final class JobLog {
+public final class JobLog {
     /** How long a change counts as new, in game ticks (half a game day). */
     static final long RECENT = 12000;
 
     /** A job change: either side null for no job. */
-    record Change(String from, String to, long at) {
+    public record Change(String from, String to, long at) {
     }
 
     private final Map<String, String> seen = new HashMap<>();
     private final Map<String, Change> changes = new HashMap<>();
 
-    void note(String key, String job, long gameTime) {
+    /** Notes the job seen now; the change, if it is one. */
+    Change note(String key, String job, long gameTime) {
         boolean known = seen.containsKey(key);
         String was = seen.put(key, job);
         if (known && !Objects.equals(was, job)) {
-            changes.put(key, new Change(was, job, gameTime));
+            Change change = new Change(was, job, gameTime);
+            changes.put(key, change);
+            return change;
         }
+        return null;
     }
 
     /** The colonist's latest job change if it is still new, else null. */

@@ -1,5 +1,6 @@
 package me.bytefox.livingcolonists.errands;
 
+import me.bytefox.livingcolonists.data.DataVersions;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -9,11 +10,13 @@ import net.minecraft.world.level.saveddata.SavedData;
 /** The messages and reminders colonists keep, saved with the world. */
 public final class NotesData extends SavedData {
     public static final String NAME = "livingcolonists_notes";
+    /** Format of the saved file; raise it with a migration step in {@link DataVersions#read}. */
+    static final int VERSION = 1;
 
     final NoteBook book = new NoteBook();
 
     public static SavedData.Factory<NotesData> factory() {
-        return new SavedData.Factory<>(NotesData::new, (tag, provider) -> load(tag), null);
+        return new SavedData.Factory<>(NotesData::new, (tag, provider) -> load(DataVersions.read(NAME, tag, VERSION)), null);
     }
 
     private static NotesData load(CompoundTag tag) {
@@ -31,6 +34,7 @@ public final class NotesData extends SavedData {
 
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider provider) {
+        DataVersions.stamp(tag, VERSION);
         ListTag notes = new ListTag();
         for (NoteBook.Note note : book.all()) {
             CompoundTag n = new CompoundTag();

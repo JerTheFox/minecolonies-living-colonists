@@ -18,13 +18,14 @@ import java.util.stream.Collectors;
 
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
-import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.colony.jobs.IJob;
-import com.minecolonies.api.colony.permissions.IPermissions;
-import com.minecolonies.api.colony.permissions.Rank;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
+import me.bytefox.livingcolonists.colony.Colonies;
+import me.bytefox.livingcolonists.events.ModEvents;
+import me.bytefox.livingcolonists.events.GameEvents;
+import me.bytefox.livingcolonists.debug.Counters;
+import me.bytefox.livingcolonists.ModLog;
 import me.bytefox.livingcolonists.Config;
-import me.bytefox.livingcolonists.LivingColonists;
 import me.bytefox.livingcolonists.behaviour.ColonyAccess;
 import me.bytefox.livingcolonists.behaviour.Cooldown;
 import me.bytefox.livingcolonists.behaviour.HourlyLimit;
@@ -45,8 +46,10 @@ import me.bytefox.livingcolonists.errands.Errand;
 import me.bytefox.livingcolonists.errands.Errands;
 import me.bytefox.livingcolonists.errands.Notes;
 import me.bytefox.livingcolonists.perception.ColonyTools;
+import me.bytefox.livingcolonists.perception.ItemNames;
 import me.bytefox.livingcolonists.perception.PerceptionService;
 import me.bytefox.livingcolonists.personality.PersonalityService;
+import me.bytefox.livingcolonists.prompt.PromptBudget;
 import me.bytefox.livingcolonists.prompt.PromptLibrary;
 import me.bytefox.livingcolonists.prompt.Templates;
 import net.minecraft.network.chat.Component;
@@ -92,6 +95,11 @@ public final class TalkService {
     private final ColonyTools tools;
     private final Errands errands;
     private final Initiative initiative;
+    private final Arrivals arrivals;
+    /** One budget for every line colonists say unprompted (#40). */
+    private final Airtime airtime = new Airtime();
+    /** How close a colonist must be to see what a player holds and wears, in blocks. */
+    private static final double LOOK_RANGE = 16;
     /** When each player last wrote to colonists, in server ticks: unprompted lines wait until they're quiet. */
     private final Map<UUID, Long> lastMessage = new HashMap<>();
     private final ColonyThreads threads;
@@ -131,6 +139,8 @@ public final class TalkService {
         this.threads = new ColonyThreads(this, prompts, memory, personalities, output, typing, bonds);
         this.events = new ColonyEvents(threads);
         this.initiative = new Initiative(this, threads, perception, memory, bonds);
+        this.arrivals = new Arrivals(this, threads, events, initiative, bonds, perception, memory);
+        ModEvents.BUS.on(GameEvents.JobChanged.class, this::jobChanged);
     }
 
     public ColonyThreads threads() {
@@ -143,8 +153,9 @@ public final class TalkService {
 
     /** Whether colonists can write first at all now: conversation on, a model set and the day's tokens left. */
     boolean canWriteFirst() {
+        Optional<LlmSettings> settings = Config.llmSettings(ModelRole.CHAT);
         return Config.level(Module.CONVERSATION) != me.bytefox.livingcolonists.behaviour.Level.OFF
-                && !client.overDailyLimit() && Config.llmSettings(ModelRole.CHAT).isPresent();
+                && !client.overDailyLimit() && settings.isPresent() && !client.paused(settings.get());
     }
 
     /** When the player last wrote to colonists, in server ticks; long ago if never. */
@@ -155,10 +166,29 @@ public final class TalkService {
     /** Colonists writing first: what they already brought up, kept with the world. */
     public void attachInitiative(InitiativeData data) {
         initiative.attach(data);
+        arrivals.attach(data);
+        events.attach(data);
     }
 
     public void detachInitiative() {
         initiative.detach();
+        arrivals.detach();
+        events.detach();
+    }
+
+    /**
+     * A job the colony gave a colonist. Right after a building was finished it came with that building,
+     * which was the news; otherwise the colonist remembers it. A job taken away is no news.
+     */
+    private void jobChanged(GameEvents.JobChanged change) {
+        ICitizenData citizen = change.citizen();
+        IColony colony = citizen.getColony();
+        if (change.to() == null || citizen.isChild() || colony.getWorld() == null
+                || events.builtJustNow(colony.getID(), colony.getWorld().getGameTime())) {
+            return;
+        }
+        memory.rememberSeen(colony, List.of(citizen.getId()), citizen.getName(), citizen.getName() + " became the colony's "
+                + change.to() + (change.from() == null ? "" : ", no longer a " + change.from()) + ".", 3);
     }
 
     /** Drops what gone colonists brought up, by their {@code colonyId:citizenId} key. */
@@ -168,6 +198,17 @@ public final class TalkService {
 
     LlmClient client() {
         return client;
+    }
+
+    Airtime airtime() {
+        return airtime;
+    }
+
+    /** The level the shared budget for unprompted lines runs at. */
+    static me.bytefox.livingcolonists.behaviour.Level airtimeLevel() {
+        me.bytefox.livingcolonists.behaviour.Level level = Config.level(Module.INITIATIVE);
+        return level == me.bytefox.livingcolonists.behaviour.Level.OFF ? me.bytefox.livingcolonists.behaviour.Level.DEFAULT
+                : level;
     }
 
     /** Sends private replies whose turn has come and moves colony threads on. Server tick. */
@@ -192,8 +233,26 @@ public final class TalkService {
         threads.tick(server);
         errands.tick(server);
         initiative.tick(server);
+        arrivals.tick(server);
+        if (now % SWEEP_TICKS == 0) {
+            sweep(server, now);
+        }
         events.tick(server);
         typing.tick(server);
+    }
+
+    /** How often what is kept for gone players and long-past timers is dropped (ten minutes). */
+    private static final long SWEEP_TICKS = 10 * 60 * 20;
+
+    /** Keeps a long-running server from piling up per-player state of players long gone (#40). */
+    private void sweep(MinecraftServer server, long now) {
+        Set<UUID> online = new HashSet<>();
+        server.getPlayerList().getPlayers().forEach(player -> online.add(player.getUUID()));
+        heard.keySet().retainAll(online);
+        lastMessage.entrySet().removeIf(entry -> !online.contains(entry.getKey()) && now - entry.getValue() > SWEEP_TICKS);
+        initiative.sweep(online, now);
+        arrivals.sweep(online, now);
+        airtime.sweep(now, airtimeLevel());
     }
 
     /** The last prompt sent for this colonist's reply, if any. */
@@ -212,6 +271,8 @@ public final class TalkService {
         typing.clear();
         errands.clear();
         initiative.clear();
+        arrivals.clear();
+        airtime.clear();
         lastMessage.clear();
     }
 
@@ -255,7 +316,8 @@ public final class TalkService {
         memory.memoriesFor(citizen, Set.of(Fact.aboutCitizen(citizen.getId()), Fact.aboutPlayer(playerId)), message, server,
                 memories -> {
             values.put("memories", memories);
-            String prompt = Templates.render(prompts.get(PromptLibrary.REPLY_PRIVATE), values);
+            String template = prompts.get(PromptLibrary.REPLY_PRIVATE);
+            String prompt = Templates.render(template, PromptBudget.fit(values, template));
             generate(citizen, prompt, messages, playerId, server, result -> {
                 thinking.remove(key);
                 ServerPlayer author = server.getPlayerList().getPlayer(playerId);
@@ -279,8 +341,13 @@ public final class TalkService {
      * is in the colony. Returns whether the reminder went ahead.
      */
     public boolean remindPromise(ServerPlayer player, ICitizenData citizen, Promise promise) {
-        return writeFirst(player, citizen, "to remind them of a promise that is overdue now: \"" + promise.text()
+        boolean sent = writeFirst(player, citizen, "to remind them of a promise that is overdue now: \"" + promise.text()
                 + "\". Say it in your own way and mood, in one or two sentences.", true, null, false) == Notes.Delivery.SENT;
+        if (sent) {
+            ModLog.action("{} reminds {} of an overdue promise: {}", citizen.getName(),
+                    player.getGameProfile().getName(), promise.text());
+        }
+        return sent;
     }
 
     /**
@@ -294,6 +361,13 @@ public final class TalkService {
      */
     public Notes.Delivery writeFirst(ServerPlayer player, ICitizenData citizen, String purpose, boolean inColonyOnly,
                                      Runnable failed, boolean ownTopic) {
+        return writeFirst(player, citizen, purpose, inColonyOnly, failed, ownTopic,
+                ownTopic ? Airtime.Kind.FIRST_LINE : Airtime.Kind.NOTE);
+    }
+
+    /** The same, as a line of {@code kind} for the shared budget: held back for later if it is spent. */
+    Notes.Delivery writeFirst(ServerPlayer player, ICitizenData citizen, String purpose, boolean inColonyOnly,
+                              Runnable failed, boolean ownTopic, Airtime.Kind kind) {
         IColony colony = citizen.getColony();
         Speaker speaker = speakerOf(citizen);
         long key = key(speaker.colonyId(), speaker.citizenId());
@@ -305,6 +379,12 @@ public final class TalkService {
         if (inColonyOnly && !inside || thinking.contains(key)) {
             return Notes.Delivery.LATER;
         }
+        String bucket = Airtime.player(player.getUUID());
+        if (!airtime.allows(kind, bucket, player.server.getTickCount(), airtimeLevel())) {
+            return Notes.Delivery.LATER;
+        }
+        airtime.spend(bucket, player.server.getTickCount());
+        Counters.add("said." + kind.key());
         String playerName = playerName(player);
         List<ChatMessage> messages = new ArrayList<>();
         for (MemoryLine line : memory.privateTalk(citizen, player.getUUID())) {
@@ -316,7 +396,8 @@ public final class TalkService {
         values.put("initiative", "You write to " + playerName + " first, unprompted, " + purpose + " "
                 + "Write in " + Languages.ofLocale(player.clientInformation().language()) + ".");
         values.put("language", Languages.ofLocale(player.clientInformation().language()));
-        String prompt = Templates.render(prompts.get(PromptLibrary.REPLY_PRIVATE), values);
+        String template = prompts.get(PromptLibrary.REPLY_PRIVATE);
+        String prompt = Templates.render(template, PromptBudget.fit(values, template));
         thinking.add(key);
         MinecraftServer server = player.server;
         UUID playerId = player.getUUID();
@@ -381,6 +462,12 @@ public final class TalkService {
         values.put("mood", plain ? "calm and busy with your work" : Prompts.mood(citizen.getId(),
                 citizen.getColony().getWorld().getDayTime() / 24000, happiness(citizen)));
         values.put("situation", perception.situation(citizen));
+        if (player != null && Config.level(Module.PERCEPTION) != me.bytefox.livingcolonists.behaviour.Level.OFF) {
+            String look = look(citizen, player);
+            if (!look.isEmpty()) {
+                values.put("situation", values.get("situation") + "\n" + look);
+            }
+        }
         Set<String> present = player == null ? Set.of(Fact.aboutCitizen(citizen.getId()))
                 : Set.of(Fact.aboutCitizen(citizen.getId()), Fact.aboutPlayer(player.getUUID()));
         values.put("memories", memory.memories(citizen, present, ""));
@@ -444,11 +531,12 @@ public final class TalkService {
                 done.accept(result);
                 return;
             }
-            LivingColonists.LOGGER.info("{}'s line went round in circles ({}), asking again", name, problem.get());
+            ModLog.action("{}'s line went round in circles ({}), asking again", name, problem.get());
+            Counters.add("repeats.caught");
             generate(citizen, prompt + "\nYour first try was no good: " + problem.get() + ". Say something different, "
                     + "on another subject if need be, or answer [silence].", conversation, null, server, second -> {
                 if (second instanceof ChatResult.Reply reply && Repeats.problem(reply.text(), recent, names, true).isPresent()) {
-                    LivingColonists.LOGGER.info("{}'s second try went round in circles too, said nothing", name);
+                    ModLog.action("{}'s second try went round in circles too, said nothing", name);
                     done.accept(new ChatResult.Reply("[silence]", reply.usage()));
                     return;
                 }
@@ -474,7 +562,10 @@ public final class TalkService {
             offered.addAll(tools.specs());
             offered.addAll(errands.specs(citizen));
         }
-        converse(settings.get().withMinTokens(REPLY_TOKENS), messages, offered, 0, server, citizen.getColony().getDimension(), speaker,
+        // A line nobody waits for (no player to answer) gives way to players' answers.
+        LlmSettings reply = asker == null ? settings.get().withMinTokens(REPLY_TOKENS).inBackground()
+                : settings.get().withMinTokens(REPLY_TOKENS);
+        converse(reply, messages, offered, 0, server, citizen.getColony().getDimension(), speaker,
                 asker, new StringBuilder(), done);
     }
 
@@ -486,7 +577,7 @@ public final class TalkService {
                 yield text.isEmpty() || Prompts.isSilence(text) ? Optional.empty() : Optional.of(text);
             }
             case ChatResult.Failure failure -> {
-                LivingColonists.LOGGER.warn("{} could not answer: {}", speaker.name(), failure.reason());
+                ModLog.warn("{} could not answer: {}", speaker.name(), failure.reason());
                 yield Optional.empty();
             }
         };
@@ -576,16 +667,7 @@ public final class TalkService {
     }
 
     public static ColonyAccess.Role role(ServerPlayer player, IColony colony) {
-        Rank rank = colony.getPermissions().getRank(player);
-        if (rank == null) {
-            return ColonyAccess.Role.OTHER;
-        }
-        return switch (rank.getId()) {
-            case IPermissions.OWNER_RANK_ID -> ColonyAccess.Role.OWNER;
-            case IPermissions.OFFICER_RANK_ID -> ColonyAccess.Role.OFFICER;
-            case IPermissions.FRIEND_RANK_ID -> ColonyAccess.Role.FRIEND;
-            default -> ColonyAccess.Role.OTHER;
-        };
+        return Colonies.role(player, colony);
     }
 
     private static Optional<LlmSettings> settings(ServerPlayer player) {
@@ -619,12 +701,12 @@ public final class TalkService {
      * {@code colonyChatAnywhere}, outside any colony, the one they own, else lead, else are a friend of.
      */
     public static IColony chatColony(ServerPlayer player) {
-        IColony here = IColonyManager.getInstance().getColonyByPosFromWorld(player.level(), player.blockPosition());
+        IColony here = Colonies.at(player);
         if (here != null || !Config.COLONY_CHAT_ANYWHERE.get()) {
             return here;
         }
         IColony best = null;
-        for (IColony colony : IColonyManager.getInstance().getAllColonies()) {
+        for (IColony colony : Colonies.all()) {
             ColonyAccess.Role role = role(player, colony);
             if (role != ColonyAccess.Role.OTHER && (best == null || role.ordinal() < role(player, best).ordinal())) {
                 best = colony;
@@ -659,14 +741,25 @@ public final class TalkService {
                 .entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey).orElse("en_us");
     }
 
+    /** What the colonist sees of the player if they are close enough: what they hold and wear, how hurt they are. */
+    private static String look(ICitizenData citizen, ServerPlayer player) {
+        var entity = citizen.getEntity();
+        if (entity.isEmpty() || entity.get().level() != player.level() || entity.get().distanceToSqr(player) > LOOK_RANGE * LOOK_RANGE) {
+            return "";
+        }
+        net.minecraft.world.item.ItemStack hand = player.getMainHandItem();
+        net.minecraft.world.item.ItemStack chest = player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST);
+        return ArrivalPolicy.look(playerName(player), hand.isEmpty() ? null : ItemNames.of(hand),
+                chest.isEmpty() ? null : ItemNames.of(chest), player.getHealth() / player.getMaxHealth());
+    }
+
     public static boolean isInside(ServerPlayer player, IColony colony) {
-        return colony.getDimension().equals(player.level().dimension())
-                && colony.isCoordInColony(player.level(), player.blockPosition());
+        return Colonies.isInside(player, colony);
     }
 
     /** The colonist's data, or null if the colony or the colonist is gone. */
     public static ICitizenData resolve(ResourceKey<Level> dimension, int colonyId, int citizenId) {
-        IColony colony = IColonyManager.getInstance().getColonyByDimension(colonyId, dimension);
+        IColony colony = Colonies.byId(colonyId, dimension);
         return colony == null ? null : colony.getCitizenManager().getCivilian(citizenId);
     }
 

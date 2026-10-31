@@ -21,8 +21,9 @@ import java.util.stream.Collectors;
 
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
+import me.bytefox.livingcolonists.debug.Counters;
+import me.bytefox.livingcolonists.ModLog;
 import me.bytefox.livingcolonists.Config;
-import me.bytefox.livingcolonists.LivingColonists;
 import me.bytefox.livingcolonists.behaviour.Level;
 import me.bytefox.livingcolonists.behaviour.Module;
 import me.bytefox.livingcolonists.bonds.Bonds;
@@ -37,6 +38,7 @@ import me.bytefox.livingcolonists.memory.MemoryService;
 import me.bytefox.livingcolonists.memory.ThreadPolicy;
 import me.bytefox.livingcolonists.personality.Personality;
 import me.bytefox.livingcolonists.personality.PersonalityService;
+import me.bytefox.livingcolonists.prompt.PromptBudget;
 import me.bytefox.livingcolonists.prompt.PromptLibrary;
 import me.bytefox.livingcolonists.prompt.Templates;
 import net.minecraft.network.chat.Component;
@@ -207,7 +209,8 @@ public final class ColonyThreads {
      * A colonist starts a conversation in the colony chat on their own (#5), about {@code about}.
      * Only with players around and nothing going on in the chat. Returns whether it started.
      */
-    boolean startChatter(MinecraftServer server, IColony colony, int speakerId, String about, int askedId) {
+    boolean startChatter(MinecraftServer server, IColony colony, int speakerId, String about, int askedId,
+                         Airtime.Kind kind) {
         Collection<ServerPlayer> audience = TalkService.colonyAudience(server, colony, null);
         Level level = Config.level(Module.CONVERSATION);
         if (level == Level.OFF || audience.isEmpty()) {
@@ -215,9 +218,12 @@ public final class ColonyThreads {
         }
         long now = server.getTickCount();
         Thread existing = threads.get(colony.getID());
-        if (existing != null && now - existing.lastLineTick < IDLE_TICKS) {
+        if (existing != null && now - existing.lastLineTick < IDLE_TICKS
+                || !talk.airtime().allows(kind, Airtime.colony(colony.getID()), now, TalkService.airtimeLevel())) {
             return false;
         }
+        talk.airtime().spend(Airtime.colony(colony.getID()), now);
+        Counters.add("said." + kind.key());
         Thread thread = threads.computeIfAbsent(colony.getID(), id -> new Thread());
         thread.version++;
         typing.stopColony(server, colony.getID());
@@ -275,16 +281,30 @@ public final class ColonyThreads {
         hushed.values().removeIf(until -> until < currentTick);
     }
 
-    public boolean startEvent(MinecraftServer server, IColony colony, String what, List<Integer> preferred) {
+    /**
+     * Opens a colony conversation about an event, if the chat is free. An urgent one (a death, a raid)
+     * cuts into colonists' own chatter and skips the gap between events, but never into a talk with a player.
+     */
+    public boolean startEvent(MinecraftServer server, IColony colony, String what, List<Integer> preferred, boolean urgent) {
         Collection<ServerPlayer> audience = TalkService.colonyAudience(server, colony, null);
         if (Config.level(Module.CONVERSATION) == Level.OFF || audience.isEmpty()) {
             return false;
         }
         long now = server.getTickCount();
         Thread existing = threads.get(colony.getID());
-        if (existing != null && (now - existing.lastLineTick < IDLE_TICKS || now - existing.lastEventTick < EVENT_GAP_TICKS)) {
+        if (existing != null) {
+            boolean playerTalking = now - existing.playerTick < ACTIVE_TICKS;
+            boolean talking = now - existing.lastLineTick < IDLE_TICKS;
+            if (talking && (!urgent || playerTalking) || !urgent && now - existing.lastEventTick < EVENT_GAP_TICKS) {
+                return false;
+            }
+        }
+        Airtime.Kind kind = urgent ? Airtime.Kind.URGENT : Airtime.Kind.NEWS;
+        if (!talk.airtime().allows(kind, Airtime.colony(colony.getID()), now, TalkService.airtimeLevel())) {
             return false;
         }
+        talk.airtime().spend(Airtime.colony(colony.getID()), now);
+        Counters.add("said." + kind.key());
         Thread thread = threads.computeIfAbsent(colony.getID(), id -> new Thread());
         thread.version++;
         typing.stopColony(server, colony.getID());
@@ -303,7 +323,7 @@ public final class ColonyThreads {
         thread.energy = 1 + ThreadPolicy.startEnergy(Config.level(Module.CONVERSATION), random);
         thread.language = Languages.ofLocale(TalkService.language(audience));
         preferred.stream().limit(1).forEach(thread.addressed::add);
-        LivingColonists.LOGGER.info("Colony {} talks about: {}", colony.getName(), what);
+        ModLog.action("Colony {} talks about: {}", colony.getName(), what);
         nextTurn(server, colony, thread, thread.version);
         return true;
     }
@@ -366,7 +386,7 @@ public final class ColonyThreads {
             List<Integer> picked = chosen.stream().limit(MAX_ADDRESSED).toList();
             picked.forEach(index -> thread.addressed.add(citizens.get(index).getId()));
             thread.askedByPlayer.addAll(thread.addressed);
-            LivingColonists.LOGGER.info("Colony {} message is for {}, found by code; reply in {}", colony.getName(),
+            ModLog.action("Colony {} message is for {}, found by code; reply in {}", colony.getName(),
                     picked.isEmpty() ? "everyone" : picked.stream().map(names::get).toList(), thread.language);
             nextTurn(server, colony, thread, version);
             return;
@@ -402,11 +422,11 @@ public final class ColonyThreads {
                             // "And the lime one?" goes on with whoever answered the last question.
                             thread.addressed.add(thread.lastAnswerer);
                         }
-                        LivingColonists.LOGGER.info("Colony {} message is for {}, found by the model; reply in {}",
+                        ModLog.action("Colony {} message is for {}, found by the model; reply in {}",
                                 colony.getName(), picked.isEmpty() ? "everyone"
                                         : picked.stream().map(index -> roster.get(index).name()).toList(), thread.language);
                     } else if (result instanceof ChatResult.Failure failure) {
-                        LivingColonists.LOGGER.warn("Could not work out whom a colony message addresses: {}", failure.reason());
+                        ModLog.warn("Could not work out whom a colony message addresses: {}", failure.reason());
                     }
                     nextTurn(server, colony, thread, version);
                 }));
@@ -522,7 +542,8 @@ public final class ColonyThreads {
                 return;
             }
             values.put("memories", memories);
-            String prompt = Templates.render(prompts.get(PromptLibrary.REPLY_COLONY), values);
+            String template = prompts.get(PromptLibrary.REPLY_COLONY);
+            String prompt = Templates.render(template, PromptBudget.fit(values, template));
             // Colonists' lines only: answering a player in their own words is no repeat.
             Set<String> colonists = colony.getCitizenManager().getCitizens().stream().map(ICitizenData::getName)
                     .collect(Collectors.toSet());
@@ -538,7 +559,7 @@ public final class ColonyThreads {
                     typing.stop(server, speaker);
                     if (answeringPlayer && result instanceof ChatResult.Reply && thread.silent++ < MAX_SILENT) {
                         // Nobody ignores a player: if the one asked has nothing to say, someone else answers.
-                        LivingColonists.LOGGER.info("{} had nothing to say to the player, someone else answers", speaker.name());
+                        ModLog.action("{} had nothing to say to the player, someone else answers", speaker.name());
                         thread.lastSpeaker = speaker.citizenId();
                         nextTurn(server, colony, thread, version);
                         return;

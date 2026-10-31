@@ -16,6 +16,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 
+import me.bytefox.livingcolonists.debug.Counters;
+
 /**
  * Asynchronous client for an OpenAI-compatible chat completions API.
  *
@@ -39,6 +41,9 @@ public final class LlmClient {
     private final UsageStats stats;
     private final List<Duration> backoff;
     private final Consumer<String> log;
+    /** At most this many requests at once; background work waits behind players' answers, or is shed. */
+    private final RequestGate gate = new RequestGate(4, 8);
+    private final Breaker breaker = new Breaker(System::currentTimeMillis);
     /** Tokens allowed per day; 0 means no limit. */
     private volatile LongSupplier dailyTokenLimit = () -> 0;
 
@@ -59,12 +64,37 @@ public final class LlmClient {
         if (overDailyLimit()) {
             return CompletableFuture.completedFuture(new ChatResult.Failure(DAILY_LIMIT, false));
         }
-        return withRetries(settings.primary(), settings, messages, tools, 0).thenCompose(result -> {
+        String provider = settings.primary().baseUrl();
+        boolean background = settings.background();
+        if (background && breaker.open(provider)) {
+            Counters.add("llm.paused");
+            return CompletableFuture.completedFuture(new ChatResult.Failure("the provider keeps failing, background work "
+                    + "paused for a few minutes", false));
+        }
+        CompletableFuture<Void> turn = gate.acquire(background);
+        if (turn == null) {
+            Counters.add("llm.shed");
+            return CompletableFuture.completedFuture(new ChatResult.Failure("too many requests waiting, background "
+                    + "request dropped", false));
+        }
+        return turn.thenCompose(ignored -> withRetries(settings.primary(), settings, messages, tools, 0).thenCompose(result -> {
             if (result instanceof ChatResult.Failure && settings.fallback() != null) {
                 return withRetries(settings.fallback(), settings, messages, tools, 0);
             }
             return CompletableFuture.completedFuture(result);
+        })).whenComplete((result, error) -> gate.release(background)).thenApply(result -> {
+            if (result instanceof ChatResult.Failure failure && failure.retryable()) {
+                breaker.failed(provider);
+            } else if (result instanceof ChatResult.Reply) {
+                breaker.succeeded(provider);
+            }
+            return result;
         });
+    }
+
+    /** Whether background work to this provider is paused now, as it kept failing. */
+    public boolean paused(LlmSettings settings) {
+        return breaker.open(settings.primary().baseUrl());
     }
 
     /** The models {@code endpoint} offers ({@code GET /models}); never completes exceptionally. */

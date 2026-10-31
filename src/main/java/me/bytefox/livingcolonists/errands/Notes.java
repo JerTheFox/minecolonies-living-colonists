@@ -11,8 +11,8 @@ import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.colony.permissions.ColonyPlayer;
+import me.bytefox.livingcolonists.ModLog;
 import me.bytefox.livingcolonists.Config;
-import me.bytefox.livingcolonists.LivingColonists;
 import me.bytefox.livingcolonists.llm.ToolSpec;
 import me.bytefox.livingcolonists.talk.Addressing;
 import me.bytefox.livingcolonists.talk.PlayerNames;
@@ -93,7 +93,7 @@ public final class Notes {
             return new Errand.Result.Answer(Errand.error("You already keep too many of these for this player."));
         }
         data.setDirty();
-        LivingColonists.LOGGER.info("Note for {} from {} kept by colonist {}: {}", note.toName(), note.fromName(),
+        ModLog.action("Note for {} from {} kept by colonist {}: {}", note.toName(), note.fromName(),
                 note.citizenId(), note.text());
         JsonObject reply = new JsonObject();
         reply.addProperty("success", true);
@@ -136,6 +136,8 @@ public final class Notes {
                 player.sendSystemMessage(notice);
             }
             if (delivery != Delivery.LATER) {
+                ModLog.action("{} delivers a {} to {}: {}", citizen.getName(),
+                        note.kind() == NoteBook.Kind.MAIL ? "message from " + note.fromName() : "reminder", note.toName(), note.text());
                 data.book.delivered(note);
                 // Remembered as done: otherwise the colonist recalls only being asked, and tells the sender it isn't passed on yet.
                 deeds.remember(citizen, note.kind() == NoteBook.Kind.MAIL

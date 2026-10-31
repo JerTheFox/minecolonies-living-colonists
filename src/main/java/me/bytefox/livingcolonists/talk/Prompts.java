@@ -20,7 +20,8 @@ public final class Prompts {
      * weather and the time of day, because those are in its prompt. Broad on purpose, so the colonist
      * fills in the details from their own life.
      */
-    static final List<String> TOPICS = List.of(
+    /** Built in, used until the topics file is read and when it is empty. */
+    private static final List<String> DEFAULT_TOPICS = List.of(
             "something that happened at your work today", "a trick of your trade you are proud of",
             "a tool or piece of equipment you like or hate", "a mistake you made once and learned from",
             "a neighbour's habit", "someone in the colony you admire", "an old friend you miss",
@@ -40,6 +41,18 @@ public final class Prompts {
             "a question you've wondered about for a while", "advice you'd give a newcomer",
             "something you're secretly afraid of", "a compliment you got or gave", "a habit you want to drop",
             "the weather");
+    /** Broad subjects a colony chat may turn to, from {@code content/topics.txt}. */
+    private static volatile List<String> topics = DEFAULT_TOPICS;
+
+    static List<String> topics() {
+        return topics;
+    }
+
+    /** Takes the topics file: one per line, # for comments; an empty one keeps the defaults. */
+    public static void useTopics(String text) {
+        List<String> read = text.lines().map(String::strip).filter(line -> !line.isEmpty() && !line.startsWith("#")).toList();
+        topics = read.isEmpty() ? DEFAULT_TOPICS : read;
+    }
     /** How a colonist puts a line this time: models fall into one shape and one length of line. */
     private static final String[] FORMS = {
             "This time just react, in one to four words.",
@@ -279,8 +292,8 @@ public final class Prompts {
 
     /** Changes the subject to one topic, not yet had in this thread, picked by the dice. */
     static String steer(Random random, Collection<String> usedTopics) {
-        List<String> fresh = TOPICS.stream().filter(topic -> !usedTopics.contains(topic)).toList();
-        String topic = (fresh.isEmpty() ? TOPICS : fresh).get(random.nextInt((fresh.isEmpty() ? TOPICS : fresh).size()));
+        List<String> fresh = topics.stream().filter(topic -> !usedTopics.contains(topic)).toList();
+        String topic = (fresh.isEmpty() ? topics : fresh).get(random.nextInt((fresh.isEmpty() ? topics : fresh).size()));
         return "Change the subject to " + topic + ", in your own way; don't refer to the last topic at all.";
     }
 

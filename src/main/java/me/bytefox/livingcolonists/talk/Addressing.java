@@ -59,7 +59,13 @@ public final class Addressing {
 
     /** Whether the message speaks to one person as "you", for a reply to whoever just spoke. */
     public static boolean secondPerson(String message) {
-        return !toEveryone(message) && words(message).stream().anyMatch(YOU_ONE::contains);
+        return !toEveryone(message) && words(message).stream().anyMatch(word -> YOU_ONE.contains(word) || youVerb(word));
+    }
+
+    /** A Russian verb for "you" ("жалуешься", "думаешь", "хочешь"), not a word that only ends alike ("лишь", "тишь"). */
+    private static boolean youVerb(String word) {
+        return word.length() >= 5 && (word.endsWith("ешь") || word.endsWith("ишь") || word.endsWith("ешься")
+                || word.endsWith("ишься"));
     }
 
     /** The first colonist named in the message, like {@link #allMentioned}. */

@@ -11,9 +11,9 @@ import java.util.function.Predicate;
 
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
-import com.minecolonies.api.colony.IColonyManager;
+import me.bytefox.livingcolonists.colony.Colonies;
+import me.bytefox.livingcolonists.ModLog;
 import me.bytefox.livingcolonists.Config;
-import me.bytefox.livingcolonists.LivingColonists;
 import me.bytefox.livingcolonists.behaviour.ColonyAccess;
 import me.bytefox.livingcolonists.behaviour.Level;
 import me.bytefox.livingcolonists.behaviour.Module;
@@ -101,6 +101,28 @@ final class Initiative {
         lastByColonist.clear();
     }
 
+    /** Puts a player's next unprompted line off by a usual gap: a colonist just greeted them. */
+    void postpone(UUID player, long now) {
+        Level level = Config.level(Module.INITIATIVE);
+        if (level != Level.OFF) {
+            nextAt.merge(player, now + InitiativePolicy.gap(level, random), Math::max);
+        }
+    }
+
+    /** Hours after which a colonist's own timers are forgotten: by then they count as long ago anyway. */
+    private static final long FORGET_TICKS = 6 * 60 * 60 * 20;
+
+    /** Drops what is kept for players who left and timers long past, so a long-running server doesn't pile them up. */
+    void sweep(java.util.Set<UUID> online, long now) {
+        budgets.keySet().retainAll(online);
+        nextAt.keySet().retainAll(online);
+        streak.keySet().retainAll(online);
+        lastByColonist.values().removeIf(at -> now - at > FORGET_TICKS);
+        lastSpoke.values().removeIf(at -> now - at > FORGET_TICKS);
+        lastComplained.values().removeIf(at -> now - at > FORGET_TICKS);
+        raisedToPlayer.values().removeIf(at -> now - at > FORGET_TICKS);
+    }
+
     void tick(MinecraftServer server) {
         long now = server.getTickCount();
         if (data == null || now % CHECK_TICKS != 0) {
@@ -121,13 +143,13 @@ final class Initiative {
                 nextAt.put(id, now + InitiativePolicy.gap(level, random));
                 continue;
             }
-            IColony colony = IColonyManager.getInstance().getColonyByPosFromWorld(player.level(), player.blockPosition());
+            IColony colony = Colonies.at(player);
             InitiativePolicy.Budget budget = budgets.computeIfAbsent(id, key -> new InitiativePolicy.Budget());
             if (colony == null || !TalkService.isInside(player, colony)
                     || !ColonyAccess.canTalk(TalkService.role(player, colony), Config.MEMBERS_ONLY.get())
                     || now - talk.lastMessage(id) < InitiativePolicy.QUIET
                     || threads.isBusy(colony.getID(), now) || talk.errands().hasPending(player, now)
-                    || colony.getRaiderManager().isRaided() || !budget.allows(now, level)) {
+                    || Colonies.isRaided(colony) || !budget.allows(now, level)) {
                 nextAt.put(id, now + InitiativePolicy.retry(random));
                 continue;
             }
@@ -194,7 +216,7 @@ final class Initiative {
         }
         note(speaker, player, topic.get(), now);
         streak.put(player.getUUID(), Math.min(-1, run - 1));
-        LivingColonists.LOGGER.info("{} writes first to {}: {}", speaker.getName(), player.getGameProfile().getName(),
+        ModLog.action("{} writes first to {}: {}", speaker.getName(), player.getGameProfile().getName(),
                 topic.get().key());
         return topic;
     }
@@ -222,13 +244,13 @@ final class Initiative {
                 asked = other.get().getId();
             }
         }
-        if (!threads.startChatter(player.server, colony, speaker.getId(), about, asked)) {
+        if (!threads.startChatter(player.server, colony, speaker.getId(), about, asked, Airtime.Kind.CHATTER)) {
             return Optional.empty();
         }
         note(speaker, player, topic.get(), now);
         int run = streak.getOrDefault(player.getUUID(), 0);
         streak.put(player.getUUID(), Math.max(1, run + 1));
-        LivingColonists.LOGGER.info("{} starts a colony chat: {}", speaker.getName(), topic.get().key());
+        ModLog.action("{} starts a colony chat: {}", speaker.getName(), topic.get().key());
         return topic;
     }
 
@@ -288,7 +310,7 @@ final class Initiative {
                         "something from your day: you " + doing, 0));
             }
         }
-        List<String> fresh = Prompts.TOPICS.stream().filter(t -> fresh(prefix + "topic:" + t, gameTime)).toList();
+        List<String> fresh = Prompts.topics().stream().filter(t -> fresh(prefix + "topic:" + t, gameTime)).toList();
         if (!fresh.isEmpty()) {
             String chosen = fresh.get(random.nextInt(fresh.size()));
             topics.add(new InitiativePolicy.Topic(InitiativePolicy.Kind.SMALL_TALK, "topic:" + chosen, chosen, 0));

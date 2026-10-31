@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
-import me.bytefox.livingcolonists.LivingColonists;
+import me.bytefox.livingcolonists.ModLog;
 import net.neoforged.fml.ModList;
 
 /**
@@ -47,7 +47,7 @@ public final class Translations {
                 }
             });
         } catch (IOException | JsonParseException | IllegalStateException e) {
-            LivingColonists.LOGGER.warn("Could not read {} translations of {}: {}", locale, modId, e.getMessage());
+            ModLog.warn("Could not read {} translations of {}: {}", locale, modId, e.getMessage());
         }
         return names;
     }

@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import me.bytefox.livingcolonists.data.DataVersions;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -18,6 +19,8 @@ import net.minecraft.world.level.saveddata.SavedData;
  */
 public final class BondsData extends SavedData {
     public static final String NAME = "livingcolonists_bonds";
+    /** Format of the saved file; raise it with a migration step in {@link DataVersions#read}. */
+    static final int VERSION = 1;
 
     /** Key: {@code colonyId:citizenId}; oldest first. */
     final Map<String, List<Promise>> promises = new HashMap<>();
@@ -32,7 +35,7 @@ public final class BondsData extends SavedData {
     long nextId = 1;
 
     public static SavedData.Factory<BondsData> factory() {
-        return new SavedData.Factory<>(BondsData::new, (tag, provider) -> load(tag), null);
+        return new SavedData.Factory<>(BondsData::new, (tag, provider) -> load(DataVersions.read(NAME, tag, VERSION)), null);
     }
 
     private static BondsData load(CompoundTag tag) {
@@ -87,6 +90,7 @@ public final class BondsData extends SavedData {
 
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+        DataVersions.stamp(tag, VERSION);
         tag.putLong("nextId", nextId);
         CompoundTag promiseTag = new CompoundTag();
         promises.forEach((key, list) -> {

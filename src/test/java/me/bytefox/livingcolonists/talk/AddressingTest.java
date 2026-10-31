@@ -129,5 +129,9 @@ class AddressingTest {
         assertFalse(Addressing.secondPerson("вы там живы?"));
         assertFalse(Addressing.secondPerson("are you guys alive?"));
         assertFalse(Addressing.secondPerson("строители стройте столовую"));
+        assertTrue(Addressing.secondPerson("На что жалуешься?"));
+        assertTrue(Addressing.secondPerson("а что думаешь про склад"));
+        assertFalse(Addressing.secondPerson("лишь бы дождь кончился"));
+        assertFalse(Addressing.secondPerson("в колонии тишь да гладь"));
     }
 }

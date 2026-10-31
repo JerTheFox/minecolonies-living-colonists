@@ -28,8 +28,8 @@ import com.minecolonies.api.colony.requestsystem.token.IToken;
 import com.minecolonies.api.colony.requestsystem.token.StandardToken;
 import com.minecolonies.api.colony.colonyEvents.descriptions.IBuildingEventDescription;
 import com.minecolonies.api.colony.colonyEvents.descriptions.IColonyEventDescription;
+import me.bytefox.livingcolonists.ModLog;
 import me.bytefox.livingcolonists.Citizens;
-import me.bytefox.livingcolonists.LivingColonists;
 import me.bytefox.livingcolonists.memory.Digests;
 import me.bytefox.livingcolonists.memory.PlayerMarks;
 import me.bytefox.livingcolonists.perception.ItemNames;
@@ -143,12 +143,12 @@ public final class BondsService {
         List<Promise> list = data.promises.computeIfAbsent(key(citizen), k -> new ArrayList<>());
         for (Digests.NewPromise made : digest.promises()) {
             if (owesInColony(citizen.getColony(), player).isPresent()) {
-                LivingColonists.LOGGER.info("{} didn't take a new promise: {} still owes an earlier one", citizen.getName(),
+                ModLog.action("{} didn't take a new promise: {} still owes an earlier one", citizen.getName(),
                         playerName);
                 break;
             }
             if (list.stream().filter(Promise::isOpen).count() >= MAX_OPEN) {
-                LivingColonists.LOGGER.info("{} already holds {} open promises, a new one was not written down",
+                ModLog.action("{} already holds {} open promises, a new one was not written down",
                         citizen.getName(), MAX_OPEN);
                 break;
             }
@@ -212,7 +212,7 @@ public final class BondsService {
                 data.setDirty();
                 player.displayClientMessage(Component.translatable("livingcolonists.promise.made", citizen.getName()),
                         true);
-                LivingColonists.LOGGER.info("{} wrote down a promise from the request dialog: {}", citizen.getName(),
+                ModLog.action("{} wrote down a promise from the request dialog: {}", citizen.getName(),
                         PlayerMarks.resolve(text));
             }
             case BUTTON_FULFILL -> {
@@ -303,7 +303,7 @@ public final class BondsService {
         data.playerNames.put(player.getUUID(), playerName);
         data.setDirty();
         player.displayClientMessage(Component.translatable("livingcolonists.promise.made", name), true);
-        LivingColonists.LOGGER.info("{} wrote down a promise from a dialog: {}", name, PlayerMarks.resolve(text));
+        ModLog.action("{} wrote down a promise from a dialog: {}", name, PlayerMarks.resolve(text));
     }
 
     /**
@@ -381,7 +381,7 @@ public final class BondsService {
                 continue;
             }
             if (owesInColony(colony, player).isPresent()) {
-                LivingColonists.LOGGER.info("{} didn't take a new promise: {} still owes an earlier one", citizen.getName(),
+                ModLog.action("{} didn't take a new promise: {} still owes an earlier one", citizen.getName(),
                         made.player());
                 continue;
             }
@@ -394,7 +394,7 @@ public final class BondsService {
             String playerName = data.playerNames.getOrDefault(player, made.player());
             list.add(new Promise(data.nextId++, player, playerName, Digests.cleanFact(made.text()), made.worth(), about, now, due,
                     Promise.Status.OPEN, 0, needUnmet(citizen, about), false, ""));
-            LivingColonists.LOGGER.info("{} wrote down a promise from the colony chat: {}", citizen.getName(),
+            ModLog.action("{} wrote down a promise from the colony chat: {}", citizen.getName(),
                     PlayerMarks.resolve(made.text()));
         }
         data.setDirty();
@@ -526,7 +526,7 @@ public final class BondsService {
                 watchBuildings(server, colony);
                 watchNeeds(server, colony);
             } catch (RuntimeException e) {
-                LivingColonists.LOGGER.warn("Could not check promises in colony {}", colony.getName(), e);
+                ModLog.warn("Could not check promises in colony {}", colony.getName(), e);
             }
         }
     }
@@ -619,7 +619,7 @@ public final class BondsService {
 
     private void keptByItself(MinecraftServer server, ICitizenData citizen, Promise promise, String how) {
         resolve(citizen, promise.id(), Promise.Status.KEPT, now(citizen.getColony()));
-        LivingColonists.LOGGER.info("{} noticed a promise came true ({}): {}", citizen.getName(), how,
+        ModLog.action("{} noticed a promise came true ({}): {}", citizen.getName(), how,
                 PlayerMarks.resolve(promise.text()));
         ServerPlayer maker = server.getPlayerList().getPlayer(promise.maker());
         if (maker != null) {
@@ -629,7 +629,7 @@ public final class BondsService {
 
     private void lapsed(MinecraftServer server, ICitizenData citizen, Promise promise, Promise.Status status, long now) {
         resolve(citizen, promise.id(), status, now);
-        LivingColonists.LOGGER.info("A promise to {} lapsed as {}: {}", citizen.getName(), status,
+        ModLog.action("A promise to {} lapsed as {}: {}", citizen.getName(), status,
                 PlayerMarks.resolve(promise.text()));
         ServerPlayer maker = server.getPlayerList().getPlayer(promise.maker());
         if (maker != null && status == Promise.Status.BROKEN) {

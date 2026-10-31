@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import me.bytefox.livingcolonists.LivingColonists;
+import me.bytefox.livingcolonists.ModLog;
 
 /**
  * Prompt templates from {@code config/livingcolonists/prompts/}. A missing file is restored from
@@ -33,11 +33,26 @@ public final class PromptLibrary {
     public static final List<String> ALL = List.of(REPLY_PRIVATE, REPLY_COLONY, CHARACTER, BACKGROUND, ROUTE_COLONY,
             BIO, BIO_CHILD, BIO_GROWNUP, MEMORY, MEMORY_PLAYER, MEMORY_COLONISTS, VOICE);
 
+    /** Data colonists draw on (#40), kept beside the prompts in {@code content/} and followed the same way. */
+    public static final String HANDBOOK = "handbook.json";
+    public static final String RUMOURS = "rumours.json";
+    public static final String TOPICS = "topics.txt";
+    public static final List<String> CONTENT = List.of(HANDBOOK, RUMOURS, TOPICS);
+
     private final Path directory;
+    private final Path contentDirectory;
     private volatile Map<String, String> templates = Map.of();
+    private volatile Map<String, String> content = Map.of();
+    private final List<Runnable> reloaded = new java.util.concurrent.CopyOnWriteArrayList<>();
 
     public PromptLibrary(Path configDirectory) {
         this.directory = configDirectory.resolve("livingcolonists").resolve("prompts");
+        this.contentDirectory = configDirectory.resolve("livingcolonists").resolve("content");
+    }
+
+    /** Runs after every reload, to hand the content files to whatever uses them. */
+    public void onReload(Runnable listener) {
+        reloaded.add(listener);
     }
 
     /**
@@ -46,12 +61,24 @@ public final class PromptLibrary {
      * default each file was written from is kept in {@code prompts/.defaults/}.
      */
     public void reload() {
+        templates = Map.copyOf(sync(directory, "prompts/", ALL));
+        content = Map.copyOf(sync(contentDirectory, "content/", CONTENT));
+        reloaded.forEach(Runnable::run);
+    }
+
+    /** A content file's text: {@link #HANDBOOK}, {@link #RUMOURS} or {@link #TOPICS}. */
+    public String content(String name) {
+        String text = content.get(name);
+        return text != null ? text : bundled("content/" + name);
+    }
+
+    private static Map<String, String> sync(Path directory, String bundledPrefix, List<String> names) {
         Map<String, String> loaded = new HashMap<>();
         Path originals = directory.resolve(".defaults");
-        for (String name : ALL) {
+        for (String name : names) {
             Path file = directory.resolve(name);
             Path original = originals.resolve(name);
-            String bundled = bundled("prompts/" + name);
+            String bundled = bundled(bundledPrefix + name);
             try {
                 Files.createDirectories(originals);
                 if (!Files.exists(file)) {
@@ -66,17 +93,17 @@ public final class PromptLibrary {
                         Files.writeString(file, bundled, StandardCharsets.UTF_8);
                         Files.writeString(original, bundled, StandardCharsets.UTF_8);
                     } else {
-                        LivingColonists.LOGGER.warn("Prompt {} was edited, so the mod's newer default was not applied. "
+                        ModLog.warn("{} was edited, so the mod's newer default was not applied. "
                                 + "Delete the file to get the new default.", file);
                     }
                 }
                 loaded.put(name, Files.readString(file, StandardCharsets.UTF_8));
             } catch (IOException e) {
-                LivingColonists.LOGGER.warn("Could not read prompt {}, using the default: {}", file, e.toString());
-                loaded.put(name, bundled("prompts/" + name));
+                ModLog.warn("Could not read {}, using the default: {}", file, e.toString());
+                loaded.put(name, bundled);
             }
         }
-        templates = Map.copyOf(loaded);
+        return loaded;
     }
 
     public String get(String name) {

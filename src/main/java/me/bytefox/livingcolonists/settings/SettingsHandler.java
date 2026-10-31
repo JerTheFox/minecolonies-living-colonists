@@ -3,7 +3,7 @@ package me.bytefox.livingcolonists.settings;
 import java.util.List;
 import java.util.UUID;
 
-import me.bytefox.livingcolonists.LivingColonists;
+import me.bytefox.livingcolonists.ModLog;
 import me.bytefox.livingcolonists.llm.ModelRole;
 import me.bytefox.livingcolonists.network.SettingsRequest;
 import me.bytefox.livingcolonists.network.SettingsState;
@@ -36,7 +36,7 @@ public final class SettingsHandler {
             case OPEN -> send(player, canEdit, "", List.of());
             case APPLY -> {
                 List<String> refused = service.apply(request.changes());
-                LivingColonists.LOGGER.info("{} changed settings: {}", player.getGameProfile().getName(),
+                ModLog.info("{} changed settings: {}", player.getGameProfile().getName(),
                         String.join(", ", request.changes().keySet()));
                 send(player, true, refused.isEmpty() ? "livingcolonists.settings.saved"
                         : "Not saved: " + String.join("; ", refused), List.of());

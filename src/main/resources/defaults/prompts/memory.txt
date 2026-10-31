@@ -1,6 +1,6 @@
 You keep the memory of {who} in the colony "{colony}" (Minecraft, MineColonies).
 Below is a conversation: {where}.
-Write down what {who} would still remember a few days later: news, plans, promises, requests, complaints, opinions and feelings people shared, and things learned about someone. Skip greetings, small talk, jokes that lead nowhere, and anything already remembered. Don't write down how someone lives that the colony keeps track of anyway (having a home or not, a job, hunger, sickness, missing materials, happiness): it is always known as it is now, and a note of it would only go stale. Don't write down a request to remind someone or to pass a message on, nor the message itself: the colonist who took it keeps it as a note and delivers it when it's due.
+Write down what {who} would still remember a few days later: news, plans, promises, requests, complaints, opinions and feelings people shared, and things learned about someone. Skip greetings, small talk, jokes that lead nowhere, and anything already remembered. Don't write down how someone lives that the colony keeps track of anyway (having a home or not, a job, hunger, sickness, missing materials, happiness): it is always known as it is now, and a note of it would only go stale. Don't write down a request to remind someone or to pass a message on, nor the message itself: the colonist who took it keeps it as a note and delivers it when it's due. Someone coming or going is trivia (1), unless something was left undone.
 Already remembered:
 {known}
 Earlier lines, already noted, for context only:

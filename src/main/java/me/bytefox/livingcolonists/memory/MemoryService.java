@@ -21,9 +21,9 @@ import java.util.stream.Collectors;
 
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
+import me.bytefox.livingcolonists.ModLog;
 import me.bytefox.livingcolonists.Citizens;
 import me.bytefox.livingcolonists.Config;
-import me.bytefox.livingcolonists.LivingColonists;
 import me.bytefox.livingcolonists.behaviour.Level;
 import me.bytefox.livingcolonists.bonds.Bonds;
 import me.bytefox.livingcolonists.bonds.BondsService;
@@ -484,7 +484,7 @@ public final class MemoryService {
         List<Integer> ownerIds = owners.stream().map(ICitizenData::getId).toList();
         MemoryData target = data;
         digesting.add(key);
-        client.complete(settings.get().withMinTokens(DIGEST_TOKENS), List.of(ChatMessage.user(prompt))).thenAccept(result -> server.execute(() -> {
+        client.complete(settings.get().withMinTokens(DIGEST_TOKENS).inBackground(), List.of(ChatMessage.user(prompt))).thenAccept(result -> server.execute(() -> {
             digesting.remove(key);
             if (data != target) {
                 return;
@@ -509,12 +509,12 @@ public final class MemoryService {
                     transcript.markDigested(mark);
                     retryAt.remove(key);
                     data.setDirty();
-                    LivingColonists.LOGGER.info("Colonists remembered {} facts from {}", entries.size(),
+                    ModLog.action("Colonists remembered {} facts from {}", entries.size(),
                             key.startsWith("colony:") ? "the colony chat of " + now.getName() : "a private talk");
                 }
                 case ChatResult.Failure failure -> {
                     retryAt.put(key, (long) server.getTickCount() + RETRY_TICKS);
-                    LivingColonists.LOGGER.warn("Could not write down a conversation, will retry later: {}",
+                    ModLog.warn("Could not write down a conversation, will retry later: {}",
                             failure.reason());
                 }
             }
@@ -530,6 +530,17 @@ public final class MemoryService {
         if (data != null && FactLimits.of(level()).facts() > 0) {
             store(citizen.getColony(), List.of(citizen.getId()),
                     List.of(new Digests.Entry(DEED_IMPORTANCE, citizen.getName(), deed)), DEED);
+            data.setDirty();
+        }
+    }
+
+    /**
+     * Something colonists saw happen ("Alex left while the Tavern was still being built", "Ann became
+     * the cook"), for the colonists given. Like any fact it replaces a similar one instead of piling up.
+     */
+    public void rememberSeen(IColony colony, List<Integer> colonists, String about, String text, int importance) {
+        if (data != null && FactLimits.of(level()).facts() > 0) {
+            store(colony, colonists, List.of(new Digests.Entry(importance, about, text)), DEED);
             data.setDirty();
         }
     }
@@ -580,7 +591,7 @@ public final class MemoryService {
                 .whenComplete((result, error) -> server.execute(() -> {
                     missing.forEach(embedding::remove);
                     if (error != null) {
-                        LivingColonists.LOGGER.warn("Could not get embeddings for {} facts: {}", missing.size(),
+                        ModLog.warn("Could not get embeddings for {} facts: {}", missing.size(),
                                 error.getCause() != null ? error.getCause().getMessage() : error.getMessage());
                         return;
                     }
