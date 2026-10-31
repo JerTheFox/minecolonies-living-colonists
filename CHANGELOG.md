@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-11-01
+
 ### Changed
 
 - The reply prompts put what a colonist knows about people (relations, memories) before the time, mood and situation, which change from one reply to the next, so more of each prompt can come from the provider's cache. Prompt files you edited keep the old order.
@@ -292,7 +294,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A colony conversation that ended while a reply was still on its way no longer comes back to life.
 - Old conversations that are fully written down no longer pile up in the world's data.
 
-[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.3...HEAD
+[0.3.3]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.2.3...v0.3.0
