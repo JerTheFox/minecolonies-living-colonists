@@ -4,7 +4,7 @@
 
 A [MineColonies](https://github.com/ldtteam/minecolonies) addon for NeoForge that lets colonists talk in text chat almost like other players. They start conversations, answer you, remember what you told them and gossip about the colony with each other. The words come from a language model behind any OpenAI-compatible API: DeepSeek, Gemini, OpenRouter, or a model running on your own machine.
 
-> **Status: 0.3.0.** Everything below works and is being played on a live server. Expect rough edges, and please report them in [Issues](https://github.com/JerTheFox/minecolonies-living-colonists/issues).
+> **Status: 0.3.1.** Everything below works and is being played on a live server. Expect rough edges, and please report them in [Issues](https://github.com/JerTheFox/minecolonies-living-colonists/issues).
 
 ## An example
 
@@ -29,6 +29,8 @@ You look at the baker and press a key: the chat opens, and a line above the inpu
 - Errands go through the colony's own systems: fetching, delivering, crafting requests and more, based on [Colonist Errands](https://github.com/Lovkar-Squid/colonist-errands).
 - Talk to the whole colony or to one colonist privately; colonists understand names and professions in any language.
 - Speech bubbles over colonists' heads: white pixel comic bubbles, faint behind walls nearby, with bouncing dots while they type; optionally over players too.
+- Gifts count: put something into a colonist's bag through their inventory window, and they remember it, warm to you and say thanks.
+- Colonists notice what goes on without being told: the place for a new building set out, a player fighting off raiders or clearing the monsters that crept in.
 - Every colonist gets a personality: an archetype picked mostly from their MineColonies skills, with a dash of chance, and a short background written once by the model. Archetypes and prompts are plain files you can edit, add or delete. Players' answers go first; when the provider keeps failing, background chatter pauses for a few minutes.
 - Memory profiles from *minimal* (just orders and answers, cheapest) to *immersive* (colonists remember much more), with old memories fading out.
 - Only colony members (owner, officers, friends) can talk to colonists; only owners and officers can give orders. Can be turned off.
@@ -57,7 +59,7 @@ Download the jar from [Releases](https://github.com/JerTheFox/minecolonies-livin
 
 ## Configuration
 
-The language model is set up on the server (in single-player, on your own machine). The easiest way is the settings screen: the *Config* button next to the mod in the mod list, or the *Living Colonists settings* key (unbound by default, see Controls). It has every option below on four tabs (Connection, Behaviour, Limits, Usage), checks values before saving, can test the chat and character models and load the provider's model list. Changes apply at once, no restart. In a world it edits the server's settings: operators (and the owner of a single-player world) can change them, other players only look; from the main menu it edits the local file. API keys are never shown or sent to players: the screen only says whether one is set, and a newly typed key goes to the server once. Mods like Configured show the same options with names and tooltips.
+The language model is set up on the server (in single-player, on your own machine). The easiest way is the settings screen: the *Config* button next to the mod in the mod list, or the *Living Colonists settings* key (unbound by default, see Controls). It has every option below on four tabs (Connection, Behaviour, Limits, Usage), checks values before saving, can test the chat and character models and load the provider's model list. Preset buttons for DeepSeek, OpenRouter and Ollama fill in the address and the models; you only enter the key. Changes apply at once, no restart. In a world it edits the server's settings: operators (and the owner of a single-player world) can change them, other players only look; from the main menu it edits the local file. API keys are never shown or sent to players: the screen only says whether one is set, and a newly typed key goes to the server once. Mods like Configured show the same options with names and tooltips.
 
 Or edit the file by hand: open `config/livingcolonists-common.toml` (it appears after the first launch), put your provider's key into `apiKey` and adjust the rest of the `[llm]` section if needed. The key is stored there as plain text, so don't share the file. Server owners who prefer not to keep it in a file can leave `apiKey` empty and set the environment variable `LIVINGCOLONISTS_API_KEY` instead.
 
@@ -109,7 +111,7 @@ Recent lines of each private talk and of the colony chat go back to the model as
 
 What colonists draw on lives in `config/livingcolonists/content/`: `topics.txt` (subjects a colony chat turns to), `rumours.json` (advancements colonists hear about, and the colony's milestones) and `handbook.json` (the mechanics handbook). They follow the mod's defaults the same way as the prompts, and a pack can add its own topics, advancements and articles.
 
-Promise a colonist planks by tomorrow or a house within a week, and they remember the deadline, remind you when it has passed, thank you when you keep it and hold it against you when you don't. A promised home, job, treatment or building is noticed by itself once it happens. Answering a colonist's request ("I need a pickaxe") with "I will work on it!" counts as a promise too, due in a day and kept once the request is delivered. Colonists also remember whether you are kind or rude to them, and the colony talks: a player rude to several colonists gets a reputation.
+Promise a colonist planks by tomorrow or a house within a week, and they remember the deadline, remind you when it has passed, thank you when you keep it and hold it against you when you don't. A time you name ("in ten minutes", "by evening", "tomorrow") is taken as the deadline by code. A promised home, job, treatment or building is noticed by itself once it happens. Answering a colonist's request ("I need a pickaxe") with "I will work on it!" counts as a promise too, due in a day and kept once the request is delivered. Colonists also remember whether you are kind or rude to them, and the colony talks: a player rude to several colonists gets a reputation.
 
 Colonists talk like ordinary people: short lines, no forced cheer, and a mood for the day that the code rolls (calm, tired, irritable, distracted, bored, gloomy or in a good mood; unhappy colonists are in a bad mood more often). Colonists have their own life too. They remember who they get along with and who gets on their nerves, so the same pairs side with each other or argue. When something happens in the colony (a death, a birth, a child growing up, a newcomer, a finished building, a raid) and players are around, a colonist brings it up in the colony chat and others join in. A promise past its deadline gets you a private reminder from the colonist waiting for it.
 
@@ -156,7 +158,7 @@ Colonists talk about their real day: the mod notes what each one did (worked at 
 
 Colonists can also look things up and take orders: ask "how much iron do we have?" or "Idris, upgrade the bakery". They know the stock, the food, what is being built, the research, who is unhappy, who died, whether the guards are armed, what the colony needs from you, and where someone or something is; they can take a job, order a craft, build or upgrade a building and move it up the builders' queue, arm the guards, plant a field, start a research, add a dish to the restaurant's menu, sort the warehouse, move into another home, tell you when they find something, pass a message on to another player when they come to the colony, and remind you of something later. They come over, follow you, wait, go somewhere, gather (everyone, a profession or the unemployed), go home or lead you the way; couriers bring you things from the warehouse or take them to a building; guards escort you, hold your spot, go on alert, patrol a spot, stand down, and keep a tally of their kills. Look-ups answer at once. Orders come only from the colony's owner and officers (a friend gets turned down), only from your own words, and wait for your yes: a question with *Yes* and *No* buttons shows in chat, and a short "yes" or "no" in chat works too. `/lc undo` takes your last order back where it can be taken back. A builder knows his construction as the resource scroll shows it: the stage, how much of the materials is used, what is at hand, on the way and still to bring.
 
-The chat's buttons run commands you can also type: `/lc yes` and `/lc no` answer a colonist's order question, `/lc undo` takes your last order back, and `/lc lock` starts a private talk with the colonist you look at.
+The chat's buttons run commands you can also type: `/lc yes` and `/lc no` answer a colonist's order question, `/lc undo` takes your last order back, and `/lc lock` starts a private talk with the colonist you look at. `/lc help` sums up the keys and what you can ask.
 
 ## Building from source
 
@@ -188,9 +190,9 @@ The mod follows the game's language setting. English and Russian are included. T
 
 Since 0.1.0: memory that keeps players by account and recalls what a talk touches (optionally by meaning, with embeddings), colonists' real day, personal goals and voices of their own, a handbook of the colony's mechanics, names in the players' language, speech bubbles that work with shaders.
 
-Since 0.2.3: colonists noticing players come and go, rumours of big deeds, colony news that waits its turn instead of getting lost, one budget for unprompted lines, players' answers first at the model.
+Since 0.2.3: colonists noticing players come and go, rumours of big deeds, colony news that waits its turn instead of getting lost, one budget for unprompted lines, players' answers first at the model. Gifts, deadlines from your own words, colonists noticing new sites and fights, provider presets, /lc help.
 
-Next: playing 0.3.0 on a live server and fixing what comes up; then deadlines read by code and gifts noticed in a colonist's inventory.
+Next: playing 0.3.1 on a live server and fixing what comes up; then a longer memory for long-running servers and small requests from colonists with a reward.
 
 ## About this project
 
