@@ -36,7 +36,9 @@ public final class WalkErrands {
 
     public static List<Errand> all(Walks walks) {
         return List.of(
-                command("come_here", "Walk over to the player (\"come here\") and wait by them a while.",
+                command("come_here", "Walk over to the player who asked (\"come here\", \"come to me\", also when they call "
+                        + "several of you at once) and wait by them a while. You find them yourself: no need to know or ask "
+                        + "where they are.",
                         Map.of(), (c, a) -> self(walks, c, Walks.Kind.TO_PLAYER, null, 5, 2, "to the player")),
                 command("follow_me", "Follow the player around (\"follow me\") for up to ten minutes.",
                         Map.of(), (c, a) -> self(walks, c, Walks.Kind.FOLLOW, null, 10, 0, "after the player")),

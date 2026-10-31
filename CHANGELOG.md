@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- Colonists called over several at once ("the unemployed, come to me") come instead of asking where the player is.
+
 ## [0.2.3] - 2026-10-31
 
 ### Changed
@@ -53,7 +57,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A colonist's own line that says again what was said lately, or comes back once more to something going round (a knee, nowhere to sleep), is asked for again, and dropped if it still does.
 - Building names come in the players' languages too, from MineColonies' own translations.
 - Colonists are told the names of the items they talk about in the players' languages, which the players' clients supply (a dedicated server knows only the English names of vanilla items), so the model no longer makes up its own translations.
-
 - With a shader pack (Iris), speech bubbles are drawn on the screen over the speaker's head, so the shaders no longer dim or hide them.
 - Nobody joins in right after a look-up or an order, and colonists don't argue with facts from the colony's records.
 - One homeless colonist telling a player is enough for a while: others don't raise the same problem to them in turn, and unhappiness about having no home no longer counts as a second complaint.
@@ -89,7 +92,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Promises made in the colony chat to a named colonist ("Idris, I'll bring you diamonds in ten minutes") are written down too, and closed when the chat shows they were kept.
 - "I will work on it!" in a colonist's plain dialogs is a promise as well: a hospital or a cure, a workplace upgrade, a warehouse, a guard tower near home or work (closed by themselves when it happens), better or more varied food. Dialogs with nothing to promise, like a full chest or the rain, are skipped.
 - "I will work on it!" in a colonist's request dialog (a builder asking for a pickaxe) is a promise due in one Minecraft day: kept when the request is delivered, by anyone; dropped without blame if the colony cancels it; cancelling it yourself counts as breaking it only once it is overdue. A small read-only mixin into MineColonies' citizen data notes the button, since MineColonies sends no event for it.
-- Colonists talk like ordinary people rather than eager helpers: short lines, no forced cheer, praise or a question at the end of every line; each colonist has a mood for the day (calm, tired, irritable, distracted, bored, gloomy or in a good mood), worse moods more often when they are unhappy.
+- Colonists talk like ordinary people: short lines, without forced cheer, praise or a question at the end of every line; each colonist has a mood for the day (calm, tired, irritable, distracted, bored, gloomy or in a good mood), worse moods more often when they are unhappy.
 - Newborns stay out of conversations for a day unless named, and children talk like children.
 - `/lcdebug relations [name|all]` shows how colonists get along with each other.
 - The reply language is decided by code: the alphabet of the player's message (names don't count), with the game locale saying which language of that alphabet, so an English question gets an English answer even when the colonist's notes are in Russian. Short messages ("ok") keep the language of the talk; a Latin-alphabet language other than English is still left to the model.
@@ -136,7 +139,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - `colonyChatAnywhere` (off by default): colony members read and write their colony's chat from anywhere.
 - Optional `[limits]`: `messagesPerPlayerPerHour` and `tokensPerDay`, both off by default.
 - Prompt templates start with the rules shared by every colonist, so the provider's prompt cache covers them.
-- Colony chat is a living conversation: whoever a message addresses answers first, then other colonists may join in, reply to each other or let the talk die down; talkative archetypes speak up more often, quiet ones rarely. How long threads run without players follows the new `conversation` level (up to about 16 lines on `high`). This replaces the two or three random answers.
+- Colony chat runs as a conversation: whoever a message addresses answers first, then other colonists may join in, reply to each other or let the talk die down; talkative archetypes speak up more often, quiet ones rarely. How long threads run without players follows the new `conversation` level (up to about 16 lines on `high`). This replaces the two or three random answers.
 - Promises: when you promise a colonist something in a private talk ("I'll bring you planks tomorrow", "you'll have a house in a week"), they write it down with its deadline. They remind you when it is overdue, thank you when it is kept and are disappointed when it is broken. Promises of a home, a job or treatment close by themselves when the colonist gets one, and promises of a building when it is finished; a promise left past its deadline for three days counts as broken, one without a deadline is forgotten after ten days. Adapted from Colonist Errands.
 - Relations: colonists remember whether you are kind or rude to them and whether you keep your word, and it shows in their tone. When several colonists agree, the whole colony knows your reputation.
 - `/lcdebug bonds show|clear [name]` lists a colonist's promises and relations, or forgets them.

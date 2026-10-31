@@ -70,7 +70,8 @@ public final class ColonyLookups {
                         (context, arguments) -> food(context.colony(), perception)),
                 lookup("fallen_colonists", "The colonists who died, newest last, and how, from the colony's own records.",
                         null, null, (context, arguments) -> fallen(context.colony())),
-                lookup("where_is", "Which way and how far a colonist or a building is from the person asking.",
+                lookup("where_is", "Which way and how far a colonist or a building is from the person asking. Not for players: "
+                        + "to go to the player who asked, use come_here.",
                         "what", "A colonist's name as the colony spells it, or a building in plain English words",
                         (context, arguments) -> where(context, Errand.string(arguments, "what"))));
     }
