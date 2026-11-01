@@ -360,6 +360,9 @@ public final class ColonyThreads {
         thread.version++;
         typing.stopColony(server, colony.getID());
         thread.colonistTurns = 0;
+        // The player's message comes before a colony event about to be told: left set, the next colonist would
+        // open the event and answer the player without the functions, so "everyone go home" did nothing (0.3.3).
+        thread.opening = null;
         thread.silent = 0;
         thread.energy = ThreadPolicy.startEnergy(Config.level(Module.CONVERSATION), random);
         thread.lines.clear();

@@ -5,6 +5,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- Colonists who work or live together no longer all end up friends. Each pair has its own chemistry: some grow close, some drift apart, most stay as they are, and contrary characters still lean towards falling out. Living side by side alone takes rapport only so far either way; going further takes real events.
+
+### Fixed
+
+- An order to the colony right after colonists started on some news ("everyone go home" just after a new site was set out) got an "on my way" and nothing done: the colonist answering was still on the news and had no way to give orders.
+
 ## [0.3.3] - 2026-11-01
 
 ### Changed
