@@ -91,7 +91,7 @@ public final class ColonyThreads {
     private final SpeechOutput output;
     private final Typing typing;
     private final BondsService bonds;
-    private final Random random = new Random();
+    private final Random random = me.bytefox.livingcolonists.Dice.random();
     private final SpeakerChoice speakers;
     private final JobNames jobNames = new JobNames();
     private long currentTick;

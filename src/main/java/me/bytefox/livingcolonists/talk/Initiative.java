@@ -48,7 +48,7 @@ final class Initiative {
     private final PerceptionService perception;
     private final MemoryService memory;
     private final BondsService bonds;
-    private final Random random = new Random();
+    private final Random random = me.bytefox.livingcolonists.Dice.random();
     private final Map<UUID, InitiativePolicy.Budget> budgets = new HashMap<>();
     /** When each player's next unprompted line may come, in server ticks; drawn anew after each. */
     private final Map<UUID, Long> nextAt = new HashMap<>();

@@ -132,4 +132,17 @@ class MemoryScenariosTest {
         assertEquals(0, stage.bonds.playerRapport(darcy, stage.player.getUUID()), "a grudge over a vague promise");
         assertTrue(promise.id() >= 0);
     }
+
+    @Test
+    void anOverduePromiseTheyMeantGetsAReminderAVagueOneDoesNot() throws Exception {
+        stage.body(darcy, new net.minecraft.core.BlockPos(3, 64, 0));
+        stage.dice(0);
+        Promise promise = promiseFromTalk("принесу тебе изумруд через минуту");
+        stage.bonds.answer(stage.player, promise.id(), true);
+        int before = stage.replies().size();
+        stage.skipTime(2400);
+        assertTrue(stage.runUntil(() -> stage.replies().stream().skip(before)
+                        .anyMatch(r -> r.toString().contains("promised to bring Darcy Abbott an emerald")), WAIT),
+                "no reminder of the overdue promise");
+    }
 }

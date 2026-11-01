@@ -16,7 +16,7 @@ import me.bytefox.livingcolonists.memory.MemoryService;
 final class LifeNews {
     private final MemoryService memory;
     private final ColonyEvents events;
-    private final Random random = new Random();
+    private final Random random = me.bytefox.livingcolonists.Dice.random();
 
     LifeNews(MemoryService memory, ColonyEvents events) {
         this.memory = memory;
@@ -74,7 +74,7 @@ final class LifeNews {
                 close.add(other.getId());
             }
         }
-        java.util.Collections.shuffle(close);
+        java.util.Collections.shuffle(close, me.bytefox.livingcolonists.Dice.random());
         return close;
     }
 

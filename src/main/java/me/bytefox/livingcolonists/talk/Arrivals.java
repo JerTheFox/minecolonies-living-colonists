@@ -56,7 +56,7 @@ final class Arrivals {
     private final BondsService bonds;
     private final PerceptionService perception;
     private final MemoryService memory;
-    private final Random random = new Random();
+    private final Random random = me.bytefox.livingcolonists.Dice.random();
     private InitiativeData data;
 
     /** The colony each player was last inside, -1 for none. */

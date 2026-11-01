@@ -41,4 +41,26 @@ class ColonyLifeScenariosTest {
         assertTrue(Math.abs(rapport) <= Drift.CAP, "past the cap: " + rapport);
         assertEquals(0, stage.bonds.colonists().rapport(stage.colony, 1, 3), "Fiona shares nothing with Darcy");
     }
+
+    private boolean replyAbout(String text) {
+        return stage.replies().stream().anyMatch(r -> r.toString().contains(text));
+    }
+
+    @Test
+    void whenTheDiceSaySoAColonistFallingIllIsNews() throws Exception {
+        stage.dice(0);
+        me.bytefox.livingcolonists.events.ModEvents.BUS.post(
+                new me.bytefox.livingcolonists.events.GameEvents.FellIll(stage.citizens.get(0), "Influenza"));
+        assertTrue(stage.runUntil(() -> replyAbout("Darcy Abbott has fallen ill with Influenza"),
+                java.time.Duration.ofSeconds(20)), "the illness went unsaid");
+    }
+
+    @Test
+    void otherwiseItPassesWithoutAWord() throws Exception {
+        stage.dice(0.99);
+        me.bytefox.livingcolonists.events.ModEvents.BUS.post(
+                new me.bytefox.livingcolonists.events.GameEvents.FellIll(stage.citizens.get(0), "Influenza"));
+        stage.runUntil(() -> false, java.time.Duration.ofSeconds(3));
+        assertTrue(!replyAbout("has fallen ill"), "news despite the dice");
+    }
 }

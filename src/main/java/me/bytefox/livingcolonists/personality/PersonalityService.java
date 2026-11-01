@@ -47,7 +47,7 @@ public final class PersonalityService {
     private final PromptLibrary prompts;
     private final ArchetypeLibrary archetypes;
     private final LlmClient client;
-    private final Random random = new Random();
+    private final Random random = me.bytefox.livingcolonists.Dice.random();
     /** Backgrounds being written, as {@link PersonalityData#key}. */
     private final Set<String> writing = new HashSet<>();
     private PersonalityData data;

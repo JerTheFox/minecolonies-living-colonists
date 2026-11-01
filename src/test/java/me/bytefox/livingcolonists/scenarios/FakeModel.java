@@ -28,6 +28,8 @@ final class FakeModel implements AutoCloseable {
     private final HttpServer server;
     private final Queue<Queued> replies = new ConcurrentLinkedQueue<>();
     final List<JsonObject> requests = new CopyOnWriteArrayList<>();
+    /** What a colonist says when nothing was queued for the request: set it to one line for a model that's stuck. */
+    volatile String replyLine = "Ладно.";
     /** Texts sent for vectors, each input once per request. */
     final List<String> embedded = new CopyOnWriteArrayList<>();
 
@@ -137,7 +139,7 @@ final class FakeModel implements AutoCloseable {
             }
         }
         JsonObject message = new JsonObject();
-        message.addProperty("content", "Ладно.");
+        message.addProperty("content", isReply(request) ? replyLine : "[nothing]");
         return completion(message, "stop");
     }
 

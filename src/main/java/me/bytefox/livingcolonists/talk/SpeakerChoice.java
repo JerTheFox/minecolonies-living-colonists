@@ -35,7 +35,7 @@ final class SpeakerChoice {
     private final BondsService bonds;
     /** Whether a colonist of a colony keeps quiet for now: a newborn joins only when named. */
     private final BiPredicate<Integer, Integer> hushed;
-    private final Random random = new Random();
+    private final Random random = me.bytefox.livingcolonists.Dice.random();
 
     SpeakerChoice(MemoryService memory, PersonalityService personalities, BondsService bonds,
                   BiPredicate<Integer, Integer> hushed) {

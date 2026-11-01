@@ -81,6 +81,17 @@ final class Stage implements AutoCloseable {
     private final MockedStatic<IColonyManager> manager;
     private final Path directory;
     private int tick;
+    /** MineColonies' event log of the colony, oldest first. */
+    final List<com.minecolonies.api.colony.colonyEvents.descriptions.IColonyEventDescription> eventLog = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private volatile boolean raided;
+    /** Warnings and errors the mod logged. */
+    final List<String> warnings = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private org.apache.logging.log4j.core.Appender appender;
+    /** The colony's buildings by position, and its builders' work orders by id. */
+    final Map<BlockPos, com.minecolonies.api.colony.buildings.IBuilding> buildings = new java.util.HashMap<>();
+    final Map<Integer, com.minecolonies.api.colony.workorders.IServerWorkOrder> workOrders = new java.util.HashMap<>();
+    /** Whether the player is out of the colony. */
+    private volatile boolean away;
     private long gameTime = 6000;
 
     Stage(String... names) throws Exception {
@@ -104,13 +115,16 @@ final class Stage implements AutoCloseable {
         when(colony.getName()).thenReturn("Blackwood");
         when(colony.getDimension()).thenReturn(Level.OVERWORLD);
         when(colony.getWorld()).thenReturn(level);
-        when(colony.isCoordInColony(any(), any())).thenReturn(true);
+        when(colony.isCoordInColony(any(), any())).thenAnswer(invocation -> !away);
         when(colony.getCitizenManager().getCitizens()).thenAnswer(invocation -> List.copyOf(citizens));
         when(colony.getCitizenManager().getCivilian(anyInt())).thenAnswer(invocation -> citizens.stream()
                 .filter(c -> c.getId() == (int) invocation.getArgument(0)).findFirst().orElse(null));
-        when(colony.getServerBuildingManager().getBuildings()).thenReturn(Map.of());
-        when(colony.getRaiderManager().isRaided()).thenReturn(false);
-        when(colony.getEventDescriptionManager().getEventDescriptions()).thenReturn(List.of());
+        when(colony.getServerBuildingManager().getBuildings()).thenAnswer(invocation -> Map.copyOf(buildings));
+        when(colony.getWorkManager().getWorkOrders()).thenAnswer(invocation -> Map.copyOf(workOrders));
+        when(colony.getServerBuildingManager().getBuilding(any(BlockPos.class))).thenAnswer(invocation -> buildings.get(invocation.getArgument(0)));
+        when(colony.getRaiderManager().isRaided()).thenAnswer(invocation -> raided);
+        when(colony.getEventDescriptionManager().getEventDescriptions()).thenAnswer(invocation -> List.copyOf(eventLog));
+        watchLog();
         for (int i = 0; i < names.length; i++) {
             citizens.add(citizen(i + 1, names[i]));
         }
@@ -140,11 +154,17 @@ final class Stage implements AutoCloseable {
         IColonyManager colonies = mock(IColonyManager.class);
         manager.when(IColonyManager::getInstance).thenReturn(colonies);
         when(colonies.getAllColonies()).thenReturn(List.of(colony));
-        when(colonies.getColonyByPosFromWorld(any(), any())).thenReturn(colony);
+        when(colonies.getColonyByPosFromWorld(any(), any())).thenAnswer(invocation -> away ? null : colony);
         when(colonies.getColonyByDimension(anyInt(), any())).thenReturn(colony);
 
         LlmClient client = new LlmClient(HttpClient.newHttpClient(), new UsageStats(), List.of(Duration.ofMillis(5)), note -> { });
         PromptLibrary prompts = new PromptLibrary(directory);
+        // The content files, as the mod loads them on start.
+        prompts.onReload(() -> {
+            me.bytefox.livingcolonists.errands.Handbook.use(prompts.content(PromptLibrary.HANDBOOK));
+            me.bytefox.livingcolonists.talk.Rumours.use(prompts.content(PromptLibrary.RUMOURS));
+            me.bytefox.livingcolonists.talk.Prompts.useTopics(prompts.content(PromptLibrary.TOPICS));
+        });
         prompts.reload();
         ArchetypeLibrary archetypes = new ArchetypeLibrary(directory);
         archetypes.reload();
@@ -156,6 +176,8 @@ final class Stage implements AutoCloseable {
         memory.attach(MemoryData.factory().constructor().get());
         talk = new TalkService(client, prompts, personalities, new PerceptionService(), memory, bonds);
         talk.attachInitiative(InitiativeData.factory().constructor().get());
+        // Wired as LivingColonists does.
+        bonds.setReminder(talk::remindPromise);
     }
 
     private ICitizenData citizen(int id, String name) {
@@ -246,6 +268,84 @@ final class Stage implements AutoCloseable {
                 any(net.minecraft.world.phys.AABB.class), any())).thenAnswer(invocation -> List.copyOf(mobs));
     }
 
+    /**
+     * A MineColonies building of type {@code path} ("bakery") at {@code level}. Asking it to upgrade places a work order
+     * at its position, as MineColonies does; removing the order takes it away.
+     */
+    com.minecolonies.api.colony.buildings.IBuilding building(String path, int level, BlockPos pos) {
+        var type = mock(com.minecolonies.api.colony.buildings.registry.BuildingEntry.class);
+        when(type.getTranslationKey()).thenReturn("com.minecolonies.building." + path);
+        when(type.getRegistryName()).thenReturn(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("minecolonies", path));
+        var building = mock(com.minecolonies.api.colony.buildings.IBuilding.class, RETURNS_DEEP_STUBS);
+        when(building.getBuildingType()).thenReturn(type);
+        when(building.getBuildingLevel()).thenReturn(level);
+        when(building.getMaxBuildingLevel()).thenReturn(5);
+        when(building.getPosition()).thenReturn(pos);
+        when(building.getCustomName()).thenReturn("");
+        int id = 100 + buildings.size();
+        doAnswer(invocation -> {
+            var order = mock(com.minecolonies.api.colony.workorders.IServerWorkOrder.class, RETURNS_DEEP_STUBS);
+            when(order.getLocation()).thenReturn(pos);
+            workOrders.put(id, order);
+            return null;
+        }).when(building).requestUpgrade(any(), any());
+        doAnswer(invocation -> workOrders.remove(id)).when(building).removeWorkOrder();
+        buildings.put(pos, building);
+        return building;
+    }
+
+    /** A raid begins, or ends. */
+    void raid(boolean on) {
+        raided = on;
+    }
+
+    /** A colonist event in MineColonies' log: {@code type} like "citizen_died", "citizen_born", "citizen_grown_up". */
+    void citizenEvent(String type, String name) {
+        var entry = mock(com.minecolonies.api.colony.colonyEvents.descriptions.ICitizenEventDescription.class, RETURNS_DEEP_STUBS);
+        when(entry.getEventTypeId()).thenReturn(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("minecolonies", type));
+        when(entry.getCitizenName()).thenReturn(name);
+        eventLog.add(entry);
+    }
+
+    /** A building event in MineColonies' log: {@code type} "building_built" or "building_upgraded". */
+    void buildingEvent(String type, String path) {
+        var entry = mock(com.minecolonies.api.colony.colonyEvents.descriptions.IBuildingEventDescription.class, RETURNS_DEEP_STUBS);
+        when(entry.getEventTypeId()).thenReturn(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("minecolonies", type));
+        when(entry.getBuildingName()).thenReturn("com.minecolonies.building." + path);
+        when(entry.getLevel()).thenReturn(1);
+        eventLog.add(entry);
+    }
+
+    /** Collects what the mod logs as warnings or errors while the stage runs. */
+    private void watchLog() {
+        var context = (org.apache.logging.log4j.core.LoggerContext) org.apache.logging.log4j.LogManager.getContext(false);
+        appender = new org.apache.logging.log4j.core.appender.AbstractAppender("stage", null, null, true,
+                org.apache.logging.log4j.core.config.Property.EMPTY_ARRAY) {
+            @Override
+            public void append(org.apache.logging.log4j.core.LogEvent event) {
+                if (event.getLevel().isMoreSpecificThan(org.apache.logging.log4j.Level.WARN)
+                        && event.getLoggerName().toLowerCase().contains("livingcolonists")) {
+                    warnings.add(event.getLevel() + " " + event.getMessage().getFormattedMessage()
+                            + (event.getThrown() == null ? "" : " " + event.getThrown()));
+                }
+            }
+        };
+        appender.start();
+        context.getConfiguration().getRootLogger().addAppender(appender, null, null);
+        context.updateLoggers();
+    }
+
+    /** The player leaves the colony, or comes back into it. */
+    void playerAway(boolean away) {
+        this.away = away;
+    }
+
+    /** The player earns an advancement, as the game would report it. */
+    void earns(String id, String title) {
+        me.bytefox.livingcolonists.events.ModEvents.BUS.post(
+                new me.bytefox.livingcolonists.events.GameEvents.AdvancementEarned(player, id, title));
+    }
+
     /** The player's rank in the colony, as {@link IPermissions} numbers it. */
     void rank(int id) {
         when(colony.getPermissions().getRank(player)).thenReturn(new Rank(id, "Rank " + id, false));
@@ -287,6 +387,27 @@ final class Stage implements AutoCloseable {
         return false;
     }
 
+    /** Every roll of the mod's dice comes out as {@code roll} (0 to 1): 0 makes every "now and then" happen. */
+    void dice(double roll) {
+        me.bytefox.livingcolonists.Dice.use(new java.util.Random() {
+            @Override
+            public double nextDouble() {
+                return roll;
+            }
+
+            @Override
+            public int nextInt(int bound) {
+                return (int) Math.min(bound - 1, Math.floor(roll * bound));
+            }
+        });
+    }
+
+    /** Runs {@code ticks} server ticks, whatever happens. */
+    void runTicks(int ticks) throws InterruptedException {
+        int end = tick + ticks;
+        runUntil(() -> tick >= end, Duration.ofMinutes(5));
+    }
+
     /** Game time jumps ahead by {@code ticks} at once, as if the colony had been playing meanwhile. */
     void skipTime(long ticks) {
         gameTime += ticks;
@@ -307,6 +428,12 @@ final class Stage implements AutoCloseable {
 
     @Override
     public void close() {
+        if (appender != null) {
+            var context = (org.apache.logging.log4j.core.LoggerContext) org.apache.logging.log4j.LogManager.getContext(false);
+            context.getConfiguration().getRootLogger().removeAppender("stage");
+            context.updateLoggers();
+        }
+        me.bytefox.livingcolonists.Dice.use(null);
         manager.close();
         model.close();
     }

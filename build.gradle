@@ -97,7 +97,20 @@ dependencies {
 }
 
 tasks.named('test', Test) {
-    useJUnitPlatform()
+    // Long simulations (a week of colony life) run apart: ./gradlew slowTest.
+    useJUnitPlatform {
+        excludeTags 'slow'
+    }
+}
+
+tasks.register('slowTest', Test) {
+    description = 'Runs the long simulations tagged slow.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'slow'
+    }
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {

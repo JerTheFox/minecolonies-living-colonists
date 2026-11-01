@@ -88,7 +88,7 @@ public final class TalkService {
     private final ColonyEvents events;
     private final SpeechOutput output = new BubbleSpeechOutput(new ChatSpeechOutput());
     private final Typing typing = new Typing();
-    private final Random random = new Random();
+    private final Random random = me.bytefox.livingcolonists.Dice.random();
 
     /** Pause between one player's messages to colonists. Server thread only. */
     private final Cooldown cooldown = new Cooldown();
