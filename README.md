@@ -28,7 +28,7 @@ You look at the baker and press **U**: a line above the chat input shows "→ Jo
 - Every colonist has a personality, a mood for the day, a voice and a hope of their own; a hungry colonist grumbles, one who just survived a raid is shaken. Relations between colonists change by themselves: coworkers grow close, two contrary housemates get on each other's nerves.
 - They notice things without being told: you coming back, a big deed, a gift in their bag, a new building site, a fight with raiders, a neighbour falling ill or getting a new job.
 - Everything colonists say unprompted shares one budget per colony and per player, so a busy server stays quiet: a death or a raid always gets through, small talk gives way first.
-- Speech bubbles over colonists' heads with typing dots, also with shaders. Each player can hide colonists' colony lines from their chat and keep only the bubbles.
+- Speech bubbles over colonists' heads with typing dots, also with shaders. Each player can hide colonists' colony lines from their chat and keep only the bubbles. Bubbles over players are off by default, in case you already use another chat bubble mod; turn on `playerBubbles` and players get the same bubbles and typing dots as colonists.
 - Any OpenAI-compatible provider, with separate models for chat and for writing characters, retries, a fallback endpoint and token statistics. Players' answers go first; when the provider keeps failing, background chatter pauses for a few minutes. An in-game settings screen, and `/lcdebug` for operators.
 - Operators can turn the mod off for the whole server, a colony's owner for their own colony.
 
@@ -190,11 +190,13 @@ This is my project. I'm a sysadmin, not a Java developer: I decide what the mod 
 
 It started as a private mod for my home server. We had been running Talking Colonists with Colonist Errands: voice conversations with colonists through Gemini Live. I wanted text chat, a free choice of model provider, and colonists who live their own lives in chat. Since others might want the same, I decided to publish it.
 
+My wife is the one who got me into this. She supports it, tests it with me on our server, helps with ideas and drew the promise notebook's icon by hand.
+
 Bug reports and ideas are welcome in [Issues](https://github.com/JerTheFox/minecolonies-living-colonists/issues).
 
 ## Credits and references
 
-- **[MineColonies](https://github.com/ldtteam/minecolonies)** by LDT Team — the colony simulator this is an addon for, along with [Structurize](https://github.com/ldtteam/Structurize), [BlockUI](https://github.com/ldtteam/BlockUI) and [Domum Ornamentum](https://github.com/ldtteam/Domum-Ornamentum).
+- **[MineColonies](https://github.com/ldtteam/minecolonies)** by LDT Team — the colony simulator this is an addon for, along with [Structurize](https://github.com/ldtteam/Structurize), [BlockUI](https://github.com/ldtteam/BlockUI) and [Domum Ornamentum](https://github.com/ldtteam/Domum-Ornamentum). The promise notebook is drawn on MineColonies' town hall book, loaded from MineColonies itself; none of its art is copied into this mod.
 - **[Colonist Errands](https://github.com/Lovkar-Squid/colonist-errands)** by Lovkar (GPL-3.0-or-later) — the main code donor: errands through the colony's systems, reading citizen state, promises and relations with players. Ported files keep their original copyright notice and say where they came from.
 - **[Talking Colonists](https://github.com/talking-colonists/talking-colonists)** by sshcrack ([CurseForge](https://www.curseforge.com/minecraft/mc-mods/talking-colonists-minecolonies-addon)) — voice conversations with colonists through Gemini Live. Ideas borrowed from it: the budget for unprompted lines, rumors spreading through the colony, complaints that escalate. Its code is under the CoFH "Don't Be a Jerk" license, so nothing is copied verbatim; borrowed ideas link back to their source.
 - **[ColonyChat](https://www.curseforge.com/minecraft/mc-mods/colonychat)** — an earlier take on LLM chat for MineColonies (Forge 1.20.1). Ideas and lessons learned only, no code.

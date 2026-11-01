@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- A promise notebook, the mod's first item. The colonist you make your first real promise to hands it over: "Write it down, or you'll forget." Right-click opens it on MineColonies' town hall book with a page per open promise in every colony: to whom, what, and when it's due or that it's overdue. Vague promises can be confirmed right on the page, and any promise can be given up there. The open pages update as soon as you do. A lost notebook is crafted again from a book, a feather and paper.
+
 ## [0.3.5] - 2026-11-01
 
 ### Added

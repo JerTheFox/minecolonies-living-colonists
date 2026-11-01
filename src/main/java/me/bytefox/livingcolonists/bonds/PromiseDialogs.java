@@ -95,6 +95,7 @@ final class PromiseDialogs {
                         true);
                 ModLog.action("{} wrote down a promise from the request dialog: {}", citizen.getName(),
                         PlayerMarks.resolve(text));
+                bonds.handOverBook(citizen, player);
             }
             case BUTTON_FULFILL -> {
                 if (existing != null) {
@@ -185,6 +186,7 @@ final class PromiseDialogs {
         bonds.data().setDirty();
         player.displayClientMessage(Component.translatable("livingcolonists.promise.made", name), true);
         ModLog.action("{} wrote down a promise from a dialog: {}", name, PlayerMarks.resolve(text));
+        bonds.handOverBook(citizen, player);
     }
 
     /** Promises tied to colony requests close when the request is delivered or cancelled. */

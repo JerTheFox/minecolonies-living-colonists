@@ -32,6 +32,8 @@ public final class BondsData extends SavedData {
     final Map<String, Long> credited = new HashMap<>();
     /** The name colonists last knew each player by, for what the colony says about them. */
     final Map<UUID, String> playerNames = new HashMap<>();
+    /** Players a colonist already gave a promise notebook to; a lost one is crafted again. */
+    final java.util.Set<UUID> bookGiven = new java.util.HashSet<>();
     long nextId = 1;
 
     public static SavedData.Factory<BondsData> factory() {
@@ -63,6 +65,10 @@ public final class BondsData extends SavedData {
         CompoundTag names = tag.getCompound("players");
         for (String key : names.getAllKeys()) {
             data.playerNames.put(UUID.fromString(key), names.getString(key));
+        }
+        ListTag books = tag.getList("bookGiven", Tag.TAG_STRING);
+        for (int i = 0; i < books.size(); i++) {
+            data.bookGiven.add(UUID.fromString(books.getString(i)));
         }
         return data;
     }
@@ -136,6 +142,9 @@ public final class BondsData extends SavedData {
         CompoundTag creditTag = new CompoundTag();
         credited.forEach(creditTag::putLong);
         tag.put("credited", creditTag);
+        ListTag books = new ListTag();
+        bookGiven.forEach(uuid -> books.add(net.minecraft.nbt.StringTag.valueOf(uuid.toString())));
+        tag.put("bookGiven", books);
         return tag;
     }
 

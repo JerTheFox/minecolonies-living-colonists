@@ -25,20 +25,22 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * <p>
  * {@code promise}: the player promises a colonist something in a private talk (the real model replies), the talk is
  * digested at once ({@code /lcdebug memory digest}, the player must be an operator), and the player clicks
- * "[Yes, I promise]" in the chat; passes when the server says the promise is confirmed.
+ * "[Yes, I promise]" in the chat; the server says the promise is confirmed, the notebook the colonist handed over
+ * opens with it, and a mouse click on "[Give up]" in the notebook gives it up and refreshes the open pages.
  */
 @EventBusSubscriber(modid = "livingcolonists", value = Dist.CLIENT)
 public final class LiveRunsClient {
     private static final String PROMISE = "I promise I'll bring you three loaves of bread tomorrow.";
     private static final int TIMEOUT_TICKS = 20 * 180;
 
-    private enum Step { LOOK, SAID, DIGESTED, ASKED, CLICKED, LISTED, DONE }
+    private enum Step { LOOK, SAID, DIGESTED, ASKED, CLICKED, LISTED, BOOK, GAVE_UP, DONE }
 
     private static Step step = Step.LOOK;
     private static int ticks;
     private static int stepTicks;
     private static Style yes;
     private static boolean confirmed;
+    private static boolean gaveUp;
     private static String colonist;
 
     private LiveRunsClient() {
@@ -53,8 +55,9 @@ public final class LiveRunsClient {
         if (message.getString().startsWith(LiveRuns.READY)) {
             colonist = message.getString().substring(LiveRuns.READY.length());
         }
-        if (message.getContents() instanceof TranslatableContents text && text.getKey().equals("livingcolonists.promise.confirmed")) {
-            confirmed = true;
+        if (message.getContents() instanceof TranslatableContents text) {
+            confirmed |= text.getKey().equals("livingcolonists.promise.confirmed");
+            gaveUp |= text.getKey().equals("livingcolonists.promise.given_up");
         }
         message.visit((style, part) -> {
             if (style.getClickEvent() != null && style.getClickEvent().getAction() == ClickEvent.Action.RUN_COMMAND
@@ -120,7 +123,53 @@ public final class LiveRunsClient {
             case LISTED -> {
                 if (stepTicks == 40) {
                     shot(minecraft, "live-promise-2-confirmed");
-                    finish("PASS");
+                    minecraft.setScreen(null);
+                    next(Step.BOOK);
+                }
+            }
+            case BOOK -> {
+                // The colonist handed over the notebook with the first confirmed promise: open it as a player would.
+                if (stepTicks == 20) {
+                    int slot = minecraft.player.getInventory().findSlotMatchingItem(
+                            new net.minecraft.world.item.ItemStack(me.bytefox.livingcolonists.items.ModItems.PROMISE_BOOK.get()));
+                    if (slot < 0) {
+                        finish("FAIL, no notebook in the inventory");
+                    } else if (slot < 9) {
+                        minecraft.player.getInventory().selected = slot;
+                    } else {
+                        minecraft.gameMode.handlePickItem(slot);
+                    }
+                } else if (stepTicks == 40) {
+                    minecraft.gameMode.useItem(minecraft.player, net.minecraft.world.InteractionHand.MAIN_HAND);
+                } else if (stepTicks == 80) {
+                    if (minecraft.screen instanceof me.bytefox.livingcolonists.client.PromiseBookScreen book) {
+                        shot(minecraft, "live-promise-3-book");
+                        // Find "[Give up]" on the pages and click it with the mouse, as a player would.
+                        for (int y = 0; y < book.height; y += 2) {
+                            for (int x = 0; x < book.width; x += 2) {
+                                Style style = book.styleAt(x, y);
+                                if (style != null && style.getClickEvent() != null
+                                        && style.getClickEvent().getValue().startsWith("/lc promise no ")) {
+                                    book.mouseClicked(x + 1, y + 1, 0);
+                                    next(Step.GAVE_UP);
+                                    return;
+                                }
+                            }
+                        }
+                        finish("FAIL, no [Give up] button in the notebook");
+                    } else {
+                        finish("FAIL, the notebook didn't open: " + minecraft.screen);
+                    }
+                }
+            }
+            case GAVE_UP -> {
+                if (gaveUp && stepTicks > 40) {
+                    if (minecraft.screen instanceof me.bytefox.livingcolonists.client.PromiseBookScreen) {
+                        shot(minecraft, "live-promise-4-given-up");
+                        finish("PASS");
+                    } else {
+                        finish("FAIL, the notebook closed after the click: " + minecraft.screen);
+                    }
                 }
             }
             default -> {

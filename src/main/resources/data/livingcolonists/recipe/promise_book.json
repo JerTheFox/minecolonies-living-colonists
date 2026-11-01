@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {"item": "minecraft:book"},
+    {"item": "minecraft:feather"},
+    {"item": "minecraft:paper"}
+  ],
+  "result": {
+    "count": 1,
+    "id": "livingcolonists:promise_book"
+  }
+}

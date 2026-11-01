@@ -254,5 +254,16 @@
   "livingcolonists.promise.list": "Your promises in %s:",
   "livingcolonists.promise.list.vague": "(you never confirmed it)",
   "livingcolonists.promise.give_up": "[Give up]",
-  "livingcolonists.promise.give_up.hint": "Giving up a promise that's overdue counts as breaking it."
+  "livingcolonists.promise.give_up.hint": "Giving up a promise that's overdue counts as breaking it.",
+  "item.livingcolonists.promise_book": "Promise Notebook",
+  "livingcolonists.book.title": "Promises",
+  "livingcolonists.book.empty": "No open promises. When a colonist counts on something you said, it goes in here.",
+  "livingcolonists.book.count": "Open promises: %s",
+  "livingcolonists.book.to": "To %s",
+  "livingcolonists.book.due.none": "No deadline",
+  "livingcolonists.book.due.today": "Due today",
+  "livingcolonists.book.due.tomorrow": "Due tomorrow",
+  "livingcolonists.book.due.days": "Due in %s days",
+  "livingcolonists.book.overdue": "Overdue",
+  "livingcolonists.book.given": "%s hands you a notebook: \"Write it down, or you'll forget.\""
 }

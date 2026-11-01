@@ -127,6 +127,7 @@ public final class LivingColonists {
                 bonds.onDialogResponse(citizen, inquiry, button, player, Audience.playerName(player));
             }
         });
+        me.bytefox.livingcolonists.items.ModItems.register(modEventBus);
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::registerPayloads);
 
@@ -136,6 +137,17 @@ public final class LivingColonists {
                     memory, bonds);
         });
         NeoForge.EVENT_BUS.addListener(this::onServerChat);
+        // The promise notebook opens with its pages from the server (#60).
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.RightClickItem event) -> {
+            if (!event.getItemStack().is(me.bytefox.livingcolonists.items.ModItems.PROMISE_BOOK.get())) {
+                return;
+            }
+            if (event.getEntity() instanceof ServerPlayer player) {
+                bonds.sendNotebook(player, true);
+            }
+            event.setCancellationResult(net.minecraft.world.InteractionResult.sidedSuccess(event.getLevel().isClientSide()));
+            event.setCanceled(true);
+        });
         NeoForge.EVENT_BUS.addListener((LivingDeathEvent event) -> {
             talk.errands().tally().onDeath(event.getEntity(), event.getSource().getEntity());
             if (event.getEntity() instanceof ServerPlayer player) {
@@ -278,7 +290,10 @@ public final class LivingColonists {
      * what is missing. The client-bound handlers are lambdas so client classes load only on the client.
      */
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar("2");
+        PayloadRegistrar registrar = event.registrar("3");
+        registrar.playToClient(me.bytefox.livingcolonists.network.PromiseBookPages.TYPE,
+                me.bytefox.livingcolonists.network.PromiseBookPages.STREAM_CODEC,
+                (payload, context) -> me.bytefox.livingcolonists.client.PromiseBookScreen.apply(payload));
         registrar.playToServer(ConversationAction.TYPE, ConversationAction.STREAM_CODEC,
                 (payload, context) -> conversations.onAction((ServerPlayer) context.player(), payload.action()));
         registrar.playToClient(ConversationState.TYPE, ConversationState.STREAM_CODEC,

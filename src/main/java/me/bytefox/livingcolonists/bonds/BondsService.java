@@ -339,6 +339,7 @@ public final class BondsService {
                 if (meant) {
                     replace(citizen, promise.withConfirm(Promise.Confirm.CONFIRMED));
                     player.sendSystemMessage(Component.translatable("livingcolonists.promise.confirmed", citizen.getName()));
+                    handOverBook(citizen, player);
                 } else if (promise.binding()) {
                     resolve(citizen, id, Bonds.cancelledByMaker(promise, now), now);
                     player.sendSystemMessage(Component.translatable("livingcolonists.promise.given_up", citizen.getName()));
@@ -348,11 +349,59 @@ public final class BondsService {
                 }
                 ModLog.action("{} answered about a promise to {}: {} ({})", player.getGameProfile().getName(), citizen.getName(),
                         meant ? "meant it" : "didn't", PlayerMarks.resolve(promise.text()));
+                sendNotebook(player, false);
                 return 1;
             }
         }
         player.sendSystemMessage(Component.translatable("livingcolonists.promise.unknown"));
         return 0;
+    }
+
+    /** The pages of the player's promise notebook: their open promises in every colony, overdue and soonest first. */
+    public List<Component> notebook(ServerPlayer player) {
+        List<PromiseBook.Entry> entries = new ArrayList<>();
+        if (data != null) {
+            for (Map.Entry<String, List<Promise>> entry : data.promises.entrySet()) {
+                String[] parts = entry.getKey().split(":");
+                IColony colony = Citizens.colony(Integer.parseInt(parts[0]));
+                ICitizenData citizen = colony == null ? null : colony.getCitizenManager().getCivilian(Integer.parseInt(parts[1]));
+                if (citizen == null) {
+                    continue;
+                }
+                long now = now(colony);
+                long dayTime = colony.getWorld() == null ? now : colony.getWorld().getDayTime();
+                for (Promise promise : entry.getValue()) {
+                    if (promise.isOpen() && promise.maker().equals(player.getUUID())) {
+                        entries.add(new PromiseBook.Entry(citizen.getName(), colony.getName(), promise, now, dayTime));
+                    }
+                }
+            }
+        }
+        entries.sort(java.util.Comparator.comparingLong(e -> e.promise().due() <= 0 ? Long.MAX_VALUE : e.promise().due()));
+        return PromiseBook.pages(entries);
+    }
+
+    /** Sends the player their notebook's pages: to open it, or to refresh it if it is open. */
+    public void sendNotebook(ServerPlayer player, boolean open) {
+        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,
+                new me.bytefox.livingcolonists.network.PromiseBookPages(notebook(player), open));
+    }
+
+    /**
+     * The first promise a player stands by brings them a notebook from the colonist ("Write it down, or you'll
+     * forget"), once per player; a lost one is crafted again.
+     */
+    void handOverBook(ICitizenData citizen, ServerPlayer player) {
+        if (data == null || !data.bookGiven.add(player.getUUID())) {
+            return;
+        }
+        data.setDirty();
+        ItemStack book = new ItemStack(me.bytefox.livingcolonists.items.ModItems.PROMISE_BOOK.get());
+        if (!player.addItem(book)) {
+            player.drop(book, false);
+        }
+        player.sendSystemMessage(Component.translatable("livingcolonists.book.given", citizen.getName()));
+        ModLog.action("{} gave {} a promise notebook", citizen.getName(), player.getGameProfile().getName());
     }
 
     /** The player's open promises in the colony, each with a button to give it up. Returns how many. */
