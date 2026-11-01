@@ -1,11 +1,8 @@
 package me.bytefox.livingcolonists.talk;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -16,7 +13,6 @@ import java.util.OptionalInt;
 import java.util.PriorityQueue;
 import java.util.Random;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import com.minecolonies.api.colony.ICitizenData;
@@ -36,7 +32,6 @@ import me.bytefox.livingcolonists.memory.Fact;
 import me.bytefox.livingcolonists.memory.MemoryLine;
 import me.bytefox.livingcolonists.memory.MemoryService;
 import me.bytefox.livingcolonists.memory.ThreadPolicy;
-import me.bytefox.livingcolonists.personality.Personality;
 import me.bytefox.livingcolonists.personality.PersonalityService;
 import me.bytefox.livingcolonists.prompt.PromptBudget;
 import me.bytefox.livingcolonists.prompt.PromptLibrary;
@@ -88,10 +83,6 @@ public final class ColonyThreads {
     private static final long EVENT_GAP_TICKS = 6000;
     /** At most this many colonists answer one message addressed to several. */
     private static final int MAX_ADDRESSED = 3;
-    /** How much likelier a colonist named in the last line, or already talking, is to speak next. */
-    private static final double NAMED_BONUS = 6;
-    private static final double TALKING_BONUS = 2;
-    private static final double FAMILY_BONUS = 1.5;
 
     private final TalkService talk;
     private final PromptLibrary prompts;
@@ -101,58 +92,15 @@ public final class ColonyThreads {
     private final Typing typing;
     private final BondsService bonds;
     private final Random random = new Random();
+    private final SpeakerChoice speakers;
     private final JobNames jobNames = new JobNames();
     private long currentTick;
-    private final Map<Integer, Thread> threads = new HashMap<>();
+    private final Map<Integer, ChatThread> threads = new HashMap<>();
     /** Colonists who don't join conversations unless named, until a server tick: newborns. Key as {@link TalkService#key}. */
     private final Map<Long, Long> hushed = new HashMap<>();
     private final PriorityQueue<Scheduled> scheduled = new PriorityQueue<>(Comparator.comparingLong(Scheduled::tick));
 
     private record Scheduled(long tick, Runnable action) {
-    }
-
-    /** One colony's conversation. */
-    private static final class Thread {
-        /** Bumped by every player message; a line written for an older version is stale. */
-        long version;
-        int colonistTurns;
-        int lastSpeaker = -1;
-        long lastLineTick;
-        UUID lastPlayer;
-        final Deque<Integer> addressed = new ArrayDeque<>();
-        /** Colonists the player's latest message was for: each of them answers the player, functions and all. */
-        final Set<Integer> askedByPlayer = new HashSet<>();
-        final Set<Integer> participants = new HashSet<>();
-        /** Topics the dice already turned this thread to. */
-        final Set<String> topics = new HashSet<>();
-        /** How much life the talk among colonists has left; each line spends some, a question or an argument adds. */
-        double energy;
-        /** A conversation a colonist starts unprompted: what about, for the opening line. */
-        String chatter;
-        /** Whether the last line's stance was to disagree, which livens a talk. */
-        boolean disagreed;
-        /** Whom the colonist speaking now was told to turn to by name: they answer next. */
-        int asked = -1;
-        /** A colonist just asked a question by name by another colonist: they may look it up (#56). */
-        int questionTo = -1;
-        /** Lines each colonist said in this thread, so whoever said a lot steps back. */
-        final Map<Integer, Integer> lines = new HashMap<>();
-        /** A colony event the next line opens the thread with, if any. */
-        String opening;
-        /** The language the thread is in, like "Russian"; null leaves it to the model. */
-        String language;
-        long lastEventTick = Long.MIN_VALUE / 2;
-        /** World game time the conversation began; earlier chat lines are only context. */
-        long startTime;
-        /** Who answered the player's last message: a follow-up for nobody in particular goes to them. */
-        int lastAnswerer = -1;
-        /** Colonists who stayed silent on the player's message so far. */
-        int silent;
-        /** Server tick and game time of the player's last message. */
-        long playerTick = Long.MIN_VALUE / 2;
-        long playerGameTime;
-        /** Server tick a colonist last answered the player: after {@link #playerTick}, nobody's answer is pending. */
-        long answeredTick = Long.MIN_VALUE / 2;
     }
 
     ColonyThreads(TalkService talk, PromptLibrary prompts, MemoryService memory, PersonalityService personalities,
@@ -164,6 +112,7 @@ public final class ColonyThreads {
         this.output = output;
         this.typing = typing;
         this.bonds = bonds;
+        this.speakers = new SpeakerChoice(memory, personalities, bonds, this::isHushed);
     }
 
     public void clear() {
@@ -188,7 +137,7 @@ public final class ColonyThreads {
 
     /** Stops the colony's conversation: lines being written or waiting to go out are dropped. */
     public boolean stop(IColony colony) {
-        Thread thread = threads.remove(colony.getID());
+        ChatThread thread = threads.remove(colony.getID());
         if (thread == null) {
             return false;
         }
@@ -200,7 +149,7 @@ public final class ColonyThreads {
     }
 
     public String state(IColony colony) {
-        Thread thread = threads.get(colony.getID());
+        ChatThread thread = threads.get(colony.getID());
         return thread == null ? "no thread yet" : "colonist turns since a player spoke: " + thread.colonistTurns
                 + ", participants: " + thread.participants.size() + ", addressed queue: " + thread.addressed.size();
     }
@@ -227,7 +176,7 @@ public final class ColonyThreads {
             return false;
         }
         long now = server.getTickCount();
-        Thread existing = threads.get(colony.getID());
+        ChatThread existing = threads.get(colony.getID());
         if (existing != null && now - existing.lastLineTick < IDLE_TICKS
                 || existing != null && existing.lastPlayer == null
                 && now - existing.lastLineTick < ThreadPolicy.pauseAfterTalk(level)
@@ -236,7 +185,7 @@ public final class ColonyThreads {
         }
         talk.airtime().spend(Airtime.colony(colony.getID()), now);
         Counters.add("said." + kind.key());
-        Thread thread = threads.computeIfAbsent(colony.getID(), id -> new Thread());
+        ChatThread thread = threads.computeIfAbsent(colony.getID(), id -> new ChatThread());
         thread.version++;
         typing.stopColony(server, colony.getID());
         thread.startTime = colony.getWorld().getGameTime();
@@ -260,31 +209,18 @@ public final class ColonyThreads {
     }
 
     /**
-     * Someone for a colonist to turn to by name: friends and those nearby more likely, rivals and the
-     * far away less, nobody ruled out.
+     * Someone for a colonist to turn to by name (see {@link SpeakerChoice#pickAddressee}).
      */
     Optional<ICitizenData> pickAddressee(IColony colony, ICitizenData speaker) {
-        List<ThreadPolicy.Candidate<Integer>> candidates = new ArrayList<>();
-        for (ICitizenData other : colony.getCitizenManager().getCitizens()) {
-            if (other.getId() == speaker.getId() || isHushed(colony.getID(), other.getId())) {
-                continue;
-            }
-            double base = Bonds.replyWeight(bonds.colonists().rapport(colony, other.getId(), speaker.getId()));
-            candidates.add(new ThreadPolicy.Candidate<>(other.getId(),
-                    ThreadPolicy.joinWeight(base, distance(speaker, other), coworkers(speaker, other), 0)));
-        }
-        return ThreadPolicy.pickSpeaker(candidates, speaker.getId(), random).map(id -> colony.getCitizenManager().getCivilian(id));
+        return speakers.pickAddressee(colony, speaker);
     }
 
-    private static double distance(ICitizenData a, ICitizenData b) {
-        if (a == null || b == null || a.getEntity().isEmpty() || b.getEntity().isEmpty()) {
-            return -1;
-        }
-        return Math.sqrt(a.getEntity().get().distanceToSqr(b.getEntity().get()));
+    double contrariness(ICitizenData citizen) {
+        return speakers.contrariness(citizen);
     }
 
-    private static boolean coworkers(ICitizenData a, ICitizenData b) {
-        return a != null && b != null && a.getWorkBuilding() != null && a.getWorkBuilding().equals(b.getWorkBuilding());
+    double talkativeness(ICitizenData citizen) {
+        return speakers.talkativeness(citizen);
     }
 
     /** These colonists join conversations only when named, for {@code ticks}: a newborn doesn't chat. */
@@ -306,7 +242,7 @@ public final class ColonyThreads {
             return false;
         }
         long now = server.getTickCount();
-        Thread existing = threads.get(colony.getID());
+        ChatThread existing = threads.get(colony.getID());
         if (existing != null) {
             // A raid or a death waits only for the answer to the player's last message, not for the whole talk.
             boolean playerWaiting = now - existing.playerTick < ACTIVE_TICKS && existing.answeredTick < existing.playerTick;
@@ -321,7 +257,7 @@ public final class ColonyThreads {
         }
         talk.airtime().spend(Airtime.colony(colony.getID()), now);
         Counters.add("said." + kind.key());
-        Thread thread = threads.computeIfAbsent(colony.getID(), id -> new Thread());
+        ChatThread thread = threads.computeIfAbsent(colony.getID(), id -> new ChatThread());
         thread.version++;
         typing.stopColony(server, colony.getID());
         thread.startTime = colony.getWorld().getGameTime();
@@ -352,8 +288,8 @@ public final class ColonyThreads {
         output.playerSaid(player, colony.getName(), message, Audience.colonyAudience(server, colony, player));
         memory.seen(player.getUUID(), Audience.playerName(player), player.getGameProfile().getName());
         memory.rememberColony(colony, Audience.playerName(player), message);
-        Thread thread = threads.computeIfAbsent(colony.getID(), id -> {
-            Thread fresh = new Thread();
+        ChatThread thread = threads.computeIfAbsent(colony.getID(), id -> {
+            ChatThread fresh = new ChatThread();
             fresh.startTime = colony.getWorld().getGameTime();
             return fresh;
         });
@@ -409,7 +345,7 @@ public final class ColonyThreads {
     }
 
     /** Asks the model whom the message addresses, then lets the first of them answer. */
-    private void route(MinecraftServer server, IColony colony, Thread thread, long version, List<ICitizenData> citizens,
+    private void route(MinecraftServer server, IColony colony, ChatThread thread, long version, List<ICitizenData> citizens,
                        String message) {
         var settings = Config.llmSettings(ModelRole.CHAT);
         if (settings.isEmpty()) {
@@ -451,10 +387,10 @@ public final class ColonyThreads {
     }
 
     /** Gives the floor to the next speaker: an addressed colonist, or one picked by the odds. */
-    private void nextTurn(MinecraftServer server, IColony colony, Thread thread, long version) {
+    private void nextTurn(MinecraftServer server, IColony colony, ChatThread thread, long version) {
         Integer next = thread.addressed.poll();
         if (next == null) {
-            next = pickSpeaker(colony, thread).orElse(null);
+            next = speakers.pickSpeaker(colony, thread).orElse(null);
         }
         if (next == null) {
             return;
@@ -592,7 +528,7 @@ public final class ColonyThreads {
         });
     }
 
-    private void say(MinecraftServer server, IColony colony, Thread thread, long version, Speaker speaker, String text,
+    private void say(MinecraftServer server, IColony colony, ChatThread thread, long version, Speaker speaker, String text,
                      boolean answeringPlayer) {
         if (thread.version != version) {
             return;
@@ -672,85 +608,22 @@ public final class ColonyThreads {
         }));
     }
 
-    /**
-     * Who speaks next, never the one who just did: talkative archetypes more often, much more so a
-     * colonist named in the last line, and those already in the thread or family of the last speaker.
-     */
-    private Optional<Integer> pickSpeaker(IColony colony, Thread thread) {
-        List<ICitizenData> citizens = colony.getCitizenManager().getCitizens();
-        List<MemoryLine> lines = memory.colonyChat(colony);
-        String lastText = lines.isEmpty() ? "" : lines.get(lines.size() - 1).text();
-        OptionalInt named = Addressing.mentioned(lastText, citizens.stream().map(ICitizenData::getName).toList());
-        ICitizenData last = colony.getCitizenManager().getCivilian(thread.lastSpeaker);
-        Set<Integer> family = family(last);
-        List<ThreadPolicy.Candidate<Integer>> candidates = new ArrayList<>();
-        for (int i = 0; i < citizens.size(); i++) {
-            ICitizenData citizen = citizens.get(i);
-            double weight = ThreadPolicy.joinWeight(
-                    talkativeness(citizen) * Bonds.replyWeight(bonds.colonists().rapport(colony, citizen.getId(), thread.lastSpeaker)),
-                    distance(citizen, last), coworkers(citizen, last), thread.lines.getOrDefault(citizen.getId(), 0));
-            if (hushed.getOrDefault(TalkService.key(colony.getID(), citizen.getId()), Long.MIN_VALUE) > currentTick
-                    && !(named.isPresent() && named.getAsInt() == i)) {
-                continue;
-            }
-            if (named.isPresent() && named.getAsInt() == i) {
-                weight *= NAMED_BONUS;
-            }
-            if (thread.participants.contains(citizen.getId())) {
-                weight *= TALKING_BONUS;
-            }
-            if (family.contains(citizen.getId())) {
-                weight *= FAMILY_BONUS;
-            }
-            candidates.add(new ThreadPolicy.Candidate<>(citizen.getId(), weight));
-        }
-        return ThreadPolicy.pickSpeaker(candidates, thread.lastSpeaker, random);
-    }
-
     /** Colonists who spoke in the thread, and whoever spoke last. */
-    private static List<ICitizenData> chatPeople(IColony colony, Thread thread) {
+    private static List<ICitizenData> chatPeople(IColony colony, ChatThread thread) {
         Set<Integer> ids = new HashSet<>(thread.participants);
         ids.add(thread.lastSpeaker);
         return ids.stream().map(id -> colony.getCitizenManager().getCivilian(id)).filter(Objects::nonNull).toList();
     }
 
-    double contrariness(ICitizenData citizen) {
-        Personality personality = personalities.get(citizen);
-        return personality == null ? 0.35 : personalities.archetypes().get(personality.archetype()).contrariness();
-    }
-
     /** Whether the colony chat is in the middle of a conversation: a line within the last minute, or one coming. */
     boolean isBusy(int colonyId, long now) {
-        Thread thread = threads.get(colonyId);
+        ChatThread thread = threads.get(colonyId);
         return thread != null && (now - thread.lastLineTick < 60 * 20 || !thread.addressed.isEmpty());
     }
 
     /** A newborn keeping quiet for a while. */
     boolean isHushed(int colonyId, int citizenId) {
         return hushed.getOrDefault(TalkService.key(colonyId, citizenId), Long.MIN_VALUE) > currentTick;
-    }
-
-    double talkativeness(ICitizenData citizen) {
-        Personality personality = personalities.get(citizen);
-        double value = personality == null ? 0.5 : personalities.archetypes().get(personality.archetype()).talkativeness();
-        return Math.max(0.05, value);
-    }
-
-    private static Set<Integer> family(ICitizenData citizen) {
-        Set<Integer> family = new HashSet<>();
-        if (citizen == null) {
-            return family;
-        }
-        if (citizen.getPartner() != null) {
-            family.add(citizen.getPartner().getId());
-        }
-        if (citizen.getChildren() != null) {
-            family.addAll(citizen.getChildren());
-        }
-        if (citizen.getSiblings() != null) {
-            family.addAll(citizen.getSiblings());
-        }
-        return family;
     }
 
     /**
@@ -768,7 +641,7 @@ public final class ColonyThreads {
      * whole conversation; others joining in get only its last lines, which is cheaper and keeps them
      * from going back over old ground.
      */
-    private String transcriptText(IColony colony, Thread thread, boolean full) {
+    private String transcriptText(IColony colony, ChatThread thread, boolean full) {
         List<MemoryLine> lines = memory.colonyChat(colony);
         List<MemoryLine> current = lines.stream().filter(line -> line.gameTime() >= thread.startTime).toList();
         List<MemoryLine> earlier = full ? lines.stream().filter(line -> line.gameTime() < thread.startTime).toList() : List.of();
@@ -795,7 +668,7 @@ public final class ColonyThreads {
      */
     private void expire(MinecraftServer server, long now) {
         threads.entrySet().removeIf(entry -> {
-            Thread thread = entry.getValue();
+            ChatThread thread = entry.getValue();
             boolean over = now - thread.lastLineTick > IDLE_TICKS && thread.addressed.isEmpty();
             if (over) {
                 thread.version++;
