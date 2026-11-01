@@ -45,6 +45,8 @@ final class RelationsDrift {
         boolean first = driftDay < 0;
         driftDay = day;
         if (first) {
+            // After a start MineColonies has dropped our happiness modifiers: friends and quarrels count again at once.
+            Colonies.all().stream().filter(talk::active).forEach(this::neighbourMoods);
             return;
         }
         for (IColony colony : Colonies.all()) {
@@ -77,7 +79,29 @@ final class RelationsDrift {
                     });
                 }
             }
+            neighbourMoods(colony);
         }
     }
 
+
+    /** Friends and quarrels at home and at work show in happiness (#61). */
+    private void neighbourMoods(IColony colony) {
+        List<ICitizenData> citizens = colony.getCitizenManager().getCitizens().stream().filter(c -> !c.isChild()).toList();
+        for (ICitizenData citizen : citizens) {
+            int friends = 0;
+            int foes = 0;
+            for (ICitizenData other : citizens) {
+                boolean beside = other != citizen
+                        && (citizen.getWorkBuilding() != null && citizen.getWorkBuilding().equals(other.getWorkBuilding())
+                        || citizen.getHomeBuilding() != null && citizen.getHomeBuilding().equals(other.getHomeBuilding()));
+                if (!beside) {
+                    continue;
+                }
+                int rapport = bonds.colonists().rapport(colony, citizen.getId(), other.getId());
+                friends += rapport >= Drift.FRIENDS ? 1 : 0;
+                foes += rapport <= -Drift.FRIENDS ? 1 : 0;
+            }
+            me.bytefox.livingcolonists.bonds.Moods.neighbours(citizen, friends, foes);
+        }
+    }
 }

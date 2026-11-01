@@ -32,6 +32,8 @@ public final class BondsData extends SavedData {
     final Map<String, Long> credited = new HashMap<>();
     /** The name colonists last knew each player by, for what the colony says about them. */
     final Map<UUID, String> playerNames = new HashMap<>();
+    /** How players treat each colonist, as a happiness factor that runs out (#61). */
+    final Map<String, Moods.Lasting> moods = new HashMap<>();
     /** Players a colonist already gave a promise notebook to; a lost one is crafted again. */
     final java.util.Set<UUID> bookGiven = new java.util.HashSet<>();
     long nextId = 1;
@@ -65,6 +67,11 @@ public final class BondsData extends SavedData {
         CompoundTag names = tag.getCompound("players");
         for (String key : names.getAllKeys()) {
             data.playerNames.put(UUID.fromString(key), names.getString(key));
+        }
+        CompoundTag moods = tag.getCompound("moods");
+        for (String key : moods.getAllKeys()) {
+            CompoundTag mood = moods.getCompound(key);
+            data.moods.put(key, new Moods.Lasting(mood.getDouble("factor"), mood.getLong("until")));
         }
         ListTag books = tag.getList("bookGiven", Tag.TAG_STRING);
         for (int i = 0; i < books.size(); i++) {
@@ -142,6 +149,14 @@ public final class BondsData extends SavedData {
         CompoundTag creditTag = new CompoundTag();
         credited.forEach(creditTag::putLong);
         tag.put("credited", creditTag);
+        CompoundTag moodTag = new CompoundTag();
+        moods.forEach((key, mood) -> {
+            CompoundTag one = new CompoundTag();
+            one.putDouble("factor", mood.factor());
+            one.putLong("until", mood.until());
+            moodTag.put(key, one);
+        });
+        tag.put("moods", moodTag);
         ListTag books = new ListTag();
         bookGiven.forEach(uuid -> books.add(net.minecraft.nbt.StringTag.valueOf(uuid.toString())));
         tag.put("bookGiven", books);

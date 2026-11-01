@@ -505,6 +505,36 @@ public final class BondsService {
     /** Notices promises that came true or lapsed (see {@link PromiseWatch}). Server tick. */
     public void tick(MinecraftServer server) {
         watch.tick(server);
+        if (server.getTickCount() % MOODS_CHECK_TICKS == 0) {
+            restoreMoods();
+        }
+    }
+
+    /** How often the moods MineColonies dropped are put back: every ten seconds. */
+    private static final int MOODS_CHECK_TICKS = 200;
+
+    /** MineColonies keeps only its own happiness modifiers when the world loads: ours are put back from the mod's data. */
+    private void restoreMoods() {
+        if (data == null || data.moods.isEmpty()) {
+            return;
+        }
+        for (Map.Entry<String, Moods.Lasting> entry : List.copyOf(data.moods.entrySet())) {
+            String[] parts = entry.getKey().split(":");
+            IColony colony = Citizens.colony(Integer.parseInt(parts[0]));
+            if (colony == null || colony.getWorld() == null) {
+                continue;
+            }
+            long now = now(colony);
+            if (entry.getValue().until() <= now) {
+                data.moods.remove(entry.getKey());
+                data.setDirty();
+                continue;
+            }
+            ICitizenData citizen = colony.getCitizenManager().getCivilian(Integer.parseInt(parts[1]));
+            if (citizen != null && !Moods.hasPlayersMood(citizen)) {
+                Moods.apply(citizen, entry.getValue(), now);
+            }
+        }
     }
 
     /** Resolves an open promise by id, moving the maker's rapport; resolved ones stay as they are. */
@@ -540,6 +570,14 @@ public final class BondsService {
         data.relations.merge(key(citizen, player), Relation.EMPTY.with(delta, text, now),
                 (old, fresh) -> old.with(delta, text, now));
         data.setDirty();
+        // How a player treats them shows in their happiness for a few days (#61).
+        if (delta != 0) {
+            Moods.Lasting old = data.moods.get(key(citizen));
+            double base = old == null || old.until() <= now ? 1.0 : old.factor();
+            Moods.Lasting mood = new Moods.Lasting(Moods.treatment(base, delta), now + Moods.PLAYERS_DAYS * DAY);
+            data.moods.put(key(citizen), mood);
+            Moods.apply(citizen, mood, now);
+        }
     }
 
     void replace(ICitizenData citizen, Promise promise) {
@@ -652,6 +690,7 @@ public final class BondsService {
             return;
         }
         boolean moved = me.bytefox.livingcolonists.Citizens.move(data.promises, from, to);
+        moved |= me.bytefox.livingcolonists.Citizens.move(data.moods, from, to);
         moved |= me.bytefox.livingcolonists.Citizens.move(data.relations, from, to);
         moved |= me.bytefox.livingcolonists.Citizens.move(data.credited, from, to);
         if (moved) {
@@ -668,6 +707,7 @@ public final class BondsService {
         data.promises.keySet().removeIf(key);
         data.relations.keySet().removeIf(key);
         data.credited.keySet().removeIf(key);
+        data.moods.keySet().removeIf(key);
         // A pair is dropped when either colonist matches.
         data.colonists.keySet().removeIf(pair -> {
             String[] parts = pair.split(":");

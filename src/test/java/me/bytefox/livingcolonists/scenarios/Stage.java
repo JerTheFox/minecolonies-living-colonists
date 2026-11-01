@@ -202,6 +202,8 @@ final class Stage implements AutoCloseable {
         when(citizen.getWorkBuilding()).thenReturn(null);
         when(citizen.getParents()).thenReturn(new com.minecolonies.api.util.Tuple<>("", ""));
         when(citizen.isFemale()).thenReturn(id % 2 == 1);
+        // As in MineColonies: no modifier of an id until someone adds one.
+        when(citizen.getCitizenHappinessHandler().getModifier(org.mockito.ArgumentMatchers.anyString())).thenReturn(null);
         return citizen;
     }
 

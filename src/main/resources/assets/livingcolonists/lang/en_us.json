@@ -265,5 +265,7 @@
   "livingcolonists.book.due.tomorrow": "Due tomorrow",
   "livingcolonists.book.due.days": "Due in %s days",
   "livingcolonists.book.overdue": "Overdue",
-  "livingcolonists.book.given": "%s hands you a notebook: \"Write it down, or you'll forget.\""
+  "livingcolonists.book.given": "%s hands you a notebook: \"Write it down, or you'll forget.\"",
+  "com.minecolonies.coremod.gui.townhall.happiness.livingcolonists_players": "How players treat them",
+  "com.minecolonies.coremod.gui.townhall.happiness.livingcolonists_neighbours": "Friends and quarrels"
 }

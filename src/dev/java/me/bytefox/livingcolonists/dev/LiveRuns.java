@@ -85,6 +85,11 @@ public final class LiveRuns {
             ready = true;
             return;
         }
+        if (run().equals("happiness")) {
+            happiness(server, colony);
+            ready = true;
+            return;
+        }
         if (run().equals("inventory")) {
             inventory(colony);
             ready = true;
@@ -107,6 +112,27 @@ public final class LiveRuns {
                 player.getGameProfile().getName());
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(READY + colonist.getName()));
         ready = true;
+    }
+
+    /**
+     * #61 on real MineColonies: a quarrel at home put on a colonist through our modifier lowers their happiness as
+     * MineColonies counts it. (MineColonies drops modifiers it doesn't know when the world loads; putting them back is
+     * covered by HappinessScenariosTest.)
+     */
+    private static void happiness(MinecraftServer server, IColony colony) {
+        ICitizenData citizen = colony.getCitizenManager().getCitizens().stream().filter(c -> !c.isChild()).findFirst().orElse(null);
+        if (citizen == null) {
+            ModLog.info("Live run happiness: FAIL, no colonist");
+            return;
+        }
+        var handler = citizen.getCitizenHappinessHandler();
+        double before = handler.getHappiness(colony, citizen);
+        me.bytefox.livingcolonists.bonds.Moods.neighbours(citizen, 0, 3);
+        double after = handler.getHappiness(colony, citizen);
+        boolean listed = handler.getModifiers().contains(me.bytefox.livingcolonists.bonds.Moods.NEIGHBOURS);
+        ModLog.info("Live run happiness: {} {} -> {}, modifiers {}", citizen.getName(), before, after, handler.getModifiers());
+        ModLog.info("Live run happiness: {}", listed && after < before ? "PASS, happiness " + before + " -> " + after
+                : "FAIL, " + (listed ? "happiness didn't drop" : "the modifier isn't there"));
     }
 
     /** What the test world has, to know which checks it can carry. */

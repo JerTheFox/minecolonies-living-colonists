@@ -265,5 +265,7 @@
   "livingcolonists.book.due.tomorrow": "Срок: завтра",
   "livingcolonists.book.due.days": "Срок: через %s дн.",
   "livingcolonists.book.overdue": "Просрочено",
-  "livingcolonists.book.given": "%s даёт вам книгу обещаний: «Запишите, а то забудете»."
+  "livingcolonists.book.given": "%s даёт вам книгу обещаний: «Запишите, а то забудете».",
+  "com.minecolonies.coremod.gui.townhall.happiness.livingcolonists_players": "Отношение игроков",
+  "com.minecolonies.coremod.gui.townhall.happiness.livingcolonists_neighbours": "Друзья и ссоры"
 }
