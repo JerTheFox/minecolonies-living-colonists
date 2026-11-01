@@ -81,16 +81,13 @@ public final class MemoryService {
      * Token room for writing a conversation down: DeepSeek's reasoning takes 900 to 1800 tokens here
      * and sometimes ran out of the usual 2000, leaving an empty answer.
      */
-    private static final int DIGEST_TOKENS = 8000;
+    static final int DIGEST_TOKENS = 8000;
     /** Facts shown in a reply prompt at most: the ones the talk touches, see {@link Digests#relevant}. */
     private static final int MEMORIES_SHOWN = 8;
     /** Players named in the hint about former names, at most. */
     private static final int MAX_NAME_HINTS = 4;
     /** How long a reply waits for the vector of what was said; then the facts are picked by words. */
     private static final Duration QUERY_WAIT = Duration.ofSeconds(2);
-    private static final Duration FACTS_WAIT = Duration.ofSeconds(20);
-    /** Vectors kept in memory, by fact text; rebuilt after a restart, never saved with the world. */
-    private static final int MAX_VECTORS = 20000;
     /** The end of what is said that a vector is made of: the last line or two is what the reply answers. */
     private static final int QUERY_CHARS = 400;
     private static final int MAX_PRIVATE_FACTS = 5;
@@ -101,16 +98,8 @@ public final class MemoryService {
     private final PromptLibrary prompts;
     private final BondsService bonds;
     private MemoryData data;
-    private final Map<String, float[]> vectors = new java.util.LinkedHashMap<>(256, 0.75f, true) {
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<String, float[]> eldest) {
-            return size() > MAX_VECTORS;
-        }
-    };
-    /** Fact texts whose vectors are on their way. */
-    private final Set<String> embedding = new HashSet<>();
-    /** The model the vectors were made with: another model's vectors don't compare. */
-    private String vectorModel = "";
+    private final FactVectors vectors;
+    private final StoryWriter stories;
     /** Conversations being written down, by transcript key. */
     private final Set<String> digesting = new HashSet<>();
     /** Server tick before which a conversation is not tried again, by transcript key. */
@@ -120,12 +109,15 @@ public final class MemoryService {
     public MemoryService(LlmClient client, EmbeddingClient embeddings, PromptLibrary prompts, BondsService bonds) {
         this.client = client;
         this.embeddings = embeddings;
+        this.vectors = new FactVectors(embeddings);
+        this.stories = new StoryWriter(this, client, prompts);
         this.prompts = prompts;
         this.bonds = bonds;
     }
 
     public void attach(MemoryData data) {
         this.data = data;
+        vectors.clear();
         lastCleanupDay = -1;
         PlayerMarks.clearCurrent();
         data.playerNames.forEach((player, names) -> {
@@ -135,10 +127,13 @@ public final class MemoryService {
         });
     }
 
+    MemoryData data() {
+        return data;
+    }
+
     public void detach() {
         data = null;
         vectors.clear();
-        embedding.clear();
         PlayerMarks.clearCurrent();
         digesting.clear();
         retryAt.clear();
@@ -242,8 +237,8 @@ public final class MemoryService {
             done.accept(memories(citizen, present, context));
             return;
         }
-        useModel(endpoint.get());
-        embedFacts(facts, endpoint.get(), server);
+        vectors.useModel(endpoint.get());
+        vectors.embed(facts, endpoint.get(), server);
         String query = context.length() > QUERY_CHARS ? context.substring(context.length() - QUERY_CHARS) : context;
         int colonyId = citizen.getColony().getID();
         int citizenId = citizen.getId();
@@ -353,60 +348,9 @@ public final class MemoryService {
             cleanup();
         }
         digest(server, false);
-        if (server.getTickCount() % STORY_CHECK == 0) {
-            writeStory(server);
-        }
+        stories.tick(server, data);
     }
 
-    /** How often a colonist's life story may be started, in server ticks (two minutes); one at a time. */
-    private static final int STORY_CHECK = 2 * 60 * 20;
-    private boolean writingStory;
-
-    /**
-     * Writes the life story (#51) of the first colonist whose story is due: enough facts and none yet, or the
-     * last a game week old. The character model sums up the earlier story and the facts in a few sentences.
-     */
-    private void writeStory(MinecraftServer server) {
-        Optional<LlmSettings> settings = Config.llmSettings(ModelRole.CHARACTER);
-        if (writingStory || settings.isEmpty() || FactLimits.of(level()).facts() == 0) {
-            return;
-        }
-        for (String key : List.copyOf(data.facts.keySet())) {
-            String[] parts = key.split(":");
-            IColony colony = Citizens.colony(Integer.parseInt(parts[0]));
-            ICitizenData citizen = colony == null ? null : colony.getCitizenManager().getCivilian(Integer.parseInt(parts[1]));
-            if (citizen == null) {
-                continue;
-            }
-            List<Fact> facts = facts(citizen);
-            MemoryData.Story old = data.stories.get(key);
-            long now = now(colony);
-            if (!LifeStories.due(old == null ? -1 : old.written(), now, facts.size())) {
-                continue;
-            }
-            Map<String, String> values = new HashMap<>();
-            values.put("name", citizen.getName());
-            values.put("job", jobOf(citizen));
-            values.put("colony", colony.getName());
-            values.put("story", old == null ? "(nothing yet)" : old.text());
-            values.put("facts", Digests.memories(facts, now));
-            String prompt = Templates.render(prompts.get(PromptLibrary.STORY), values);
-            MemoryData target = data;
-            writingStory = true;
-            client.complete(settings.get().withMinTokens(DIGEST_TOKENS).inBackground(), List.of(ChatMessage.user(prompt)))
-                    .thenAccept(result -> server.execute(() -> {
-                        writingStory = false;
-                        if (data != target || !(result instanceof ChatResult.Reply reply) || reply.text().isBlank()) {
-                            return;
-                        }
-                        data.stories.put(key, new MemoryData.Story(PlayerMarks.markNames(reply.text().strip(),
-                                data.playerNames), now));
-                        data.setDirty();
-                        ModLog.action("Wrote the life story of {}", citizen.getName());
-                    }));
-            return;
-        }
-    }
 
     /**
      * Writes down conversations with lines not yet noted: those that went quiet, or all of them with
@@ -561,9 +505,9 @@ public final class MemoryService {
                     List<Digests.Entry> entries = digest.facts();
                     store(now, ownerIds, entries, source);
                     Config.embeddings().ifPresent(endpoint -> {
-                        useModel(endpoint);
+                        vectors.useModel(endpoint);
                         ownerIds.stream().map(id -> now.getCitizenManager().getCivilian(id)).filter(Objects::nonNull)
-                                .forEach(owner -> embedFacts(facts(owner), endpoint, server));
+                                .forEach(owner -> vectors.embed(facts(owner), endpoint, server));
                     });
                     if (after != null) {
                         after.accept(now, digest);
@@ -637,40 +581,6 @@ public final class MemoryService {
             }
         }
         touched.forEach(book -> book.cleanup(now, limits.facts()));
-    }
-
-    /** Asks for the vectors of facts that have none yet, in the background; they are used once they come. */
-    private void embedFacts(Collection<Fact> facts, LlmEndpoint endpoint, MinecraftServer server) {
-        List<String> missing = facts.stream().map(Fact::text)
-                .filter(text -> !vectors.containsKey(text) && !embedding.contains(text)).distinct().toList();
-        if (missing.isEmpty()) {
-            return;
-        }
-        embedding.addAll(missing);
-        MemoryData target = data;
-        String model = endpoint.model();
-        embeddings.embed(endpoint, missing.stream().map(PlayerMarks::resolve).toList(), FACTS_WAIT)
-                .whenComplete((result, error) -> server.execute(() -> {
-                    missing.forEach(embedding::remove);
-                    if (error != null) {
-                        ModLog.warn("Could not get embeddings for {} facts: {}", missing.size(),
-                                error.getCause() != null ? error.getCause().getMessage() : error.getMessage());
-                        return;
-                    }
-                    if (data == target && model.equals(vectorModel)) {
-                        for (int i = 0; i < missing.size(); i++) {
-                            vectors.put(missing.get(i), result.get(i));
-                        }
-                    }
-                }));
-    }
-
-    /** Vectors of another model don't compare with the new one's: they are made again. */
-    private void useModel(LlmEndpoint endpoint) {
-        if (!endpoint.model().equals(vectorModel)) {
-            vectors.clear();
-            vectorModel = endpoint.model();
-        }
     }
 
     /** Whom the model said a fact is about, as a key: a colonist of this colony, a known player, the colony. */
@@ -789,11 +699,11 @@ public final class MemoryService {
                 : lines.stream().map(line -> "<" + line.speaker() + "> " + line.text()).collect(Collectors.joining("\n"));
     }
 
-    private static String jobOf(ICitizenData citizen) {
+    static String jobOf(ICitizenData citizen) {
         return Prompts.jobName(citizen.getJob() == null ? null : citizen.getJob().getJobRegistryEntry().getKey().getPath());
     }
 
-    private static Level level() {
+    static Level level() {
         return Config.level(Module.MEMORY);
     }
 
