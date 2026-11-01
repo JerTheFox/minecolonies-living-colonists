@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-11-01
+
 ### Added
 
 - Colonists say where they see enemies. A group of hostile mobs near the colonists, or one attacking someone, is urgent news in the colony chat ("pillagers by the farm"), told by a colonist who sees them; the same place stays quiet for five minutes. Near the end of a raid, when three raiders or fewer have held out for a minute, colonists say where the last ones are. Asked "where are the enemies?", a colonist says which way and how far they are.
@@ -306,7 +308,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A colony conversation that ended while a reply was still on its way no longer comes back to life.
 - Old conversations that are fully written down no longer pile up in the world's data.
 
-[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.3...HEAD
+[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.4...HEAD
+[0.3.4]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.0...v0.3.1
