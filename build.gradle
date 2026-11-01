@@ -37,6 +37,18 @@ var dotEnv = providers.fileContents(layout.projectDirectory.file('.env')).asText
             }
 }.orElse([:])
 
+// Dev-only code for live runs in a real world (#64): loaded by runClient and runServer, never in the built jar.
+sourceSets {
+    dev {
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+configurations {
+    devImplementation.extendsFrom implementation
+}
+
 neoForge {
     version = project.neo_version
 
@@ -48,23 +60,36 @@ neoForge {
     runs {
         client {
             client()
+            // A live run joins the local dev server on its own (#64).
+            if (project.hasProperty('liveRun')) {
+                programArguments.addAll('--quickPlayMultiplayer', 'localhost:25565')
+            }
         }
 
         server {
             server()
             programArgument '--nogui'
+            // Its own folder, so a live run doesn't share the world and settings with runClient.
+            gameDirectory = project.file('run-server')
         }
 
         configureEach {
             systemProperty 'forge.logging.markers', 'REGISTRIES'
             logLevel = org.slf4j.event.Level.DEBUG
             environment.putAll(dotEnv)
+            // -PliveRun=<name> picks a scripted live run (src/dev, LiveRuns).
+            if (project.hasProperty('liveRun')) {
+                systemProperty 'livingcolonists.liveRun', project.property('liveRun').toString()
+            }
         }
     }
+
+    addModdingDependenciesTo(sourceSets.dev)
 
     mods {
         "${mod_id}" {
             sourceSet(sourceSets.main)
+            sourceSet(sourceSets.dev)
         }
     }
 
