@@ -37,7 +37,7 @@ var dotEnv = providers.fileContents(layout.projectDirectory.file('.env')).asText
             }
 }.orElse([:])
 
-// Dev-only code for live runs in a real world (#64): loaded by runClient and runServer, never in the built jar.
+// Dev-only code for live runs in a real world (#64): loaded by runClient and runServer with -PliveRun, never in the built jar.
 sourceSets {
     dev {
         compileClasspath += sourceSets.main.output
@@ -89,7 +89,10 @@ neoForge {
     mods {
         "${mod_id}" {
             sourceSet(sourceSets.main)
-            sourceSet(sourceSets.dev)
+            // Only for a live run: plain runs and the tests load the mod without the dev hooks.
+            if (project.hasProperty('liveRun')) {
+                sourceSet(sourceSets.dev)
+            }
         }
     }
 
