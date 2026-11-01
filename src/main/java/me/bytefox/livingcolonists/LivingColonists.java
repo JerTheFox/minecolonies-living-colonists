@@ -145,6 +145,10 @@ public final class LivingColonists {
                 talk.playerKilled(killer, event.getEntity());
             }
         });
+        // Our quests back after MineColonies reloaded its own, before they go to the players (#60).
+        NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.HIGHEST,
+                (net.neoforged.neoforge.event.OnDatapackSyncEvent event) -> me.bytefox.livingcolonists.quests.QuestBridge.restore(
+                        event.getPlayerList().getServer()));
         NeoForge.EVENT_BUS.addListener((ServerTickEvent.Post event) -> {
             conversations.tick(event.getServer());
             if (!TalkService.enabled()) {
