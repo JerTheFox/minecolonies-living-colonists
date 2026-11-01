@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- When a colonist takes something you said as a promise, you're asked in chat: [Yes, I promise] makes it one they count on and remind you of, [No] drops it. Left unanswered, it stays vague: no reminders, and no hard feelings if it lapses. `/lc promises` lists your open promises in the colony, with a button to give one up.
+
 ### Changed
 
 - The largest parts of the mod (conversations, colony chat, memory, promises) are split into smaller pieces, with no change in how colonists behave. For anyone reading or building the code.

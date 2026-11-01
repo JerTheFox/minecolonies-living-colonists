@@ -96,6 +96,7 @@ final class Stage implements AutoCloseable {
         server = mock(MinecraftServer.class, RETURNS_DEEP_STUBS);
         when(server.getTickCount()).thenAnswer(invocation -> tick);
         when(server.overworld()).thenReturn(level);
+        when(level.getServer()).thenReturn(server);
         doAnswer(invocation -> mainThread.add(invocation.getArgument(0))).when(server).execute(any(Runnable.class));
 
         colony = mock(IColony.class, RETURNS_DEEP_STUBS);
@@ -284,6 +285,11 @@ final class Stage implements AutoCloseable {
             Thread.sleep(1);
         }
         return false;
+    }
+
+    /** Game time jumps ahead by {@code ticks} at once, as if the colony had been playing meanwhile. */
+    void skipTime(long ticks) {
+        gameTime += ticks;
     }
 
     /** Game days go by, one server tick each: what happens once a game day happens once per day. */

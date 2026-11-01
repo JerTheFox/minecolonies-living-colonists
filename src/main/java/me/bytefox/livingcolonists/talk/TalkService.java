@@ -137,6 +137,10 @@ public final class TalkService {
         return threads;
     }
 
+    public BondsService bonds() {
+        return bonds;
+    }
+
     public Errands errands() {
         return errands;
     }

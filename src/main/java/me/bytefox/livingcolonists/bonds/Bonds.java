@@ -39,13 +39,24 @@ public final class Bonds {
     private Bonds() {
     }
 
-    /** Whether an open promise lapses now: broken past its deadline, forgotten without one. */
+    /** How long a player has to say whether they meant a promise found in talk, in game ticks (a minute). */
+    public static final long CONFIRM_TICKS = 1200;
+
+    /** Where a promise stands now: one asked about and not answered in time has become vague. */
+    public static Promise.Confirm confirmation(Promise promise, long now) {
+        return promise.confirm() == Promise.Confirm.ASKED && now - promise.made() > CONFIRM_TICKS
+                ? Promise.Confirm.VAGUE : promise.confirm();
+    }
+
+    /** Whether an open promise lapses now: broken past its deadline (only quietly if never confirmed), forgotten without one. */
     public static Optional<Promise.Status> expiry(Promise promise, long now) {
         if (!promise.isOpen()) {
             return Optional.empty();
         }
         if (promise.due() > 0) {
-            return now > promise.due() + GRACE_TICKS ? Optional.of(Promise.Status.BROKEN) : Optional.empty();
+            // One the player never said they meant lapses quietly.
+            return now > promise.due() + GRACE_TICKS
+                    ? Optional.of(promise.binding() ? Promise.Status.BROKEN : Promise.Status.CANCELLED) : Optional.empty();
         }
         return now - promise.made() > NO_DEADLINE_TICKS ? Optional.of(Promise.Status.CANCELLED) : Optional.empty();
     }
@@ -86,7 +97,8 @@ public final class Bonds {
                 case OPEN -> {
                     anyOpen = true;
                     lines.add("- " + promise.text() + " (" + promise.makerName() + ", " + ago(now - promise.made())
-                            + ", " + deadline(promise, now) + ")");
+                            + ", " + deadline(promise, now)
+                            + (promise.binding() ? "" : "; they never said so plainly and may not have meant it") + ")");
                 }
                 case KEPT, BROKEN -> {
                     boolean kept = promise.status() == Promise.Status.KEPT;

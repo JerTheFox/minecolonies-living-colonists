@@ -238,4 +238,30 @@ class BondsLogicTest {
                 Bonds.reputation("Max", List.of(30, 20), 3, 0));
         assertEquals("", Bonds.reputation("Max", List.of(40), 0, 0));
     }
+
+    @Test
+    void aPromiseWrittenDownFromTalkWaitsForThePlayersYesThenTurnsVague() {
+        Promise asked = promise(1, MAX, "Max", "Max promised bread.", 1000, 0).asked();
+        assertEquals(Promise.Confirm.ASKED, asked.confirm());
+        assertEquals(Promise.Confirm.ASKED, Bonds.confirmation(asked, 1000 + Bonds.CONFIRM_TICKS));
+        assertEquals(Promise.Confirm.VAGUE, Bonds.confirmation(asked, 1000 + Bonds.CONFIRM_TICKS + 1));
+        assertEquals(Promise.Confirm.CONFIRMED, Bonds.confirmation(promise(2, MAX, "Max", "x", 0, 0), 99_999),
+                "promises from MineColonies' own windows need no yes");
+    }
+
+    @Test
+    void aVaguePromiseLapsesQuietlyInsteadOfBreaking() {
+        Promise vague = promise(1, MAX, "Max", "Max promised bread.", 1000, 2000).asked().withConfirm(Promise.Confirm.VAGUE);
+        assertEquals(java.util.Optional.of(Promise.Status.CANCELLED), Bonds.expiry(vague, 2000 + 100_000));
+        assertEquals(java.util.Optional.of(Promise.Status.BROKEN),
+                Bonds.expiry(promise(2, MAX, "Max", "x", 1000, 2000), 2000 + 100_000), "a confirmed one still breaks");
+    }
+
+    @Test
+    void theColonistKnowsAVaguePromiseMayNotHaveBeenMeant() {
+        Promise vague = promise(1, MAX, "Max", "Max promised bread.", 1000, 0).asked().withConfirm(Promise.Confirm.VAGUE);
+        assertTrue(Bonds.promisesBlock(java.util.List.of(vague), 2000).contains("may not have meant it"));
+        assertFalse(Bonds.promisesBlock(java.util.List.of(promise(2, MAX, "Max", "Max promised fish.", 1000, 0)), 2000)
+                .contains("may not have meant it"));
+    }
 }

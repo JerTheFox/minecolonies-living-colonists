@@ -240,5 +240,19 @@
   "livingcolonists.colony.on": "Living Colonists снова включён в колонии %s.",
   "livingcolonists.colony.owner_only": "Включать и выключать Living Colonists в колонии %s может только её владелец.",
   "livingcolonists.configuration.colonyChatLines": "Реплики колонии в чате",
-  "livingcolonists.configuration.colonyChatLines.tooltip": "Вкл.: реплики колонистов в чате колонии видны и в чате, и облачками. Выкл.: только облачками; ответы на ваши сообщения, личные разговоры и вопросы приказов остаются в чате. Ваш личный выбор, на вашем компьютере."
+  "livingcolonists.configuration.colonyChatLines.tooltip": "Вкл.: реплики колонистов в чате колонии видны и в чате, и облачками. Выкл.: только облачками; ответы на ваши сообщения, личные разговоры и вопросы приказов остаются в чате. Ваш личный выбор, на вашем компьютере.",
+  "livingcolonists.promise.ask": "%s понял(а) это как обещание: %s",
+  "livingcolonists.promise.ask.yes": "[Да, обещаю]",
+  "livingcolonists.promise.ask.yes.hint": "%s будет на это рассчитывать и напомнит, если опоздаете.",
+  "livingcolonists.promise.ask.no": "[Нет]",
+  "livingcolonists.promise.ask.no.hint": "Это было не обещание: %s не будет на нём настаивать.",
+  "livingcolonists.promise.confirmed": "%s рассчитывает на вас.",
+  "livingcolonists.promise.dropped": "%s не будет на этом настаивать.",
+  "livingcolonists.promise.given_up": "Обещание снято: %s.",
+  "livingcolonists.promise.unknown": "Такого вашего обещания нет.",
+  "livingcolonists.promise.none": "У вас нет открытых обещаний в колонии %s.",
+  "livingcolonists.promise.list": "Ваши обещания в колонии %s:",
+  "livingcolonists.promise.list.vague": "(вы его не подтвердили)",
+  "livingcolonists.promise.give_up": "[Отказаться]",
+  "livingcolonists.promise.give_up.hint": "Отказ от просроченного обещания засчитывается как нарушение."
 }

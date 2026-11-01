@@ -93,4 +93,43 @@ class MemoryScenariosTest {
         assertTrue(stage.runUntil(() -> stage.citizens.stream().anyMatch(c -> stage.memory.facts(c).stream()
                 .anyMatch(f -> f.text().contains("feast on Friday"))), Duration.ofSeconds(30)), "nobody remembered the news");
     }
+
+    private Promise promiseFromTalk(String words) throws Exception {
+        stage.model.remembersWhen(words, "promise | 1 | supply | 3 | Alex promised to bring Darcy Abbott an emerald");
+        stage.playerWritesTo("Darcy Abbott", words);
+        assertTrue(stage.runUntil(() -> !stage.bonds.promises(darcy).isEmpty(), WAIT), "the promise was not written down");
+        return stage.bonds.promises(darcy).get(0);
+    }
+
+    @Test
+    void thePlayerIsAskedWhetherTheyMeantItAndAYesMakesItBinding() throws Exception {
+        Promise promise = promiseFromTalk("принесу тебе изумруд");
+        assertEquals(Promise.Confirm.ASKED, promise.confirm());
+        assertTrue(stage.chat.stream().anyMatch(line -> line.contains("livingcolonists.promise.ask")), "not asked: " + stage.chat);
+        assertEquals(1, stage.bonds.answer(stage.player, promise.id(), true));
+        assertEquals(Promise.Confirm.CONFIRMED, stage.bonds.promises(darcy).get(0).confirm());
+        assertTrue(stage.bonds.owesInColony(stage.colony, stage.player.getUUID()).isPresent(), "a confirmed promise binds");
+    }
+
+    @Test
+    void aNoDropsItWithoutAGrudge() throws Exception {
+        Promise promise = promiseFromTalk("может, принесу тебе изумруд");
+        stage.bonds.answer(stage.player, promise.id(), false);
+        assertEquals(Promise.Status.CANCELLED, stage.bonds.promises(darcy).get(0).status());
+        assertEquals(0, stage.bonds.playerRapport(darcy, stage.player.getUUID()));
+    }
+
+    @Test
+    void unansweredItTurnsVagueAndLapsesQuietly() throws Exception {
+        Promise promise = promiseFromTalk("принесу тебе изумруд через минуту");
+        assertTrue(stage.runUntil(() -> stage.bonds.promises(darcy).get(0).confirm() == Promise.Confirm.VAGUE, WAIT),
+                "it never turned vague");
+        assertTrue(stage.bonds.owesInColony(stage.colony, stage.player.getUUID()).isEmpty(), "a vague promise doesn't bind");
+        stage.skipTime(4 * 24000);
+        assertTrue(stage.runUntil(() -> !stage.bonds.promises(darcy).get(0).isOpen(), WAIT), "it never lapsed");
+        assertTrue(stage.chat.stream().noneMatch(line -> line.contains("livingcolonists.promise.broken")), "told it was broken");
+        assertEquals(Promise.Status.CANCELLED, stage.bonds.promises(darcy).get(0).status());
+        assertEquals(0, stage.bonds.playerRapport(darcy, stage.player.getUUID()), "a grudge over a vague promise");
+        assertTrue(promise.id() >= 0);
+    }
 }

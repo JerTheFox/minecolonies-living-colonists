@@ -39,6 +39,22 @@ public final class TalkCommand {
                 .then(Commands.literal("undo").executes(context ->
                         talk.errands().undo(context.getSource().getPlayerOrException())))
                 .then(Commands.literal("help").executes(context -> help(context.getSource())))
+                .then(Commands.literal("promises").executes(context -> {
+                    net.minecraft.server.level.ServerPlayer player = context.getSource().getPlayerOrException();
+                    com.minecolonies.api.colony.IColony colony = me.bytefox.livingcolonists.colony.Colonies.at(player);
+                    if (colony == null) {
+                        context.getSource().sendFailure(net.minecraft.network.chat.Component.translatable("livingcolonists.colony.outside"));
+                        return 0;
+                    }
+                    return talk.bonds().list(player, colony);
+                }))
+                .then(Commands.literal("promise")
+                        .then(Commands.literal("yes").then(Commands.argument("id", com.mojang.brigadier.arguments.LongArgumentType.longArg(0))
+                                .executes(context -> talk.bonds().answer(context.getSource().getPlayerOrException(),
+                                        com.mojang.brigadier.arguments.LongArgumentType.getLong(context, "id"), true))))
+                        .then(Commands.literal("no").then(Commands.argument("id", com.mojang.brigadier.arguments.LongArgumentType.longArg(0))
+                                .executes(context -> talk.bonds().answer(context.getSource().getPlayerOrException(),
+                                        com.mojang.brigadier.arguments.LongArgumentType.getLong(context, "id"), false)))))
                 .then(Commands.literal("colony")
                         .then(Commands.literal("off").executes(context -> colonyOff(context.getSource(), talk, true)))
                         .then(Commands.literal("on").executes(context -> colonyOff(context.getSource(), talk, false)))));

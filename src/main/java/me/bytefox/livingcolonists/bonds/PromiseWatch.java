@@ -130,7 +130,13 @@ final class PromiseWatch {
                     lapsed(server, citizen, promise, lapse.get(), now);
                     continue;
                 }
-                if (promise.due() > 0 && now > promise.due() && !promise.reminded()) {
+                Promise.Confirm confirm = Bonds.confirmation(promise, now);
+                if (confirm != promise.confirm()) {
+                    // Nobody said it was meant: it stays, but the colonist won't hold the player to it.
+                    promise = promise.withConfirm(confirm);
+                    bonds.replace(citizen, promise);
+                }
+                if (promise.binding() && promise.due() > 0 && now > promise.due() && !promise.reminded()) {
                     remindOnce(server, citizen, promise);
                 }
                 if (promise.about() != Promise.About.HOUSING && promise.about() != Promise.About.WORK

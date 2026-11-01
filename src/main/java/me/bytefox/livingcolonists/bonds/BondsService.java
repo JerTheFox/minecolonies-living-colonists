@@ -18,8 +18,10 @@ import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.requestsystem.token.IToken;
 import me.bytefox.livingcolonists.ModLog;
+import me.bytefox.livingcolonists.Citizens;
 import me.bytefox.livingcolonists.memory.Digests;
 import me.bytefox.livingcolonists.memory.PlayerMarks;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -137,8 +139,10 @@ public final class BondsService {
             }
             Promise.About about = Promise.About.of(made.about());
             long due = due(citizen.getColony(), playerLines, made.days(), now);
-            list.add(new Promise(data.nextId++, player, playerName, made.text(), made.worth(), about, now, due, Promise.Status.OPEN, 0,
-                    needUnmet(citizen, about), false, ""));
+            Promise promise = new Promise(data.nextId++, player, playerName, made.text(), made.worth(), about, now, due,
+                    Promise.Status.OPEN, 0, needUnmet(citizen, about), false, "").asked();
+            list.add(promise);
+            ask(citizen, promise);
             keptByGift(citizen, player, now);
         }
         for (Digests.Conduct conduct : digest.conduct()) {
@@ -189,7 +193,8 @@ public final class BondsService {
      */
     public java.util.Optional<Owned> owesInColony(IColony colony, UUID player) {
         return openInColony(colony).stream()
-                .filter(owned -> owned.promise().maker().equals(player) && owned.promise().requestId().isEmpty())
+                .filter(owned -> owned.promise().maker().equals(player) && owned.promise().requestId().isEmpty()
+                        && owned.promise().binding())
                 .findFirst();
     }
 
@@ -269,13 +274,117 @@ public final class BondsService {
             Promise.About about = Promise.About.of(made.about());
             long due = due(colony, linesBySpeaker.getOrDefault(made.player(), List.of()), made.days(), now);
             String playerName = data.playerNames.getOrDefault(player, made.player());
-            list.add(new Promise(data.nextId++, player, playerName, Digests.cleanFact(made.text()), made.worth(), about, now, due,
-                    Promise.Status.OPEN, 0, needUnmet(citizen, about), false, ""));
+            Promise promise = new Promise(data.nextId++, player, playerName, Digests.cleanFact(made.text()), made.worth(), about,
+                    now, due, Promise.Status.OPEN, 0, needUnmet(citizen, about), false, "").asked();
+            list.add(promise);
+            ask(citizen, promise);
             ModLog.action("{} wrote down a promise from the colony chat: {}", citizen.getName(),
                     PlayerMarks.resolve(made.text()));
             keptByGift(citizen, player, now);
         }
         data.setDirty();
+    }
+
+    /**
+     * Asks the maker, if online, whether they meant a promise the character model found in talk: "[Yes, I promise]"
+     * makes it binding, "[No]" drops it. Unanswered, it turns vague (see {@link Bonds#confirmation}).
+     */
+    private void ask(ICitizenData citizen, Promise promise) {
+        if (citizen.getColony().getWorld() == null || citizen.getColony().getWorld().getServer() == null) {
+            return;
+        }
+        ServerPlayer maker = citizen.getColony().getWorld().getServer().getPlayerList().getPlayer(promise.maker());
+        if (maker == null) {
+            return;
+        }
+        String name = citizen.getName();
+        net.minecraft.network.chat.MutableComponent yes = Component.translatable("livingcolonists.promise.ask.yes")
+                .withStyle(style -> style.withColor(net.minecraft.ChatFormatting.GREEN)
+                        .withClickEvent(new net.minecraft.network.chat.ClickEvent(
+                                net.minecraft.network.chat.ClickEvent.Action.RUN_COMMAND, "/lc promise yes " + promise.id()))
+                        .withHoverEvent(new net.minecraft.network.chat.HoverEvent(
+                                net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT,
+                                Component.translatable("livingcolonists.promise.ask.yes.hint", name))));
+        net.minecraft.network.chat.MutableComponent no = Component.translatable("livingcolonists.promise.ask.no")
+                .withStyle(style -> style.withColor(net.minecraft.ChatFormatting.RED)
+                        .withClickEvent(new net.minecraft.network.chat.ClickEvent(
+                                net.minecraft.network.chat.ClickEvent.Action.RUN_COMMAND, "/lc promise no " + promise.id()))
+                        .withHoverEvent(new net.minecraft.network.chat.HoverEvent(
+                                net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT,
+                                Component.translatable("livingcolonists.promise.ask.no.hint", name))));
+        maker.sendSystemMessage(Component.translatable("livingcolonists.promise.ask", name, PlayerMarks.resolve(promise.text()))
+                .withStyle(net.minecraft.ChatFormatting.GRAY).append(" ").append(yes).append(" ").append(no));
+    }
+
+    /**
+     * The player's answer about one of their promises, by id: yes makes it binding; no drops a promise never confirmed
+     * quietly, and gives up a confirmed one (a breach if it is overdue). Returns 1 if there was such a promise.
+     */
+    public int answer(ServerPlayer player, long id, boolean meant) {
+        if (data == null) {
+            return 0;
+        }
+        for (Map.Entry<String, List<Promise>> entry : data.promises.entrySet()) {
+            for (Promise promise : entry.getValue()) {
+                if (promise.id() != id || !promise.isOpen() || !promise.maker().equals(player.getUUID())) {
+                    continue;
+                }
+                String[] parts = entry.getKey().split(":");
+                IColony colony = Citizens.colony(Integer.parseInt(parts[0]));
+                ICitizenData citizen = colony == null ? null : colony.getCitizenManager().getCivilian(Integer.parseInt(parts[1]));
+                if (citizen == null) {
+                    return 0;
+                }
+                long now = now(colony);
+                if (meant) {
+                    replace(citizen, promise.withConfirm(Promise.Confirm.CONFIRMED));
+                    player.sendSystemMessage(Component.translatable("livingcolonists.promise.confirmed", citizen.getName()));
+                } else if (promise.binding()) {
+                    resolve(citizen, id, Bonds.cancelledByMaker(promise, now), now);
+                    player.sendSystemMessage(Component.translatable("livingcolonists.promise.given_up", citizen.getName()));
+                } else {
+                    resolve(citizen, id, Promise.Status.CANCELLED, now);
+                    player.sendSystemMessage(Component.translatable("livingcolonists.promise.dropped", citizen.getName()));
+                }
+                ModLog.action("{} answered about a promise to {}: {} ({})", player.getGameProfile().getName(), citizen.getName(),
+                        meant ? "meant it" : "didn't", PlayerMarks.resolve(promise.text()));
+                return 1;
+            }
+        }
+        player.sendSystemMessage(Component.translatable("livingcolonists.promise.unknown"));
+        return 0;
+    }
+
+    /** The player's open promises in the colony, each with a button to give it up. Returns how many. */
+    public int list(ServerPlayer player, IColony colony) {
+        List<Owned> mine = openInColony(colony).stream().filter(owned -> owned.promise().maker().equals(player.getUUID())).toList();
+        if (mine.isEmpty()) {
+            player.sendSystemMessage(Component.translatable("livingcolonists.promise.none", colony.getName()));
+            return 0;
+        }
+        player.sendSystemMessage(Component.translatable("livingcolonists.promise.list", colony.getName()));
+        for (Owned owned : mine) {
+            ICitizenData citizen = colony.getCitizenManager().getCivilian(owned.citizenId());
+            Promise promise = owned.promise();
+            net.minecraft.network.chat.MutableComponent line = Component.literal("- " + (citizen == null ? "?" : citizen.getName())
+                    + ": " + PlayerMarks.resolve(promise.text()) + " ");
+            if (!promise.binding()) {
+                line.append(Component.translatable("livingcolonists.promise.list.vague")).append(" ");
+                line.append(Component.translatable("livingcolonists.promise.ask.yes").withStyle(style -> style
+                        .withColor(net.minecraft.ChatFormatting.GREEN)
+                        .withClickEvent(new net.minecraft.network.chat.ClickEvent(
+                                net.minecraft.network.chat.ClickEvent.Action.RUN_COMMAND, "/lc promise yes " + promise.id())))).append(" ");
+            }
+            line.append(Component.translatable("livingcolonists.promise.give_up").withStyle(style -> style
+                    .withColor(net.minecraft.ChatFormatting.RED)
+                    .withClickEvent(new net.minecraft.network.chat.ClickEvent(
+                            net.minecraft.network.chat.ClickEvent.Action.RUN_COMMAND, "/lc promise no " + promise.id()))
+                    .withHoverEvent(new net.minecraft.network.chat.HoverEvent(
+                            net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT,
+                            Component.translatable("livingcolonists.promise.give_up.hint")))));
+            player.sendSystemMessage(line);
+        }
+        return mine.size();
     }
 
     /** A player by the name colonists know them by (or their nickname): online first, then those seen before. */

@@ -50,7 +50,7 @@ public final class BondsData extends SavedData {
                 list.add(new Promise(p.getLong("id"), p.getUUID("maker"), p.getString("makerName"), p.getString("text"), p.getInt("worth"),
                         Promise.About.of(p.getString("about")), p.getLong("made"), p.getLong("due"),
                         status(p.getString("status")), p.getLong("resolved"), p.getBoolean("needSeen"),
-                        p.getBoolean("reminded"), p.getString("request")));
+                        p.getBoolean("reminded"), p.getString("request"), confirm(p.getString("confirm"))));
             }
             data.promises.put(key, list);
         }
@@ -77,6 +77,15 @@ public final class BondsData extends SavedData {
                 notes.add(new Relation.Note(n.getLong("time"), n.getString("text"), n.getBoolean("kind")));
             }
             into.put(key, new Relation(r.getInt("rapport"), notes));
+        }
+    }
+
+    /** Promises saved before they were asked about count as confirmed. */
+    private static Promise.Confirm confirm(String name) {
+        try {
+            return name.isEmpty() ? Promise.Confirm.CONFIRMED : Promise.Confirm.valueOf(name);
+        } catch (IllegalArgumentException e) {
+            return Promise.Confirm.CONFIRMED;
         }
     }
 
@@ -113,6 +122,7 @@ public final class BondsData extends SavedData {
                 p.putBoolean("needSeen", promise.needSeen());
                 p.putBoolean("reminded", promise.reminded());
                 p.putString("request", promise.requestId());
+                p.putString("confirm", promise.confirm().name());
                 entries.add(p);
             }
             promiseTag.put(key, entries);

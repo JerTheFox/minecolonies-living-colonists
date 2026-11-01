@@ -240,5 +240,19 @@
   "livingcolonists.colony.on": "Living Colonists is on in %s again.",
   "livingcolonists.colony.owner_only": "Only the owner of %s can turn Living Colonists off or on there.",
   "livingcolonists.configuration.colonyChatLines": "Colony chat lines",
-  "livingcolonists.configuration.colonyChatLines.tooltip": "On: colonists' lines in the colony chat show in the chat and as speech bubbles. Off: as speech bubbles only; answers to your own messages, your private talks and order questions stay in the chat. Your own choice, on your computer."
+  "livingcolonists.configuration.colonyChatLines.tooltip": "On: colonists' lines in the colony chat show in the chat and as speech bubbles. Off: as speech bubbles only; answers to your own messages, your private talks and order questions stay in the chat. Your own choice, on your computer.",
+  "livingcolonists.promise.ask": "%s took that as a promise: %s",
+  "livingcolonists.promise.ask.yes": "[Yes, I promise]",
+  "livingcolonists.promise.ask.yes.hint": "%s will count on it and remind you if it's late.",
+  "livingcolonists.promise.ask.no": "[No]",
+  "livingcolonists.promise.ask.no.hint": "It wasn't a promise; %s won't hold you to it.",
+  "livingcolonists.promise.confirmed": "%s will count on you.",
+  "livingcolonists.promise.dropped": "%s won't hold you to it.",
+  "livingcolonists.promise.given_up": "You gave up your promise to %s.",
+  "livingcolonists.promise.unknown": "You have no such promise.",
+  "livingcolonists.promise.none": "You have no open promises in %s.",
+  "livingcolonists.promise.list": "Your promises in %s:",
+  "livingcolonists.promise.list.vague": "(you never confirmed it)",
+  "livingcolonists.promise.give_up": "[Give up]",
+  "livingcolonists.promise.give_up.hint": "Giving up a promise that's overdue counts as breaking it."
 }
