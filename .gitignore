@@ -52,5 +52,3 @@ docs/
 ### Local secrets for runClient/runServer ###
 .env
 
-### Tests and test stands (kept local, not part of the published repository) ###
-src/test/
