@@ -158,6 +158,8 @@ final class Stage implements AutoCloseable {
         when(colonies.getColonyByDimension(anyInt(), any())).thenReturn(colony);
 
         LlmClient client = new LlmClient(HttpClient.newHttpClient(), new UsageStats(), List.of(Duration.ofMillis(5)), note -> { });
+        // As the mod wires it: the day's token limit from the settings.
+        client.limitDailyTokens(() -> Config.TOKENS_PER_DAY.get());
         PromptLibrary prompts = new PromptLibrary(directory);
         // The content files, as the mod loads them on start.
         prompts.onReload(() -> {
@@ -178,6 +180,13 @@ final class Stage implements AutoCloseable {
         talk.attachInitiative(InitiativeData.factory().constructor().get());
         // Wired as LivingColonists does.
         bonds.setReminder(talk::remindPromise);
+    }
+
+    /** A colonist who just came to live in the colony, with the id given (a dead colonist's id goes to the next one). */
+    ICitizenData newcomer(int id, String name) {
+        ICitizenData citizen = citizen(id, name);
+        citizens.add(citizen);
+        return citizen;
     }
 
     private ICitizenData citizen(int id, String name) {
@@ -382,9 +391,23 @@ final class Stage implements AutoCloseable {
             talk.tick(server);
             memory.tick(server);
             bonds.tick(server);
-            Thread.sleep(1);
+            tickPause();
         }
         return false;
+    }
+
+    /**
+     * One millisecond between ticks, whatever the system timer: on Windows {@code Thread.sleep(1)} lasts 1 to 16 ms
+     * depending on what else runs, so a minute of game time took from 1 to 19 seconds and tests failed by chance.
+     */
+    private static void tickPause() throws InterruptedException {
+        long until = System.nanoTime() + 1_000_000;
+        while (System.nanoTime() < until) {
+            if (Thread.interrupted()) {
+                throw new InterruptedException();
+            }
+            Thread.onSpinWait();
+        }
     }
 
     /** Every roll of the mod's dice comes out as {@code roll} (0 to 1): 0 makes every "now and then" happen. */
@@ -436,5 +459,13 @@ final class Stage implements AutoCloseable {
         me.bytefox.livingcolonists.Dice.use(null);
         manager.close();
         model.close();
+        // The mod's bus is static: this stage's services leave it, or every stage stays in memory with its mocks.
+        try {
+            Field handlers = me.bytefox.livingcolonists.events.ModEvents.class.getDeclaredField("handlers");
+            handlers.setAccessible(true);
+            ((Map<?, ?>) handlers.get(me.bytefox.livingcolonists.events.ModEvents.BUS)).clear();
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
     }
 }

@@ -9,6 +9,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - A promise notebook, the mod's first item. The colonist you make your first real promise to hands it over: "Write it down, or you'll forget." Right-click opens it on MineColonies' town hall book with a page per open promise in every colony: to whom, what, and when it's due or that it's overdue. Vague promises can be confirmed right on the page, and any promise can be given up there. The open pages update as soon as you do. A lost notebook is crafted again from a book, a feather and paper.
 
+### Fixed
+
+- Colonists told of enemies that were already dead: a minute after the player killed the raiders, they still said one was by the warehouse. Where enemies or colonists are is now looked up afresh every time instead of coming from a ten-minute cache, and a talk about enemies is told where they are at that moment.
+
 ## [0.3.5] - 2026-11-01
 
 ### Added

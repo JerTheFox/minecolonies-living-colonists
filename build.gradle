@@ -125,6 +125,8 @@ dependencies {
 }
 
 tasks.named('test', Test) {
+    // Scenario tests hold Minecraft, MineColonies and many mocks at once.
+    maxHeapSize = '2g'
     // Long simulations (a week of colony life) run apart: ./gradlew slowTest.
     useJUnitPlatform {
         excludeTags 'slow'

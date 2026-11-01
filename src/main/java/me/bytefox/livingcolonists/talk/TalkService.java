@@ -483,12 +483,15 @@ public final class TalkService {
         values.put("mood", plain ? "calm and busy with your work" : Prompts.mood(citizen.getId(),
                 citizen.getColony().getWorld().getDayTime() / 24000, happiness(citizen)));
         values.put("situation", perception.situation(citizen));
-        List<String> lately = errands.lookups(citizen.getColony().getID(),
-                citizen.getColony().getWorld().getGameTime() - me.bytefox.livingcolonists.errands.Errands.CACHE_TICKS);
+        List<String> lately = errands.lookups(citizen.getColony().getID(), citizen.getColony().getWorld().getGameTime());
         if (!lately.isEmpty()) {
             // What anyone in the colony looked up lately is known to all (#56).
             values.put("situation", values.get("situation") + "\nLooked up in the colony lately, true whatever anyone says:\n- "
                     + String.join("\n- ", lately));
+            if (lately.stream().anyMatch(line -> line.contains("where_enemies"))) {
+                values.put("situation", values.get("situation") + "\n"
+                        + me.bytefox.livingcolonists.perception.Enemies.now(citizen.getColony()));
+            }
         }
         if (player != null && Config.level(Module.PERCEPTION) != me.bytefox.livingcolonists.behaviour.Level.OFF) {
             String look = look(citizen, player);

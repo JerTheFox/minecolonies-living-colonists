@@ -418,6 +418,11 @@ public final class ColonyThreads {
             values.put("situation", values.get("situation") + "\nIn the colony now, besides colonists: "
                     + String.join(", ", here) + ". They may greet or call each other in the chat.");
         }
+        // A talk about enemies gets where they are now: a minute later they may be dead (#62).
+        String said = values.get("transcript") + " " + values.get("situation") + " " + (opening == null ? "" : opening);
+        if (said.contains("Enemies in the colony") || said.contains("where_enemies") || said.contains("last raiders")) {
+            values.put("situation", values.get("situation") + "\n" + me.bytefox.livingcolonists.perception.Enemies.now(colony));
+        }
         // Remembered facts this talk touches: about whoever is in it, or sharing words with what was said.
         Set<String> present = new HashSet<>();
         present.add(Fact.aboutCitizen(citizen.getId()));

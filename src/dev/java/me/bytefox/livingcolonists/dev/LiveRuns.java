@@ -14,6 +14,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 /**
@@ -30,6 +31,7 @@ public final class LiveRuns {
 
     private static int waited;
     private static boolean ready;
+    private static ErrandChecks errandChecks;
 
     private LiveRuns() {
     }
@@ -44,8 +46,24 @@ public final class LiveRuns {
     }
 
     @SubscribeEvent
+    public static void stopping(ServerStoppingEvent event) {
+        if (errandChecks != null) {
+            errandChecks.beforeStop();
+        }
+    }
+
+    @SubscribeEvent
     public static void tick(ServerTickEvent.Post event) {
         MinecraftServer server = event.getServer();
+        if (errandChecks != null) {
+            errandChecks.tick();
+        }
+        // After a restart: no player needed, only the colony (#64).
+        if (run().equals("errands-restart") && !ready && server.getTickCount() > SETTLE_TICKS) {
+            Colonies.all().stream().findFirst().ifPresent(colony -> ErrandChecks.afterRestart(server, colony));
+            ready = true;
+            return;
+        }
         if (run().isEmpty() || ready || server.getTickCount() % 20 != 0 || server.getPlayerList().getPlayers().isEmpty()) {
             return;
         }
@@ -59,6 +77,17 @@ public final class LiveRuns {
                 var center = first.getCenter();
                 player.teleportTo(center.getX() + 0.5, center.getY() + 1, center.getZ() + 0.5);
             });
+            return;
+        }
+        if (run().equals("errands")) {
+            ModLog.info("Live run errands: starting with {} in {}", player.getGameProfile().getName(), colony.getName());
+            errandChecks = new ErrandChecks(server, player, colony);
+            ready = true;
+            return;
+        }
+        if (run().equals("inventory")) {
+            inventory(colony);
+            ready = true;
             return;
         }
         // A colonist without a job stands still in front of the player instead of walking off to work.
@@ -78,5 +107,18 @@ public final class LiveRuns {
                 player.getGameProfile().getName());
         player.sendSystemMessage(net.minecraft.network.chat.Component.literal(READY + colonist.getName()));
         ready = true;
+    }
+
+    /** What the test world has, to know which checks it can carry. */
+    private static void inventory(IColony colony) {
+        ModLog.info("Live run inventory: colony {} '{}', center {}", colony.getID(), colony.getName(), colony.getCenter());
+        colony.getServerBuildingManager().getBuildings().values().forEach(b -> ModLog.info("Live run inventory: building {} level {} at {}",
+                b.getBuildingType().getRegistryName().getPath(), b.getBuildingLevel(), b.getPosition()));
+        colony.getCitizenManager().getCitizens().forEach(c -> ModLog.info("Live run inventory: citizen {} id {} job {} child {} loaded {}",
+                c.getName(), c.getId(), c.getJob() == null ? "-" : c.getJob().getJobRegistryEntry().getKey().getPath(), c.isChild(),
+                c.getEntity().isPresent()));
+        colony.getPermissions().getPlayers().values().forEach(p -> ModLog.info("Live run inventory: member {} rank {}", p.getName(),
+                p.getRank().getName()));
+        ModLog.info("Live run inventory: PASS");
     }
 }

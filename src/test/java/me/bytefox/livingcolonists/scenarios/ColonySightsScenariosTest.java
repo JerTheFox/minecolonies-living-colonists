@@ -67,6 +67,25 @@ class ColonySightsScenariosTest {
     }
 
     @Test
+    void enemiesKilledAfterALookUpAreNotToldOfAMinuteLater() throws Exception {
+        stage.enemiesAround(List.of(stage.mob(Zombie.class, 101, new BlockPos(40, 64, 0), false)));
+        stage.model.callsWhenOffered("where_enemies", new JsonObject());
+        stage.model.saysWhenAsked("from_you", "Один зомби, к востоку от тебя.");
+        stage.playerWritesTo("Darcy Abbott", "где враги?");
+        assertTrue(stage.runUntil(() -> stage.chat.toString().contains("Один зомби"), WAIT), "no answer: " + stage.chat);
+        // The player kills the zombie; a minute later someone asks again.
+        stage.enemiesAround(List.of());
+        stage.skipTime(60 * 20);
+        int before = stage.model.requests.size();
+        stage.model.callsWhenOffered("where_enemies", new JsonObject());
+        stage.model.saysWhenAsked("а сейчас враги есть?", "Чисто, врагов нет.");
+        stage.playerWritesTo("Darcy Abbott", "а сейчас враги есть?");
+        assertTrue(stage.runUntil(() -> stage.chat.toString().contains("врагов нет"), WAIT), "no answer: " + stage.chat);
+        String later = stage.model.requests.stream().skip(before).map(Object::toString).reduce("", String::concat);
+        assertTrue(!later.contains("blocks east"), "the dead zombie came back from a stale look-up: " + later);
+    }
+
+    @Test
     void clearingMonstersInTheColonyIsNews() throws Exception {
         for (int i = 0; i < 5; i++) {
             stage.talk.playerKilled(stage.player, stage.mob(Zombie.class, 200 + i, new BlockPos(20, 64, 20), false));

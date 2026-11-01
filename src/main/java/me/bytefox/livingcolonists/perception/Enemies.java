@@ -78,6 +78,17 @@ public final class Enemies {
     }
 
     /** The enemies grouped by the building they are nearest to: "3 Pillager by the Farm", most first. */
+    /**
+     * The enemies in the colony at this moment, for a talk that mentioned enemies a while ago: by the next line they may
+     * be dead or gone, and the colonists must not go on about them as if they were still there.
+     */
+    public static String now(IColony colony) {
+        List<Sightings.Group> groups = groups(colony, around(colony));
+        return groups.isEmpty() ? "No enemies are in the colony at this moment: any mentioned earlier are dead or gone."
+                : "Enemies in the colony at this moment: " + groups.stream().map(Sightings.Group::text)
+                .collect(java.util.stream.Collectors.joining("; ")) + ".";
+    }
+
     public static List<Sightings.Group> groups(IColony colony, List<Seen> seen) {
         Map<String, List<Seen>> byPlace = new LinkedHashMap<>();
         Map<String, String> places = new HashMap<>();

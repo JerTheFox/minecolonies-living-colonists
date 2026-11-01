@@ -255,7 +255,7 @@
   "livingcolonists.promise.list.vague": "(вы его не подтвердили)",
   "livingcolonists.promise.give_up": "[Отказаться]",
   "livingcolonists.promise.give_up.hint": "Отказ от просроченного обещания засчитывается как нарушение.",
-  "item.livingcolonists.promise_book": "Книжка обещаний",
+  "item.livingcolonists.promise_book": "Книга обещаний",
   "livingcolonists.book.title": "Обещания",
   "livingcolonists.book.empty": "Открытых обещаний нет. Когда колонист рассчитывает на ваши слова, обещание записывается сюда.",
   "livingcolonists.book.count": "Открытых обещаний: %s",
@@ -265,5 +265,5 @@
   "livingcolonists.book.due.tomorrow": "Срок: завтра",
   "livingcolonists.book.due.days": "Срок: через %s дн.",
   "livingcolonists.book.overdue": "Просрочено",
-  "livingcolonists.book.given": "%s даёт вам записную книжку: «Запишите, а то забудете»."
+  "livingcolonists.book.given": "%s даёт вам книгу обещаний: «Запишите, а то забудете»."
 }
