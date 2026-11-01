@@ -4,7 +4,7 @@
 
 A [MineColonies](https://github.com/ldtteam/minecolonies) addon for NeoForge that lets colonists talk in text chat almost like other players. They start conversations, answer you, remember what you told them and gossip about the colony with each other. The words come from a language model behind any OpenAI-compatible API: DeepSeek, Gemini, OpenRouter, or a model running on your own machine.
 
-> **Status: 0.3.3, early development.** Everything below works and is played on a live server, but the mod's insides are still being reworked. New versions come out often, and between them settings, prompt files and whole features can change a lot. Read the [changelog](CHANGELOG.md) before updating, keep a backup of your world, and please report problems in [Issues](https://github.com/JerTheFox/minecolonies-living-colonists/issues).
+> **Status: 0.3.4, early development.** Everything below works and is played on a live server, but the mod's insides are still being reworked. New versions come out often, and between them settings, prompt files and whole features can change a lot. Read the [changelog](CHANGELOG.md) before updating, keep a backup of your world, and please report problems in [Issues](https://github.com/JerTheFox/minecolonies-living-colonists/issues).
 
 > **You need a language model.** The mod doesn't include one. Colonists only talk once the server can reach an OpenAI-compatible API with your own key (DeepSeek, OpenRouter, Gemini and others, paid by use) or a model running on your own machine, for example in Ollama. Without it, players who write to colonists only get a note that no API key is set.
 
@@ -182,7 +182,7 @@ The mod follows the game's language; English and Russian are included. To add a 
 
 Since then: memory by player account and by meaning, colonists' real day, goals and voices, the mechanics handbook, names in the players' language, colonists noticing players come and go, rumours of big deeds, one budget for unprompted lines, gifts, deadlines from your own words, provider presets, life stories, shared look-ups, relations that drift, bubbles-only chat, on/off switches.
 
-Next: playing 0.3.3 on a live server and fixing what comes up; then a longer memory for long-running servers and small requests from colonists with a reward.
+Next: playing 0.3.4 on a live server and fixing what comes up; then a longer memory for long-running servers and small requests from colonists with a reward.
 
 ## About this project
 
