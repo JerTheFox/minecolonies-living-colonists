@@ -39,7 +39,7 @@ You look at the baker and press **U**: a line above the chat input shows "→ Jo
 | Minecraft | 1.21.1 |
 | NeoForge | 21.1.264 |
 | Java | 21 |
-| MineColonies | 1.1.1405 or newer 1.1.x (checked: 1.1.1405, 1.1.1406) |
+| MineColonies | 1.1.1405 or newer 1.1.x (checked: 1.1.1405 to 1.1.1407) |
 | Structurize | as your MineColonies needs (1.0.832 or newer) |
 | BlockUI | as your MineColonies needs (1.0.199 or newer) |
 | Domum Ornamentum | as your MineColonies needs (1.0.223 or newer) |
@@ -161,7 +161,7 @@ You need JDK 21. For the dev runs, copy `.env.example` to `.env` and put your AP
 ```bash
 ./gradlew build      # jar ends up in build/libs/
 ./gradlew runClient  # development client with MineColonies, single-player world
-./gradlew test       # unit tests
+./gradlew test       # unit and scenario tests: Minecraft and MineColonies load, the model is faked
 ./gradlew runServer  # local dedicated server for network testing
 ```
 
@@ -186,7 +186,7 @@ Next: playing 0.3.4 on a live server and fixing what comes up; then a longer mem
 
 ## About this project
 
-This is my project. I'm a sysadmin, not a Java developer: I decide what the mod does and how colonists behave, review and approve each change, fix things by hand when needed and play every build on our server before it's released. Claude, writes most of the code.
+This is my project. I'm a sysadmin, not a Java developer: I decide what the mod does and how colonists behave, review and approve each change, fix things by hand when needed and play every build on our server before it's released. Claude writes most of the code.
 
 It started as a private mod for my home server. We had been running Talking Colonists with Colonist Errands: voice conversations with colonists through Gemini Live. I wanted text chat, a free choice of model provider, and colonists who live their own lives in chat. Since others might want the same, I decided to publish it.
 
