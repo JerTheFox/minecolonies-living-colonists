@@ -564,12 +564,12 @@ public final class ColonyThreads {
             List<String> recent = lines.stream().skip(Math.max(0, lines.size() - RECENT_LINES))
                     .filter(line -> colonists.contains(line.speaker())).map(MemoryLine::text).toList();
             boolean lookups = !answeringPlayer && thread.questionTo == citizen.getId();
-            talk.generateFresh(citizen, prompt, List.of(ChatMessage.user(last)), answeringPlayer ? thread.lastPlayer : null,
+            talk.replies().generateFresh(citizen, prompt, List.of(ChatMessage.user(last)), answeringPlayer ? thread.lastPlayer : null,
                     lookups, server, recent, result -> {
                 if (thread.version != version) {
                     return;
                 }
-                Optional<String> text = TalkService.lineOf(speaker, result).map(line -> Prompts.firstSentences(line, MAX_SENTENCES));
+                Optional<String> text = Replies.lineOf(speaker, result).map(line -> Prompts.firstSentences(line, MAX_SENTENCES));
                 if (text.isEmpty()) {
                     typing.stop(server, speaker);
                     if (answeringPlayer && result instanceof ChatResult.Reply && thread.silent++ < MAX_SILENT) {

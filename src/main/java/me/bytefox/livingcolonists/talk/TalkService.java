@@ -11,7 +11,6 @@ import java.util.PriorityQueue;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Consumer;
 
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
@@ -30,12 +29,9 @@ import me.bytefox.livingcolonists.llm.ChatResult;
 import me.bytefox.livingcolonists.llm.LlmClient;
 import me.bytefox.livingcolonists.llm.LlmSettings;
 import me.bytefox.livingcolonists.llm.ModelRole;
-import me.bytefox.livingcolonists.llm.ToolCall;
-import me.bytefox.livingcolonists.llm.ToolSpec;
 import me.bytefox.livingcolonists.memory.Fact;
 import me.bytefox.livingcolonists.memory.MemoryLine;
 import me.bytefox.livingcolonists.memory.MemoryService;
-import me.bytefox.livingcolonists.errands.Errand;
 import me.bytefox.livingcolonists.errands.Errands;
 import me.bytefox.livingcolonists.errands.Notes;
 import me.bytefox.livingcolonists.perception.ColonyTools;
@@ -63,18 +59,9 @@ import net.minecraft.world.level.Level;
  * so they can answer even when their entity is in an unloaded chunk.</p>
  */
 public final class TalkService {
-    /** Rounds of colony function calls per reply before the model has to answer. */
-    private static final int MAX_TOOL_ROUNDS = 3;
-    /**
-     * Token room for a reply: the line is short, but DeepSeek's reasoning sometimes took the whole
-     * usual 2000 and cut the line off mid-word.
-     */
-    private static final int REPLY_TOKENS = 4000;
     /** Who a colonist is when personalities are off: a plain hand for running the colony by chat. */
     private static final String PLAIN = "You are businesslike: you answer what you are asked, plainly and briefly, and "
             + "see to what the colony's owner and officers ask without fuss. No small talk, jokes or worries of your own.";
-    /** How many of the player's latest lines an order is checked against. */
-    private static final int RECENT_PLAYER_LINES = 6;
 
     private final LlmClient client;
     private final PromptLibrary prompts;
@@ -97,13 +84,12 @@ public final class TalkService {
     /** When each player last wrote to colonists, in server ticks: unprompted lines wait until they're quiet. */
     private final Map<UUID, Long> lastMessage = new HashMap<>();
     private final ColonyThreads threads;
+    private final Replies replies;
     private final ColonyEvents events;
     private final SpeechOutput output = new BubbleSpeechOutput(new ChatSpeechOutput());
     private final Typing typing = new Typing();
     private final Random random = new Random();
 
-    /** The last reply prompt of each colonist, as {@link #key}, for {@code /lcdebug prompt}. Server thread only. */
-    private final Map<Long, String> lastPrompts = new HashMap<>();
     /** Pause between one player's messages to colonists. Server thread only. */
     private final Cooldown cooldown = new Cooldown();
     /** Optional cap on one player's messages to colonists per hour. Server thread only. */
@@ -130,6 +116,7 @@ public final class TalkService {
         this.bonds = bonds;
         this.tools = new ColonyTools(perception);
         this.errands = new Errands(perception, this::writeFirst, memory::rememberDeed);
+        this.replies = new Replies(this, client, tools, errands, memory);
         this.threads = new ColonyThreads(this, prompts, memory, personalities, output, typing, bonds);
         this.events = new ColonyEvents(threads);
         this.initiative = new Initiative(this, threads, perception, memory, bonds);
@@ -140,6 +127,10 @@ public final class TalkService {
         this.gifts = new GiftWatch(this, bonds, memory);
         this.deeds = new PlayerDeeds(events);
         this.drift = new RelationsDrift(this, threads, bonds, memory);
+    }
+
+    Replies replies() {
+        return replies;
     }
 
     public ColonyThreads threads() {
@@ -278,11 +269,11 @@ public final class TalkService {
 
     /** The last prompt sent for this colonist's reply, if any. */
     public Optional<String> lastPrompt(ICitizenData citizen) {
-        return Optional.ofNullable(lastPrompts.get(key(citizen.getColony().getID(), citizen.getId())));
+        return replies.lastPrompt(citizen);
     }
 
     public void clear() {
-        lastPrompts.clear();
+        replies.clear();
         cooldown.clear();
         hourly.clear();
         thinking.clear();
@@ -341,10 +332,10 @@ public final class TalkService {
             values.put("memories", memories);
             String template = prompts.get(PromptLibrary.REPLY_PRIVATE);
             String prompt = Templates.render(template, PromptBudget.fit(values, template));
-            generate(citizen, prompt, messages, playerId, server, result -> {
+            replies.generate(citizen, prompt, messages, playerId, server, result -> {
                 thinking.remove(key);
                 ServerPlayer author = server.getPlayerList().getPlayer(playerId);
-                Optional<String> text = lineOf(speaker, result);
+                Optional<String> text = Replies.lineOf(speaker, result);
                 if (text.isEmpty()) {
                     typing.stop(server, speaker);
                     if (author != null && result instanceof ChatResult.Failure) {
@@ -430,11 +421,11 @@ public final class TalkService {
         ResourceKey<Level> dimension = colony.getDimension();
         long earliest = server.getTickCount() + LinePacing.gap(random);
         typing.start(server, speaker, List.of(player), earliest);
-        generateFresh(citizen, prompt, messages, null, server,
+        replies.generateFresh(citizen, prompt, messages, null, server,
                 ownTopic ? List.copyOf(heard.getOrDefault(playerId, new java.util.ArrayDeque<>())) : List.of(),
                 result -> {
             thinking.remove(key);
-            Optional<String> text = lineOf(speaker, result);
+            Optional<String> text = Replies.lineOf(speaker, result);
             if (text.isEmpty()) {
                 typing.stop(server, speaker);
                 if (failed != null && server.getPlayerList().getPlayer(playerId) != null) {
@@ -529,170 +520,6 @@ public final class TalkService {
         }
     }
 
-
-    /**
-     * Asks the chat model for one colonist line. {@code done} gets the result on the server thread.
-     *
-     * @param withTools offer the colony functions, if they are enabled
-     */
-    /** @param asker the player the colonist answers, who may get look-ups and orders; null for none */
-    /**
-     * {@link #generate}, for a line the colonist says on their own (no player to answer, no tools):
-     * a line that goes round in circles ({@link Repeats}) gets one more try, told what was wrong, and
-     * is dropped if it still does. Models told not to repeat themselves still do; code catches it.
-     *
-     * @param recent the latest lines heard where it will be said, newest last
-     */
-    void generateFresh(ICitizenData citizen, String prompt, List<ChatMessage> conversation, UUID asker,
-                       MinecraftServer server, List<String> recent, Consumer<ChatResult> done) {
-        generateFresh(citizen, prompt, conversation, asker, false, server, recent, done);
-    }
-
-    /** The same; {@code lookups}: a colonist asked by another colonist may look things up once, no orders (#56). */
-    void generateFresh(ICitizenData citizen, String prompt, List<ChatMessage> conversation, UUID asker, boolean lookups,
-                       MinecraftServer server, List<String> recent, Consumer<ChatResult> done) {
-        if (lookups) {
-            generate(citizen, prompt, conversation, asker, true, server, done);
-            return;
-        }
-        if (asker != null || recent.isEmpty()) {
-            generate(citizen, prompt, conversation, asker, server, done);
-            return;
-        }
-        List<String> names = new ArrayList<>(citizen.getColony().getCitizenManager().getCitizens().stream()
-                .map(ICitizenData::getName).toList());
-        server.getPlayerList().getPlayers().forEach(player -> names.add(Audience.playerName(player)));
-        String name = citizen.getName();
-        generate(citizen, prompt, conversation, null, server, result -> {
-            Optional<String> problem = result instanceof ChatResult.Reply reply && !reply.text().isBlank()
-                    ? Repeats.problem(reply.text(), recent, names, true) : Optional.empty();
-            if (problem.isEmpty()) {
-                done.accept(result);
-                return;
-            }
-            ModLog.action("{}'s line went round in circles ({}), asking again", name, problem.get());
-            Counters.add("repeats.caught");
-            generate(citizen, prompt + "\nYour first try was no good: " + problem.get() + ". Say something different, "
-                    + "on another subject if need be, or answer [silence].", conversation, null, server, second -> {
-                if (second instanceof ChatResult.Reply reply && Repeats.problem(reply.text(), recent, names, true).isPresent()) {
-                    ModLog.action("{}'s second try went round in circles too, said nothing", name);
-                    done.accept(new ChatResult.Reply("[silence]", reply.usage()));
-                    return;
-                }
-                done.accept(second);
-            });
-        });
-    }
-
-    void generate(ICitizenData citizen, String prompt, List<ChatMessage> conversation, UUID asker,
-                  MinecraftServer server, Consumer<ChatResult> done) {
-        generate(citizen, prompt, conversation, asker, false, server, done);
-    }
-
-    void generate(ICitizenData citizen, String prompt, List<ChatMessage> conversation, UUID asker, boolean lookups,
-                  MinecraftServer server, Consumer<ChatResult> done) {
-        Optional<LlmSettings> settings = Config.llmSettings(ModelRole.CHAT);
-        if (settings.isEmpty()) {
-            done.accept(new ChatResult.Failure("no API key", false));
-            return;
-        }
-        Speaker speaker = Audience.speakerOf(citizen);
-        lastPrompts.put(key(speaker.colonyId(), speaker.citizenId()), prompt);
-        List<ChatMessage> messages = new ArrayList<>();
-        messages.add(ChatMessage.system(prompt));
-        messages.addAll(conversation);
-        List<ToolSpec> offered = new ArrayList<>();
-        if (asker != null && Config.toolsEnabled()) {
-            offered.addAll(tools.specs());
-            offered.addAll(errands.specs(citizen));
-        } else if (lookups && Config.toolsEnabled()) {
-            offered.addAll(tools.specs());
-            offered.addAll(errands.lookupSpecs(citizen));
-        }
-        // A line nobody waits for (no player to answer) gives way to players' answers.
-        LlmSettings reply = asker == null ? settings.get().withMinTokens(REPLY_TOKENS).inBackground()
-                : settings.get().withMinTokens(REPLY_TOKENS);
-        // A colonist asked by another colonist gets one look-up at most: the last round offers nothing.
-        converse(reply, messages, offered, asker == null && lookups ? MAX_TOOL_ROUNDS - 1 : 0, server,
-                citizen.getColony().getDimension(), speaker,
-                asker, new StringBuilder(), done);
-    }
-
-    /** The cleaned line of a successful reply; empty for failures, empty replies and silence. */
-    static Optional<String> lineOf(Speaker speaker, ChatResult result) {
-        return switch (result) {
-            case ChatResult.Reply reply -> {
-                String text = Prompts.cleanReply(reply.text(), speaker.name());
-                yield text.isEmpty() || Prompts.isSilence(text) ? Optional.empty() : Optional.of(text);
-            }
-            case ChatResult.Failure failure -> {
-                ModLog.warn("{} could not answer: {}", speaker.name(), failure.reason());
-                yield Optional.empty();
-            }
-        };
-    }
-
-    /**
-     * One round with the model. When it asks for colony functions, they run on the server thread and
-     * the conversation goes back with their results, at most {@link #MAX_TOOL_ROUNDS} times; the last
-     * round offers no functions, so the model has to answer. {@code done} runs on the server thread.
-     */
-    private void converse(LlmSettings settings, List<ChatMessage> messages, List<ToolSpec> offered, int round,
-                          MinecraftServer server, ResourceKey<Level> dimension, Speaker speaker, UUID asker,
-                          StringBuilder trace, Consumer<ChatResult> done) {
-        List<ToolSpec> now = round < MAX_TOOL_ROUNDS ? offered : List.of();
-        client.complete(settings, messages, now).thenAccept(result -> server.execute(() -> {
-            if (result instanceof ChatResult.Reply written && now.isEmpty() && Prompts.callMarkup(written.text())
-                    && round == MAX_TOOL_ROUNDS) {
-                // Out of look-ups, the model wrote one more call as text: once more, told to answer in words.
-                List<ChatMessage> again = new ArrayList<>(messages);
-                again.add(ChatMessage.user("[You can't look anything more up now. Answer in words, from what you found.]"));
-                converse(settings, again, offered, round + 1, server, dimension, speaker, asker, trace, done);
-                return;
-            }
-            if (!(result instanceof ChatResult.Reply reply) || !reply.wantsTools()) {
-                done.accept(result);
-                return;
-            }
-            ICitizenData citizen = Audience.resolve(dimension, speaker.colonyId(), speaker.citizenId());
-            if (citizen == null || now.isEmpty()) {
-                done.accept(new ChatResult.Failure("the model asked for functions it wasn't offered", false));
-                return;
-            }
-            List<ChatMessage> next = new ArrayList<>(messages);
-            next.add(ChatMessage.assistantCalling(reply.toolCalls()));
-            if (asker == null) {
-                // A look-up in colonists' own talk costs from the colony's budget like a long line.
-                airtime.spend(Airtime.colony(speaker.colonyId()), server.getTickCount(), 0.25);
-                Counters.add("lookups.colonists");
-            }
-            for (ToolCall call : reply.toolCalls()) {
-                String output = errands.handles(call.name())
-                        ? errands.run(call, errandContext(citizen, server.getPlayerList().getPlayer(asker)))
-                        : tools.run(call, citizen);
-                trace.append("\n[function] ").append(call.name()).append(call.arguments()).append(" -> ").append(output);
-                next.add(ChatMessage.toolResult(call.id(), output));
-            }
-            lastPrompts.computeIfPresent(key(speaker.colonyId(), speaker.citizenId()), (k, v) -> v + trace);
-            trace.setLength(0);
-            converse(settings, next, offered, round + 1, server, dimension, speaker, asker, trace, done);
-        }));
-    }
-
-    /** What an errand needs to know: the colonist, the player and what the player wrote lately. */
-    private Errand.Context errandContext(ICitizenData citizen, ServerPlayer player) {
-        List<String> lines = new ArrayList<>();
-        if (player != null) {
-            String colonist = citizen.getName();
-            String playerName = Audience.playerName(player);
-            memory.privateTalk(citizen, player.getUUID()).stream().filter(line -> !line.speaker().equals(colonist))
-                    .forEach(line -> lines.add(line.text()));
-            memory.colonyChat(citizen.getColony()).stream().filter(line -> line.speaker().equals(playerName))
-                    .forEach(line -> lines.add(line.text()));
-        }
-        return new Errand.Context(citizen, citizen.getColony(), player,
-                lines.subList(Math.max(0, lines.size() - RECENT_PLAYER_LINES), lines.size()));
-    }
 
     /** Whether the player may talk to this colony's colonists right now; tells them if not. */
     private boolean admit(ServerPlayer player, IColony colony) {
