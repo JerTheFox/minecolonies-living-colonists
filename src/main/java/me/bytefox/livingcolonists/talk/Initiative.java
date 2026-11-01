@@ -145,8 +145,8 @@ final class Initiative {
             }
             IColony colony = Colonies.at(player);
             InitiativePolicy.Budget budget = budgets.computeIfAbsent(id, key -> new InitiativePolicy.Budget());
-            if (colony == null || !TalkService.isInside(player, colony)
-                    || !ColonyAccess.canTalk(TalkService.role(player, colony), Config.MEMBERS_ONLY.get())
+            if (colony == null || !Audience.isInside(player, colony)
+                    || !ColonyAccess.canTalk(Audience.role(player, colony), Config.MEMBERS_ONLY.get())
                     || now - talk.lastMessage(id) < InitiativePolicy.QUIET
                     || threads.isBusy(colony.getID(), now) || talk.errands().hasPending(player, now)
                     || Colonies.isRaided(colony) || !budget.allows(now, level)) {

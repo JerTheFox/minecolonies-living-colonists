@@ -16,6 +16,7 @@ import me.bytefox.livingcolonists.Config;
 import me.bytefox.livingcolonists.llm.ToolSpec;
 import me.bytefox.livingcolonists.talk.Addressing;
 import me.bytefox.livingcolonists.talk.PlayerNames;
+import me.bytefox.livingcolonists.talk.Audience;
 import me.bytefox.livingcolonists.talk.TalkService;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -119,7 +120,7 @@ public final class Notes {
                 data.book.delivered(note);
                 continue;
             }
-            if (player == null || note.kind() == NoteBook.Kind.MAIL && !TalkService.isInside(player, colony)) {
+            if (player == null || note.kind() == NoteBook.Kind.MAIL && !Audience.isInside(player, colony)) {
                 continue;
             }
             String purpose = (note.kind() == NoteBook.Kind.MAIL
@@ -214,7 +215,7 @@ public final class Notes {
             String recipientName = PlayerNames.name(context.colony().getPermissions().getPlayers().get(recipient).getName(), forms);
             long now = now(player.server);
             return add(new NoteBook.Note(NoteBook.Kind.MAIL, context.colony().getID(), context.citizen().getId(),
-                            player.getUUID(), TalkService.playerName(player), recipient, recipientName, cut(message), now, now),
+                            player.getUUID(), Audience.playerName(player), recipient, recipientName, cut(message), now, now),
                     "You will tell " + recipientName + " when they next come to the colony.");
         }
     }
@@ -257,7 +258,7 @@ public final class Notes {
             }
             long now = now(player.server);
             long delay = NoteBook.delay(minutes);
-            String name = TalkService.playerName(player);
+            String name = Audience.playerName(player);
             return add(new NoteBook.Note(NoteBook.Kind.REMINDER, context.colony().getID(), context.citizen().getId(),
                             player.getUUID(), name, player.getUUID(), name, cut(about), now, now + delay),
                     "You will remind them in about " + Math.round(delay / 1200.0) + " minutes.");

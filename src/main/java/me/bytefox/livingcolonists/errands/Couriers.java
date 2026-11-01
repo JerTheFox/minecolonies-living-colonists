@@ -23,6 +23,7 @@ import com.minecolonies.api.tileentities.AbstractTileEntityRack;
 import me.bytefox.livingcolonists.ModLog;
 import me.bytefox.livingcolonists.llm.ToolSpec;
 import me.bytefox.livingcolonists.perception.ItemNames;
+import me.bytefox.livingcolonists.talk.Audience;
 import me.bytefox.livingcolonists.talk.TalkService;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -314,7 +315,7 @@ public final class Couriers {
                     ? Component.translatable("livingcolonists.order.fetch.ask", count, itemName)
                     : Component.translatable("livingcolonists.order.deliver.ask", count, itemName,
                     Component.translatable(to.getBuildingType().getTranslationKey()));
-            String playerName = TalkService.playerName(player);
+            String playerName = Audience.playerName(player);
             return new Result.Proposal(new Order(name(), (to == null ? "bring " : "take ") + count + " "
                     + itemName.getString() + (to == null ? " to the player" : " to a building"), question, confirming -> {
                 Job job = new Job(colony.getID(), confirming.getUUID(), playerName, item, count, to);

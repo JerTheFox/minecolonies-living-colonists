@@ -34,6 +34,7 @@ import me.bytefox.livingcolonists.personality.Personality;
 import me.bytefox.livingcolonists.personality.PersonalityService;
 import me.bytefox.livingcolonists.prompt.PromptLibrary;
 import me.bytefox.livingcolonists.talk.Conversations;
+import me.bytefox.livingcolonists.talk.Audience;
 import me.bytefox.livingcolonists.talk.TalkService;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -129,7 +130,7 @@ public final class DebugCommand {
             if (partner.isPresent()) {
                 return partner.get();
             }
-            Optional<AbstractEntityCitizen> looked = TalkService.findListener(player, LOOK_RANGE, false);
+            Optional<AbstractEntityCitizen> looked = Audience.findListener(player, LOOK_RANGE, false);
             if (looked.isPresent()) {
                 return looked.get().getCitizenData();
             }

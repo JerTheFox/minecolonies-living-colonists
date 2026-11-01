@@ -68,7 +68,7 @@ public final class GiftWatch {
             }
         }
         String what = String.join(", ", named);
-        String playerName = TalkService.playerName(player);
+        String playerName = Audience.playerName(player);
         Counters.add("gifts");
         ModLog.action("{} gave {} {}", playerName, citizen.getName(), what);
         boolean warmed = bonds.gift(citizen, player.getUUID(), playerName, playerName + " gave me " + what, worth, english);

@@ -53,7 +53,7 @@ final class PlayerDeeds {
         if (fight.size() < (raider ? RAIDERS : MONSTERS) || !fresh(player, colony, kind)) {
             return;
         }
-        String name = TalkService.playerName(player);
+        String name = Audience.playerName(player);
         events.announce(player.server, colony, raider
                 ? name + " is fighting off the raiders right in the colony: " + fight.size() + " of them are down already."
                 : name + " has just cleared the monsters that crept into the colony.");

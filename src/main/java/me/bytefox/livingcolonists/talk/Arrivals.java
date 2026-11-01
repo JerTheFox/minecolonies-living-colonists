@@ -162,7 +162,7 @@ final class Arrivals {
         Integer colonyId = inside.remove(id);
         if (colonyId != null && colonyId >= 0) {
             farewells.put(id, new Farewell(colonyId, player.level().dimension(), now + ArrivalPolicy.FAREWELL_DELAY,
-                    TalkService.playerName(player)));
+                    Audience.playerName(player)));
         }
     }
 
@@ -213,8 +213,8 @@ final class Arrivals {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             UUID id = player.getUUID();
             IColony colony = Colonies.at(player);
-            boolean member = colony != null && TalkService.isInside(player, colony)
-                    && ColonyAccess.canTalk(TalkService.role(player, colony), Config.MEMBERS_ONLY.get());
+            boolean member = colony != null && Audience.isInside(player, colony)
+                    && ColonyAccess.canTalk(Audience.role(player, colony), Config.MEMBERS_ONLY.get());
             int here = member ? colony.getID() : -1;
             Integer before = inside.put(id, here);
             if (here < 0) {
@@ -270,7 +270,7 @@ final class Arrivals {
             return true;
         }
         IColony colony = Colonies.at(player);
-        if (colony == null || colony.getID() != visit.colonyId() || !TalkService.isInside(player, colony)
+        if (colony == null || colony.getID() != visit.colonyId() || !Audience.isInside(player, colony)
                 || now - talk.lastMessage(id) < ArrivalPolicy.JUST_WROTE || threads.isBusy(colony.getID(), now)
                 || talk.errands().hasPending(player, now) || Colonies.isRaided(colony)
                 || now - lastGreeting.getOrDefault(id, Long.MIN_VALUE / 2) < ArrivalPolicy.playerGap(level)
@@ -287,7 +287,7 @@ final class Arrivals {
         }
         able.sort(Comparator.comparingInt((ICitizenData c) -> bonds.playerRapport(c, id)).reversed());
         ICitizenData speaker = able.get(random.nextInt(Math.min(WARMEST, able.size())));
-        String name = TalkService.playerName(player);
+        String name = Audience.playerName(player);
         List<String> news = visit.visit().news();
         // News of the colony is everyone's to tell: it goes to the colony chat, where others may join in.
         boolean said = !news.isEmpty() && threads.startChatter(server, colony, speaker.getId(), "how " + name

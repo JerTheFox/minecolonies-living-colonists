@@ -48,6 +48,7 @@ import me.bytefox.livingcolonists.talk.Bubbles;
 import me.bytefox.livingcolonists.talk.Conversations;
 import me.bytefox.livingcolonists.talk.InitiativeData;
 import me.bytefox.livingcolonists.talk.TalkCommand;
+import me.bytefox.livingcolonists.talk.Audience;
 import me.bytefox.livingcolonists.talk.TalkService;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.IEventBus;
@@ -118,12 +119,12 @@ public final class LivingColonists {
         RequestResponses.listen(new RequestResponses.Listener() {
             @Override
             public void onRequest(ICitizenData citizen, IToken<?> request, String button, ServerPlayer player) {
-                bonds.onRequestResponse(citizen, request, button, player, TalkService.playerName(player));
+                bonds.onRequestResponse(citizen, request, button, player, Audience.playerName(player));
             }
 
             @Override
             public void onDialog(ICitizenData citizen, String inquiry, String button, ServerPlayer player) {
-                bonds.onDialogResponse(citizen, inquiry, button, player, TalkService.playerName(player));
+                bonds.onDialogResponse(citizen, inquiry, button, player, Audience.playerName(player));
             }
         });
         modEventBus.addListener(this::commonSetup);

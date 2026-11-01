@@ -221,7 +221,7 @@ public final class ColonyThreads {
         if (!talk.active(colony)) {
             return false;
         }
-        Collection<ServerPlayer> audience = TalkService.colonyAudience(server, colony, null);
+        Collection<ServerPlayer> audience = Audience.colonyAudience(server, colony, null);
         Level level = Config.level(Module.CONVERSATION);
         if (level == Level.OFF || audience.isEmpty()) {
             return false;
@@ -252,7 +252,7 @@ public final class ColonyThreads {
         thread.opening = null;
         thread.chatter = about;
         thread.energy = ThreadPolicy.startEnergy(level, random);
-        thread.language = Languages.ofLocale(TalkService.language(audience));
+        thread.language = Languages.ofLocale(Audience.language(audience));
         thread.addressed.add(speakerId);
         thread.asked = askedId;
         nextTurn(server, colony, thread, thread.version);
@@ -301,7 +301,7 @@ public final class ColonyThreads {
         if (!talk.active(colony)) {
             return false;
         }
-        Collection<ServerPlayer> audience = TalkService.colonyAudience(server, colony, null);
+        Collection<ServerPlayer> audience = Audience.colonyAudience(server, colony, null);
         if (Config.level(Module.CONVERSATION) == Level.OFF || audience.isEmpty()) {
             return false;
         }
@@ -337,7 +337,7 @@ public final class ColonyThreads {
         thread.chatter = null;
         thread.lines.clear();
         thread.energy = 1 + ThreadPolicy.startEnergy(Config.level(Module.CONVERSATION), random);
-        thread.language = Languages.ofLocale(TalkService.language(audience));
+        thread.language = Languages.ofLocale(Audience.language(audience));
         preferred.stream().limit(1).forEach(thread.addressed::add);
         ModLog.action("Colony {} talks about: {}", colony.getName(), what);
         nextTurn(server, colony, thread, thread.version);
@@ -349,9 +349,9 @@ public final class ColonyThreads {
             return;
         }
         MinecraftServer server = player.server;
-        output.playerSaid(player, colony.getName(), message, TalkService.colonyAudience(server, colony, player));
-        memory.seen(player.getUUID(), TalkService.playerName(player), player.getGameProfile().getName());
-        memory.rememberColony(colony, TalkService.playerName(player), message);
+        output.playerSaid(player, colony.getName(), message, Audience.colonyAudience(server, colony, player));
+        memory.seen(player.getUUID(), Audience.playerName(player), player.getGameProfile().getName());
+        memory.rememberColony(colony, Audience.playerName(player), message);
         Thread thread = threads.computeIfAbsent(colony.getID(), id -> {
             Thread fresh = new Thread();
             fresh.startTime = colony.getWorld().getGameTime();
@@ -418,7 +418,7 @@ public final class ColonyThreads {
         List<ColonyRouter.Member> roster = new ArrayList<>();
         List<Integer> ids = new ArrayList<>();
         for (ICitizenData citizen : citizens) {
-            Speaker speaker = TalkService.speakerOf(citizen);
+            Speaker speaker = Audience.speakerOf(citizen);
             roster.add(new ColonyRouter.Member(speaker.name(), speaker.job()));
             ids.add(citizen.getId());
         }
@@ -477,7 +477,7 @@ public final class ColonyThreads {
                 || chatter == null && namedLast(colony, citizen)));
         values.put("language", thread.language != null ? thread.language : "the language of the latest chat lines");
         // Who of the players is here: otherwise "hi, Max!" from one player to another gets "Max isn't here".
-        List<String> here = TalkService.colonyAudience(server, colony, null).stream().map(TalkService::playerName).toList();
+        List<String> here = Audience.colonyAudience(server, colony, null).stream().map(Audience::playerName).toList();
         if (!here.isEmpty()) {
             values.put("situation", values.get("situation") + "\nIn the colony now, besides colonists: "
                     + String.join(", ", here) + ". They may greet or call each other in the chat.");
@@ -545,11 +545,11 @@ public final class ColonyThreads {
         String last = opening != null ? "[Colony news: " + opening + "]"
                 : chatter != null ? "[You start a new conversation in the colony chat.]"
                 : lines.isEmpty() ? "" : lines.get(lines.size() - 1).speaker() + ": " + lines.get(lines.size() - 1).text();
-        Speaker speaker = TalkService.speakerOf(citizen);
+        Speaker speaker = Audience.speakerOf(citizen);
         // The colonist first reads what was said, then types: others see "typing" from the end of the reading pause.
         double pace = answeringPlayer ? THREAD_PACE : CHATTER_PACE;
         long readingEnd = thread.lastLineTick + Math.round(pace * LinePacing.gap(random));
-        typing.start(server, speaker, TalkService.colonyAudience(server, colony, player), readingEnd);
+        typing.start(server, speaker, Audience.colonyAudience(server, colony, player), readingEnd);
         // The facts the last line touches, by meaning when embeddings are set up; asked during the reading pause.
         memory.memoriesFor(citizen, present, chatter != null ? chatter : last, server, memories -> {
             if (thread.version != version) {
@@ -603,7 +603,7 @@ public final class ColonyThreads {
         }
         ServerPlayer author = thread.lastPlayer == null ? null : server.getPlayerList().getPlayer(thread.lastPlayer);
         typing.stop(server, speaker);
-        output.colonistSaid(speaker, text, TalkService.colonyAudience(server, colony, author));
+        output.colonistSaid(speaker, text, Audience.colonyAudience(server, colony, author));
         talk.errands().afterLine(server, speaker.colonyId(), speaker.citizenId());
         memory.rememberColony(colony, speaker.name(), text);
         thread.lastLineTick = server.getTickCount();
@@ -649,7 +649,7 @@ public final class ColonyThreads {
             return;
         }
         Level level = Config.level(Module.CONVERSATION);
-        boolean playersAround = TalkService.colonyAudience(server, colony, null).size() > 0;
+        boolean playersAround = Audience.colonyAudience(server, colony, null).size() > 0;
         ThreadPolicy.Kind kind = server.getTickCount() - thread.playerTick >= ACTIVE_TICKS ? ThreadPolicy.Kind.CHATTER
                 : talk.errands().errandSince(colony.getID(), thread.playerGameTime) ? ThreadPolicy.Kind.BUSINESS
                 : ThreadPolicy.Kind.TALK;

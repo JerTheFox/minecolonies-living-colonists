@@ -26,6 +26,7 @@ import me.bytefox.livingcolonists.behaviour.ColonyAccess;
 import me.bytefox.livingcolonists.llm.ToolCall;
 import me.bytefox.livingcolonists.llm.ToolSpec;
 import me.bytefox.livingcolonists.perception.PerceptionService;
+import me.bytefox.livingcolonists.talk.Audience;
 import me.bytefox.livingcolonists.talk.TalkService;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
@@ -227,7 +228,7 @@ public final class Errands {
         if (player == null) {
             return Optional.of(Errand.error("Orders come only from a player asking you directly."));
         }
-        if (!ColonyAccess.canGiveOrders(TalkService.role(player, context.colony()), Config.MEMBERS_ONLY.get())) {
+        if (!ColonyAccess.canGiveOrders(Audience.role(player, context.colony()), Config.MEMBERS_ONLY.get())) {
             log(context, errand.name(), "refused: rank");
             return Optional.of(Errand.error("Only the colony's owner and officers give you orders. Turn it down in "
                     + "your own way, without fuss, and suggest asking them."));
@@ -253,7 +254,7 @@ public final class Errands {
         reply.addProperty("success", true);
         reply.addProperty("waiting_for_yes", order.summary());
         reply.addProperty("info", "Nothing is done or ordered yet: the player now sees yes and no buttons, and it "
-                + "happens only once they agree. In one short line, ask " + TalkService.playerName(player) + " by name "
+                + "happens only once they agree. In one short line, ask " + Audience.playerName(player) + " by name "
                 + "whether to do it, as a question, like \"Build the residence up to level one, then?\": never say you "
                 + "have placed, filed, ordered or started it, and don't guess how long it will take. Don't call this again.");
         return reply;
@@ -295,7 +296,7 @@ public final class Errands {
             return 0;
         }
         Errand.Order order = ticket.get().order();
-        if (!ColonyAccess.canGiveOrders(TalkService.role(player, ticket.get().where()), Config.MEMBERS_ONLY.get())) {
+        if (!ColonyAccess.canGiveOrders(Audience.role(player, ticket.get().where()), Config.MEMBERS_ONLY.get())) {
             log(ticket.get(), player, "refused at the yes: rank");
             player.sendSystemMessage(Component.translatable("livingcolonists.order.rank").withStyle(ChatFormatting.RED));
             return 0;
@@ -311,7 +312,7 @@ public final class Errands {
             book.done(player.getUUID(), ticket.get(), outcome.undo());
             ICitizenData citizen = ticket.get().where().getCitizenManager().getCivilian(ticket.get().citizenId());
             if (citizen != null) {
-                deeds.remember(citizen, "On " + TalkService.playerName(player) + "'s order I saw to it: " + order.summary() + ".");
+                deeds.remember(citizen, "On " + Audience.playerName(player) + "'s order I saw to it: " + order.summary() + ".");
             }
         }
         log(ticket.get(), player, (outcome.done() ? "done: " : "failed: ") + order.summary());

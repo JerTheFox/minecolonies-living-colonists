@@ -28,6 +28,7 @@ import com.minecolonies.core.colony.jobs.AbstractJobGuard;
 import com.minecolonies.core.entity.ai.workers.guard.AbstractEntityAIGuard;
 import me.bytefox.livingcolonists.ModLog;
 import me.bytefox.livingcolonists.llm.ToolSpec;
+import me.bytefox.livingcolonists.talk.Audience;
 import me.bytefox.livingcolonists.talk.TalkService;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -112,7 +113,7 @@ public final class Guards {
 
             @Override
             public Result run(Context context, JsonObject arguments) {
-                if (!name.equals("guard_me") && !TalkService.isInside(context.player(), context.colony())) {
+                if (!name.equals("guard_me") && !Audience.isInside(context.player(), context.colony())) {
                     return new Result.Answer(Errand.error("The guards hold spots inside the colony only: the player has "
                             + "to be within its borders."));
                 }
@@ -258,7 +259,7 @@ public final class Guards {
             if (!(context.citizen().getWorkBuilding() instanceof AbstractBuildingGuards tower)) {
                 return new Result.Answer(Errand.error("You aren't a guard: only guards patrol."));
             }
-            if (!TalkService.isInside(context.player(), context.colony())) {
+            if (!Audience.isInside(context.player(), context.colony())) {
                 return new Result.Answer(Errand.error("Patrol points are inside the colony only."));
             }
             boolean fresh = Errand.string(arguments, "how").toLowerCase().startsWith("new");

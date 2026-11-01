@@ -65,8 +65,8 @@ public final class Conversations {
         Entry entry = entry(player);
         Partner partner = entry.partner;
         if (partner != null) {
-            ICitizenData citizen = TalkService.resolve(partner.dimension(), partner.colonyId(), partner.citizenId());
-            if (citizen != null && TalkService.isInside(player, citizen.getColony())) {
+            ICitizenData citizen = Audience.resolve(partner.dimension(), partner.colonyId(), partner.citizenId());
+            if (citizen != null && Audience.isInside(player, citizen.getColony())) {
                 talk.sayPrivately(player, citizen, text);
             } else {
                 release(player, true);
@@ -74,7 +74,7 @@ public final class Conversations {
             }
             return;
         }
-        IColony colony = TalkService.chatColony(player);
+        IColony colony = Audience.chatColony(player);
         if (colony == null) {
             player.sendSystemMessage(Component.translatable("livingcolonists.colony.outside"));
             return;
@@ -99,7 +99,7 @@ public final class Conversations {
      * private talk, or pick the nearest colonist if there is no talk yet.
      */
     public void pressTalk(ServerPlayer player, boolean openChat) {
-        Optional<AbstractEntityCitizen> lookedAt = TalkService.findListener(player, LOOK_RANGE, true);
+        Optional<AbstractEntityCitizen> lookedAt = Audience.findListener(player, LOOK_RANGE, true);
         if (lookedAt.isPresent()) {
             lock(player, lookedAt.get().getCitizenData(), openChat);
             return;
@@ -108,7 +108,7 @@ public final class Conversations {
             release(player, true);
             return;
         }
-        Optional<AbstractEntityCitizen> nearest = TalkService.findListener(player, NEAREST_RANGE, false);
+        Optional<AbstractEntityCitizen> nearest = Audience.findListener(player, NEAREST_RANGE, false);
         if (nearest.isPresent()) {
             lock(player, nearest.get().getCitizenData(), openChat);
         } else {
@@ -119,7 +119,7 @@ public final class Conversations {
 
     /** Picks a colonist by colony and citizen id: clicking a name in chat. */
     public void lock(ServerPlayer player, int colonyId, int citizenId) {
-        ICitizenData citizen = TalkService.resolve(player.level().dimension(), colonyId, citizenId);
+        ICitizenData citizen = Audience.resolve(player.level().dimension(), colonyId, citizenId);
         if (citizen == null) {
             player.sendSystemMessage(Component.translatable("livingcolonists.talk.nobody"));
             return;
@@ -129,15 +129,15 @@ public final class Conversations {
 
     public void lock(ServerPlayer player, ICitizenData citizen, boolean openChat) {
         IColony colony = citizen.getColony();
-        if (!TalkService.isInside(player, colony)) {
+        if (!Audience.isInside(player, colony)) {
             player.sendSystemMessage(Component.translatable("livingcolonists.colony.outside"));
             return;
         }
-        if (!TalkService.mayTalk(player, colony)) {
+        if (!Audience.mayTalk(player, colony)) {
             return;
         }
         Entry entry = entry(player);
-        Speaker speaker = TalkService.speakerOf(citizen);
+        Speaker speaker = Audience.speakerOf(citizen);
         entry.partner = new Partner(colony.getDimension(), colony.getID(), citizen.getId(), speaker.name(),
                 speaker.jobTranslationKey() == null ? "" : speaker.jobTranslationKey());
         player.displayClientMessage(Component.translatable("livingcolonists.partner.locked", speaker.name()), true);
@@ -160,7 +160,7 @@ public final class Conversations {
     /** Choosing a mode also ends a private talk. */
     /** The "Write to the colony" key: works inside a colony's borders, and opens the chat there. */
     public void chatToColony(ServerPlayer player) {
-        IColony colony = TalkService.chatColony(player);
+        IColony colony = Audience.chatColony(player);
         if (colony == null) {
             player.displayClientMessage(Component.translatable("livingcolonists.colony.outside"), true);
             return;
@@ -201,8 +201,8 @@ public final class Conversations {
             if (player == null) {
                 continue;
             }
-            ICitizenData citizen = TalkService.resolve(partner.dimension(), partner.colonyId(), partner.citizenId());
-            if (citizen == null || !TalkService.isInside(player, citizen.getColony())) {
+            ICitizenData citizen = Audience.resolve(partner.dimension(), partner.colonyId(), partner.citizenId());
+            if (citizen == null || !Audience.isInside(player, citizen.getColony())) {
                 release(player, true);
             }
         }
@@ -213,7 +213,7 @@ public final class Conversations {
         Entry entry = players.get(player.getUUID());
         Partner partner = entry == null ? null : entry.partner;
         return partner == null ? Optional.empty()
-                : Optional.ofNullable(TalkService.resolve(partner.dimension(), partner.colonyId(), partner.citizenId()));
+                : Optional.ofNullable(Audience.resolve(partner.dimension(), partner.colonyId(), partner.citizenId()));
     }
 
     public void forget(UUID playerId) {
@@ -231,7 +231,7 @@ public final class Conversations {
     /** Owner, officer or friend of any colony. */
     private static boolean isMember(ServerPlayer player) {
         for (IColony colony : Colonies.all()) {
-            if (TalkService.role(player, colony) != ColonyAccess.Role.OTHER) {
+            if (Audience.role(player, colony) != ColonyAccess.Role.OTHER) {
                 return true;
             }
         }

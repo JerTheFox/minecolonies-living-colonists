@@ -191,7 +191,7 @@ public final class ColonyEvents {
                     }
                     queue(colony.getID(), event, now);
                 }
-                if (now % (CHECK_INTERVAL * 2) == 0 && !TalkService.colonyAudience(server, colony, null).isEmpty()) {
+                if (now % (CHECK_INTERVAL * 2) == 0 && !Audience.colonyAudience(server, colony, null).isEmpty()) {
                     watchEnemies(colony, now);
                 }
                 // One conversation at a time: an event waits while the chat is busy, a death or a raid first.
