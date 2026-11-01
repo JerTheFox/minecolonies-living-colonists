@@ -145,4 +145,32 @@ class MemoryScenariosTest {
                         .anyMatch(r -> r.toString().contains("promised to bring Darcy Abbott an emerald")), WAIT),
                 "no reminder of the overdue promise");
     }
+
+    @Test
+    void puttingWhatWasPromisedIntoTheColonistsBagKeepsThePromiseAndGetsThanks() throws Exception {
+        stage.body(darcy, new net.minecraft.core.BlockPos(3, 64, 0));
+        stage.dice(0);
+        Promise promise = promiseFromTalk("принесу тебе изумруд");
+        stage.bonds.answer(stage.player, promise.id(), true);
+        // The colonist's bag, as MineColonies' inventory window shows it.
+        java.util.List<net.minecraft.world.item.ItemStack> bag = new java.util.ArrayList<>(java.util.Collections.nCopies(9,
+                net.minecraft.world.item.ItemStack.EMPTY));
+        var inventory = org.mockito.Mockito.mock(com.minecolonies.api.inventory.InventoryCitizen.class);
+        org.mockito.Mockito.when(inventory.getSlots()).thenReturn(bag.size());
+        org.mockito.Mockito.when(inventory.getStackInSlot(org.mockito.ArgumentMatchers.anyInt()))
+                .thenAnswer(invocation -> bag.get((int) invocation.getArgument(0)));
+        org.mockito.Mockito.when(darcy.getInventory()).thenReturn(inventory);
+        var window = org.mockito.Mockito.mock(com.minecolonies.api.inventory.container.ContainerCitizenInventory.class);
+        org.mockito.Mockito.when(window.getCitizenData()).thenReturn(darcy);
+
+        int before = stage.replies().size();
+        stage.talk.gifts().opened(stage.player, window);
+        bag.set(0, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.EMERALD));
+        stage.talk.gifts().closed(stage.player, window);
+
+        assertEquals(Promise.Status.KEPT, stage.bonds.promises(darcy).get(0).status(), "the gift didn't keep the promise");
+        assertTrue(stage.bonds.playerRapport(darcy, stage.player.getUUID()) > 0, "no warmth for the gift");
+        assertTrue(stage.runUntil(() -> stage.replies().stream().skip(before)
+                .anyMatch(r -> r.toString().contains("to thank them")), WAIT), "no thanks");
+    }
 }
