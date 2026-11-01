@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- The largest parts of the mod (conversations, colony chat, memory, promises) are split into smaller pieces, with no change in how colonists behave. For anyone reading or building the code.
+
 ## [0.3.4] - 2026-11-01
 
 ### Added
