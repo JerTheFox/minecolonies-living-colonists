@@ -343,6 +343,26 @@ public final class Errands {
     }
 
     /** {@code /lc undo}: takes back this player's last order, where it can be taken back. */
+    /** An order of the player's in the notebook (#66): the question as they were asked, and the colonist. */
+    public record PlayerOrder(Component question, String citizen) {
+    }
+
+    /** The order that waits for the player's yes, if any. */
+    public Optional<PlayerOrder> waiting(ServerPlayer player) {
+        return book.pending(player.getUUID(), player.server.getTickCount())
+                .map(ticket -> new PlayerOrder(ticket.order().question(), ticket.citizen()));
+    }
+
+    /** The last order the player can take back with {@code /lc undo}, if any. */
+    public Optional<PlayerOrder> lastOrder(ServerPlayer player) {
+        return book.peekUndo(player.getUUID()).map(undo -> new PlayerOrder(undo.order().order().question(), undo.order().citizen()));
+    }
+
+    /** What colonists keep an eye out for on the player's behalf. */
+    public List<NotifyWhen.Watched> watches(ServerPlayer player) {
+        return notify.of(player.getUUID());
+    }
+
     public int undo(ServerPlayer player) {
         Optional<OrderBook.Undo<Ticket>> last = book.takeUndo(player.getUUID());
         if (last.isEmpty()) {

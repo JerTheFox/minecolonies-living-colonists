@@ -48,7 +48,7 @@ public final class LiveRunsClient {
 
     @SubscribeEvent
     public static void chat(ClientChatReceivedEvent event) {
-        if (!"promise".equals(LiveRuns.run())) {
+        if (!"promise".equals(LiveRuns.run()) && !"happiness".equals(LiveRuns.run())) {
             return;
         }
         Component message = event.getMessage();
@@ -68,9 +68,51 @@ public final class LiveRunsClient {
         }, Style.EMPTY);
     }
 
+    private static int happinessTicks = -1;
+
+    /**
+     * {@code happiness}: the citizen the server gave our modifier is looked at on the client: which modifiers reached
+     * it, and the citizen's happiness window, on a screenshot (#61).
+     */
+    private static void happiness(Minecraft minecraft) {
+        if (colonist == null || minecraft.level == null || ++happinessTicks < 100) {
+            return;
+        }
+        var colony = com.minecolonies.api.colony.IColonyManager.getInstance()
+                .getClosestColonyView(minecraft.level, minecraft.player.blockPosition());
+        var view = colony == null ? null : colony.getCitizens().values().stream()
+                .filter(c -> colonist.equals(c.getName())).findFirst().orElse(null);
+        if (view == null) {
+            ModLog.info("Live run happiness: FAIL, no view of {} on the client", colonist);
+            colonist = null;
+            return;
+        }
+        if (happinessTicks == 100) {
+            java.util.List<String> modifiers = view.getHappinessHandler().getModifiers();
+            ModLog.info("Live run happiness (client): {} happiness {}, modifiers {}", view.getName(), view.getHappiness(), modifiers);
+            try {
+                Object window = Class.forName("com.minecolonies.core.client.gui.citizen.HappinessWindowCitizen")
+                        .getConstructor(com.minecolonies.api.colony.ICitizenDataView.class).newInstance(view);
+                window.getClass().getMethod("open").invoke(window);
+            } catch (ReflectiveOperationException e) {
+                ModLog.warn("Live run happiness: couldn't open the window", e);
+            }
+        } else if (happinessTicks == 160) {
+            shot(minecraft, "live-happiness-window");
+            boolean shown = view.getHappinessHandler().getModifiers().contains("livingcolonists_neighbours");
+            ModLog.info("Live run happiness: PASS, {}", shown ? "our modifier reached the client and the window"
+                    : "our modifier did NOT reach the client: the window can't show it");
+            colonist = null;
+        }
+    }
+
     @SubscribeEvent
     public static void tick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
+        if ("happiness".equals(LiveRuns.run()) && minecraft.player != null) {
+            happiness(minecraft);
+            return;
+        }
         if (!"promise".equals(LiveRuns.run()) || step == Step.DONE || minecraft.player == null || minecraft.getConnection() == null) {
             return;
         }
@@ -142,8 +184,22 @@ public final class LiveRunsClient {
                 } else if (stepTicks == 40) {
                     minecraft.gameMode.useItem(minecraft.player, net.minecraft.world.InteractionHand.MAIN_HAND);
                 } else if (stepTicks == 80) {
-                    if (minecraft.screen instanceof me.bytefox.livingcolonists.client.PromiseBookScreen book) {
+                    if (minecraft.screen instanceof me.bytefox.livingcolonists.client.NotebookScreen) {
                         shot(minecraft, "live-promise-3-book");
+                    } else {
+                        finish("FAIL, the notebook didn't open: " + minecraft.screen);
+                    }
+                } else if (stepTicks > 80 && stepTicks < 200 && (stepTicks - 80) % 20 == 0
+                        && minecraft.screen instanceof me.bytefox.livingcolonists.client.NotebookScreen book) {
+                    // Every section by its bookmark, a screenshot each (#66).
+                    int section = (stepTicks - 80) / 20;
+                    book.open(section);
+                } else if (stepTicks > 80 && stepTicks < 200 && (stepTicks - 80) % 20 == 10
+                        && minecraft.screen instanceof me.bytefox.livingcolonists.client.NotebookScreen book) {
+                    shot(minecraft, "live-notebook-" + book.sectionKey());
+                } else if (stepTicks == 200) {
+                    if (minecraft.screen instanceof me.bytefox.livingcolonists.client.NotebookScreen book) {
+                        book.open(0);
                         // Find "[Give up]" on the pages and click it with the mouse, as a player would.
                         for (int y = 0; y < book.height; y += 2) {
                             for (int x = 0; x < book.width; x += 2) {
@@ -164,7 +220,7 @@ public final class LiveRunsClient {
             }
             case GAVE_UP -> {
                 if (gaveUp && stepTicks > 40) {
-                    if (minecraft.screen instanceof me.bytefox.livingcolonists.client.PromiseBookScreen) {
+                    if (minecraft.screen instanceof me.bytefox.livingcolonists.client.NotebookScreen) {
                         shot(minecraft, "live-promise-4-given-up");
                         finish("PASS");
                     } else {

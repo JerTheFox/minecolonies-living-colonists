@@ -349,7 +349,6 @@ public final class BondsService {
                 }
                 ModLog.action("{} answered about a promise to {}: {} ({})", player.getGameProfile().getName(), citizen.getName(),
                         meant ? "meant it" : "didn't", PlayerMarks.resolve(promise.text()));
-                sendNotebook(player, false);
                 return 1;
             }
         }
@@ -381,10 +380,33 @@ public final class BondsService {
         return PromiseBook.pages(entries);
     }
 
-    /** Sends the player their notebook's pages: to open it, or to refresh it if it is open. */
-    public void sendNotebook(ServerPlayer player, boolean open) {
-        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,
-                new me.bytefox.livingcolonists.network.PromiseBookPages(notebook(player), open));
+    /** How a colonist feels about a player, for the notebook (#66): rapport and the happiness from it (1 is none). */
+    public record PlayerRelation(String colonist, String colony, int rapport, double mood) {
+    }
+
+    /** Every colonist with a relation to the player, warmest first. */
+    public List<PlayerRelation> relationsOf(ServerPlayer player) {
+        List<PlayerRelation> out = new ArrayList<>();
+        if (data == null) {
+            return out;
+        }
+        String suffix = ":" + player.getUUID();
+        for (Map.Entry<String, Relation> entry : data.relations.entrySet()) {
+            if (!entry.getKey().endsWith(suffix) || entry.getValue().isEmpty()) {
+                continue;
+            }
+            String[] parts = entry.getKey().split(":");
+            IColony colony = Citizens.colony(Integer.parseInt(parts[0]));
+            ICitizenData citizen = colony == null ? null : colony.getCitizenManager().getCivilian(Integer.parseInt(parts[1]));
+            if (citizen == null) {
+                continue;
+            }
+            Moods.Lasting mood = data.moods.get(parts[0] + ":" + parts[1]);
+            double factor = mood == null || mood.until() <= now(colony) ? 1.0 : mood.factor();
+            out.add(new PlayerRelation(citizen.getName(), colony.getName(), entry.getValue().rapport(), factor));
+        }
+        out.sort(java.util.Comparator.comparingInt(PlayerRelation::rapport).reversed());
+        return out;
     }
 
     /**

@@ -14,7 +14,6 @@ import java.util.Optional;
 import com.minecolonies.api.colony.ICitizenData;
 import me.bytefox.livingcolonists.bonds.Promise;
 import me.bytefox.livingcolonists.items.ModItems;
-import me.bytefox.livingcolonists.network.PromiseBookPages;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
@@ -93,25 +92,6 @@ class PromiseBookScenariosTest {
         assertTrue(!commands(pages).contains("/lc promise yes " + promise.id()), "a confirmed one is asked again");
         stage.bonds.answer(stage.player, promise.id(), false);
         assertTrue(!text(stage.bonds.notebook(stage.player)).contains("an emerald"), "a promise given up stays in the book");
-    }
-
-    @Test
-    void anOpenNotebookIsRefreshedWhenAButtonIsUsed() throws Exception {
-        Promise promise = promiseFromTalk("принесу тебе изумруд");
-        stage.bonds.answer(stage.player, promise.id(), true);
-        org.mockito.ArgumentCaptor<net.minecraft.network.protocol.Packet<?>> packets =
-                org.mockito.ArgumentCaptor.forClass(net.minecraft.network.protocol.Packet.class);
-        org.mockito.Mockito.verify(stage.player.connection, org.mockito.Mockito.atLeastOnce())
-                .send((net.minecraft.network.protocol.Packet<?>) packets.capture());
-        List<PromiseBookPages> sent = packets.getAllValues().stream()
-                .filter(packet -> packet instanceof net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket custom
-                        && custom.payload() instanceof PromiseBookPages)
-                .map(packet -> (PromiseBookPages) ((net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket) packet).payload())
-                .toList();
-        assertTrue(!sent.isEmpty(), "no pages sent");
-        PromiseBookPages last = sent.get(sent.size() - 1);
-        assertTrue(!last.open(), "a button should refresh the notebook, not open it");
-        assertTrue(!commands(last.pages()).contains("/lc promise yes " + promise.id()), "the refreshed pages are stale");
     }
 
     @Test

@@ -100,6 +100,8 @@ public final class LivingColonists {
             prompts, bonds);
     private final TalkService talk = new TalkService(client, prompts, personalities, perception, memory, bonds);
     private final Afterlife afterlife = new Afterlife(personalities, memory, bonds);
+    private final me.bytefox.livingcolonists.notebook.Notebook notebook =
+            new me.bytefox.livingcolonists.notebook.Notebook(bonds, talk.errands());
     private UsageData usageData;
     private final Conversations conversations = new Conversations(talk);
     private final SettingsHandler settings = new SettingsHandler(new SettingsService(client, usage));
@@ -138,13 +140,13 @@ public final class LivingColonists {
                     memory, bonds);
         });
         NeoForge.EVENT_BUS.addListener(this::onServerChat);
-        // The promise notebook opens with its pages from the server (#60).
+        // The Colony Notebook opens with its pages from the server (#66).
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.RightClickItem event) -> {
             if (!event.getItemStack().is(me.bytefox.livingcolonists.items.ModItems.PROMISE_BOOK.get())) {
                 return;
             }
             if (event.getEntity() instanceof ServerPlayer player) {
-                bonds.sendNotebook(player, true);
+                notebook.send(player, true);
             }
             event.setCancellationResult(net.minecraft.world.InteractionResult.sidedSuccess(event.getLevel().isClientSide()));
             event.setCanceled(true);
@@ -299,10 +301,13 @@ public final class LivingColonists {
      * what is missing. The client-bound handlers are lambdas so client classes load only on the client.
      */
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar("3");
-        registrar.playToClient(me.bytefox.livingcolonists.network.PromiseBookPages.TYPE,
-                me.bytefox.livingcolonists.network.PromiseBookPages.STREAM_CODEC,
-                (payload, context) -> me.bytefox.livingcolonists.client.PromiseBookScreen.apply(payload));
+        PayloadRegistrar registrar = event.registrar("4");
+        registrar.playToClient(me.bytefox.livingcolonists.network.NotebookPages.TYPE,
+                me.bytefox.livingcolonists.network.NotebookPages.STREAM_CODEC,
+                (payload, context) -> me.bytefox.livingcolonists.client.NotebookScreen.apply(payload));
+        registrar.playToServer(me.bytefox.livingcolonists.network.NotebookRequest.TYPE,
+                me.bytefox.livingcolonists.network.NotebookRequest.STREAM_CODEC,
+                (payload, context) -> notebook.send((ServerPlayer) context.player(), false));
         registrar.playToServer(ConversationAction.TYPE, ConversationAction.STREAM_CODEC,
                 (payload, context) -> conversations.onAction((ServerPlayer) context.player(), payload.action()));
         registrar.playToClient(ConversationState.TYPE, ConversationState.STREAM_CODEC,

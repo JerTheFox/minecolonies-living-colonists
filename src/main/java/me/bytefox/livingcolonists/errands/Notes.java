@@ -70,6 +70,11 @@ public final class Notes {
         }
     }
 
+    /** The messages and reminders the player asked colonists for, still waiting (for the notebook, #66). */
+    public List<NoteBook.Note> of(UUID player) {
+        return data == null ? List.of() : data.book.all().stream().filter(note -> player.equals(note.from())).toList();
+    }
+
     public List<Errand> errands() {
         return List.of(new PassMessage(), new RemindMe());
     }

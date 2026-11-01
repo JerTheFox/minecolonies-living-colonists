@@ -85,6 +85,11 @@ public final class OrderBook<T> {
         }
     }
 
+    /** The order the player could take back now, left in place. */
+    public Optional<Undo<T>> peekUndo(UUID player) {
+        return Optional.ofNullable(undo.get(player));
+    }
+
     public Optional<Undo<T>> takeUndo(UUID player) {
         return Optional.ofNullable(undo.remove(player));
     }

@@ -86,7 +86,7 @@ public final class LiveRuns {
             return;
         }
         if (run().equals("happiness")) {
-            happiness(server, colony);
+            happiness(player, colony);
             ready = true;
             return;
         }
@@ -119,7 +119,7 @@ public final class LiveRuns {
      * MineColonies counts it. (MineColonies drops modifiers it doesn't know when the world loads; putting them back is
      * covered by HappinessScenariosTest.)
      */
-    private static void happiness(MinecraftServer server, IColony colony) {
+    private static void happiness(ServerPlayer player, IColony colony) {
         ICitizenData citizen = colony.getCitizenManager().getCitizens().stream().filter(c -> !c.isChild()).findFirst().orElse(null);
         if (citizen == null) {
             ModLog.info("Live run happiness: FAIL, no colonist");
@@ -131,8 +131,10 @@ public final class LiveRuns {
         double after = handler.getHappiness(colony, citizen);
         boolean listed = handler.getModifiers().contains(me.bytefox.livingcolonists.bonds.Moods.NEIGHBOURS);
         ModLog.info("Live run happiness: {} {} -> {}, modifiers {}", citizen.getName(), before, after, handler.getModifiers());
-        ModLog.info("Live run happiness: {}", listed && after < before ? "PASS, happiness " + before + " -> " + after
+        ModLog.info("Live run happiness (server): {}", listed && after < before ? "PASS, happiness " + before + " -> " + after
                 : "FAIL, " + (listed ? "happiness didn't drop" : "the modifier isn't there"));
+        // The client looks at the citizen's happiness window (LiveRunsClient).
+        player.sendSystemMessage(net.minecraft.network.chat.Component.literal(READY + citizen.getName()));
     }
 
     /** What the test world has, to know which checks it can carry. */

@@ -107,6 +107,15 @@ public final class NotifyWhen implements Errand {
     }
 
     /** Every second: adds up what each watched colonist gained and tells the player when it's enough. */
+    /** What a colonist keeps an eye out for on the player's behalf (for the notebook, #66). */
+    public record Watched(int colonyId, int citizenId, Item item, int wanted, int found) {
+    }
+
+    public List<Watched> of(UUID player) {
+        return watches.stream().filter(watch -> watch.player.equals(player))
+                .map(watch -> new Watched(watch.colonyId, watch.citizenId, watch.item, watch.wanted, watch.found)).toList();
+    }
+
     void tick(MinecraftServer server) {
         long now = server.getTickCount();
         watches.removeIf(watch -> {
