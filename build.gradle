@@ -67,12 +67,19 @@ neoForge {
             sourceSet(sourceSets.main)
         }
     }
+
+    // Tests can use Minecraft and MineColonies classes, with stand-ins (Mockito) for colonists and colonies.
+    unitTest {
+        enable()
+        testedMod = mods."${mod_id}"
+    }
 }
 
 // localRuntime: mods needed only to run the dev environment; they do not
 // become dependencies of the built jar.
 configurations {
     runtimeClasspath.extendsFrom localRuntime
+    testRuntimeClasspath.extendsFrom localRuntime
 }
 
 dependencies {
@@ -86,9 +93,7 @@ dependencies {
     testImplementation platform("org.junit:junit-bom:${junit_version}")
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    // Unit tests cover plain logic and run without Minecraft on the classpath; Gson is the
-    // one game library that logic uses (same version as Minecraft 1.21.1 ships).
-    testImplementation 'com.google.code.gson:gson:2.10.1'
+    testImplementation 'org.mockito:mockito-core:5.14.2'
 }
 
 tasks.named('test', Test) {
