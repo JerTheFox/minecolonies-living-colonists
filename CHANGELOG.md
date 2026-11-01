@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-11-01
+
 ### Added
 
 - When a colonist takes something you said as a promise, you're asked in chat: [Yes, I promise] makes it one they count on and remind you of, [No] drops it. Left unanswered, it stays vague: no reminders, and no hard feelings if it lapses. `/lc promises` lists your open promises in the colony, with a button to give one up.
@@ -316,7 +318,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A colony conversation that ended while a reply was still on its way no longer comes back to life.
 - Old conversations that are fully written down no longer pile up in the world's data.
 
-[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.4...HEAD
+[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.5...HEAD
+[0.3.5]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.1...v0.3.2
