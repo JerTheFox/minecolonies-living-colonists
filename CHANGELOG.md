@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- Colonists say where they see enemies. A group of hostile mobs near the colonists, or one attacking someone, is urgent news in the colony chat ("pillagers by the farm"), told by a colonist who sees them; the same place stays quiet for five minutes. Near the end of a raid, when three raiders or fewer have held out for a minute, colonists say where the last ones are. Asked "where are the enemies?", a colonist says which way and how far they are.
+
 ### Changed
 
 - Colonists who work or live together no longer all end up friends. Each pair has its own chemistry: some grow close, some drift apart, most stay as they are, and contrary characters still lean towards falling out. Living side by side alone takes rapport only so far either way; going further takes real events.

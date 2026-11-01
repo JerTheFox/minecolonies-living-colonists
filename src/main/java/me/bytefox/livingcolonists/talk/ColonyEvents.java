@@ -23,6 +23,7 @@ import me.bytefox.livingcolonists.colony.Colonies;
 import me.bytefox.livingcolonists.events.ModEvents;
 import me.bytefox.livingcolonists.events.GameEvents;
 import me.bytefox.livingcolonists.debug.Counters;
+import me.bytefox.livingcolonists.perception.Enemies;
 import me.bytefox.livingcolonists.ModLog;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -121,6 +122,7 @@ public final class ColonyEvents {
         lastBuilt.clear();
         sites.clear();
         waiting.clear();
+        sightings.clear();
     }
 
     /** A colony milestone (#39): told in the colony chat if players are around, and kept for those away. */
@@ -138,8 +140,12 @@ public final class ColonyEvents {
     }
 
     private void queue(int colonyId, Event event, long now) {
+        queue(colonyId, event, now, event.urgent() ? URGENT_WAIT_TICKS : WAIT_TICKS);
+    }
+
+    private void queue(int colonyId, Event event, long now, long wait) {
         Deque<Queued> queue = waiting.computeIfAbsent(colonyId, id -> new ArrayDeque<>());
-        queue.addLast(new Queued(event, now + (event.urgent() ? URGENT_WAIT_TICKS : WAIT_TICKS)));
+        queue.addLast(new Queued(event, now + wait));
         while (queue.size() > MAX_WAITING) {
             queue.removeFirst();
         }
@@ -184,6 +190,9 @@ public final class ColonyEvents {
                         threads.hush(colony, event.newborns(), now + NEWBORN_QUIET_TICKS);
                     }
                     queue(colony.getID(), event, now);
+                }
+                if (now % (CHECK_INTERVAL * 2) == 0 && !TalkService.colonyAudience(server, colony, null).isEmpty()) {
+                    watchEnemies(colony, now);
                 }
                 // One conversation at a time: an event waits while the chat is busy, a death or a raid first.
                 Deque<Queued> queue = waiting.get(colony.getID());
@@ -329,6 +338,48 @@ public final class ColonyEvents {
         return colony.getCitizenManager().getCitizens().stream()
                 .filter(c -> c.getJob() != null && c.getJob().getJobRegistryEntry().getKey().getPath().equals("builder"))
                 .map(ICitizenData::getId).toList();
+    }
+
+    private final Sightings sightings = new Sightings();
+    /** A sighting is news for a minute: by then the enemies have moved or are gone. */
+    private static final long SIGHTING_WAIT_TICKS = 60 * 20;
+    private static final String ENEMIES = "Enemies in the colony right now: ";
+    private static final String LAST_RAIDERS = "Only the last raiders of the raid are left: ";
+
+    /**
+     * Enemies the colonists see (#62), while players are around: a group of mobs or one attacking someone, and near
+     * the end of a raid where the last raiders are. Told as urgent news, the newest sighting in place of an older one.
+     */
+    private void watchEnemies(IColony colony, long now) {
+        List<Event> found = new ArrayList<>();
+        if (Colonies.isRaided(colony)) {
+            // The start of a raid MineColonies announces itself, with where the raiders come from.
+            List<Enemies.Seen> raiders = Enemies.raiders(colony);
+            if (sightings.stragglers(colony.getID(), true, raiders.size(), now)) {
+                found.add(new Event(LAST_RAIDERS + Enemies.groups(colony, raiders).stream().map(Sightings.Group::text)
+                        .collect(Collectors.joining("; ")) + ".", guards(colony)).urgently());
+            }
+        } else {
+            sightings.stragglers(colony.getID(), false, 0, now);
+            for (Sightings.Group group : sightings.worthTelling(colony.getID(), Enemies.groups(colony, Enemies.around(colony)), now)) {
+                ICitizenData seer = group.seenBy() < 0 ? null : colony.getCitizenManager().getCivilian(group.seenBy());
+                List<Integer> speakers = new ArrayList<>();
+                if (seer != null) {
+                    speakers.add(seer.getId());
+                }
+                speakers.addAll(guards(colony));
+                found.add(new Event(ENEMIES + group.text() + "." + (seer == null ? "" : " " + seer.getName() + " sees them."),
+                        speakers).urgently());
+            }
+        }
+        for (Event event : found) {
+            ModLog.action("Colony {} noticed: {}", colony.getName(), event.what());
+            Deque<Queued> queue = waiting.get(colony.getID());
+            if (queue != null) {
+                queue.removeIf(queued -> queued.event().what().startsWith(ENEMIES) || queued.event().what().startsWith(LAST_RAIDERS));
+            }
+            queue(colony.getID(), event, now, SIGHTING_WAIT_TICKS);
+        }
     }
 
     private static List<Integer> guards(IColony colony) {

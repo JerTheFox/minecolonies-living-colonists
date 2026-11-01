@@ -17,9 +17,11 @@ import com.minecolonies.api.tileentities.AbstractTileEntityRack;
 import com.minecolonies.core.colony.eventhooks.citizenEvents.CitizenDiedEvent;
 import me.bytefox.livingcolonists.llm.ToolSpec;
 import me.bytefox.livingcolonists.perception.ColonistFacts;
+import me.bytefox.livingcolonists.perception.Enemies;
 import me.bytefox.livingcolonists.perception.ItemNames;
 import me.bytefox.livingcolonists.perception.PerceptionService;
 import me.bytefox.livingcolonists.talk.Addressing;
+import me.bytefox.livingcolonists.talk.Sightings;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
@@ -73,7 +75,10 @@ public final class ColonyLookups {
                 lookup("where_is", "Which way and how far a colonist or a building is from the person asking. Not for players: "
                         + "to go to the player who asked, use come_here.",
                         "what", "A colonist's name as the colony spells it, or a building in plain English words",
-                        (context, arguments) -> where(context, Errand.string(arguments, "what"))));
+                        (context, arguments) -> where(context, Errand.string(arguments, "what"))),
+                lookup("where_enemies", "Where enemies are in the colony right now, which way and how far from the person "
+                        + "asking: a raid's raiders and hostile mobs the colonists can see.", null, null,
+                        (context, arguments) -> enemies(context)));
     }
 
     private static Errand lookup(String name, String description, String parameter, String parameterDescription,
@@ -275,6 +280,36 @@ public final class ColonyLookups {
             case ItemMatch.Result.None<IBuilding> none -> Errand.error("There is nobody and no building called \""
                     + what + "\" in the colony.");
         };
+    }
+
+    /** How many groups of enemies {@code where_enemies} names at most. */
+    private static final int MAX_ENEMY_GROUPS = 5;
+
+    private static JsonObject enemies(Errand.Context context) {
+        BlockPos from = context.player() != null ? context.player().blockPosition()
+                : context.citizen().getEntity().map(entity -> entity.blockPosition()).orElse(null);
+        if (from == null) {
+            return Errand.error("You can't tell from here.");
+        }
+        IColony colony = context.colony();
+        List<Enemies.Seen> all = new ArrayList<>(Enemies.raiders(colony));
+        java.util.Set<Integer> known = new java.util.HashSet<>();
+        all.forEach(seen -> known.add(seen.mob().getId()));
+        Enemies.around(colony).stream().filter(seen -> known.add(seen.mob().getId())).forEach(all::add);
+        JsonObject reply = ok();
+        if (all.isEmpty()) {
+            reply.addProperty("info", "Nobody in the colony sees any enemies right now.");
+            return reply;
+        }
+        JsonArray groups = new JsonArray();
+        for (Sightings.Group group : Enemies.groups(colony, all).stream().limit(MAX_ENEMY_GROUPS).toList()) {
+            JsonObject entry = new JsonObject();
+            entry.addProperty("what", group.text());
+            entry.addProperty("from_you", Compass.way(group.x() - from.getX(), group.z() - from.getZ()));
+            groups.add(entry);
+        }
+        reply.add("enemies", groups);
+        return reply;
     }
 
     private static JsonObject fallen(IColony colony) {
