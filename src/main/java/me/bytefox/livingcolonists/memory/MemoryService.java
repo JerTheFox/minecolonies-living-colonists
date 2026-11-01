@@ -514,7 +514,7 @@ public final class MemoryService {
         List<Integer> participantIds = participants.stream().map(ICitizenData::getId).toList();
         return request(server, key, transcript, values, lines, MAX_COLONY_FACTS, colony, participants, Fact.COLONY_CHAT,
                 (current, digest) -> {
-                    bonds.noteColonists(current, participantIds.stream()
+                    bonds.colonists().noteColonists(current, participantIds.stream()
                             .map(id -> current.getCitizenManager().getCivilian(id)).filter(Objects::nonNull).toList(),
                             digest.colonists());
                     bonds.applyColony(server, current, digest, open, lines.stream().collect(Collectors.groupingBy(

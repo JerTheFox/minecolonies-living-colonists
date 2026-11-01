@@ -356,8 +356,8 @@ public final class TalkService {
                             || threads.contrariness(b) < me.bytefox.livingcolonists.bonds.Drift.CONTRARY;
                     double chemistry = me.bytefox.livingcolonists.bonds.Drift.chemistry(colony.getID() + ":"
                             + Math.min(a.getId(), b.getId()) + ":" + Math.max(a.getId(), b.getId()));
-                    int[] change = bonds.nudge(colony, a.getId(), b.getId(), me.bytefox.livingcolonists.bonds.Drift.daily(
-                            coworkers, housemates, compatible, chemistry, bonds.rapport(colony, a.getId(), b.getId())));
+                    int[] change = bonds.colonists().nudge(colony, a.getId(), b.getId(), me.bytefox.livingcolonists.bonds.Drift.daily(
+                            coworkers, housemates, compatible, chemistry, bonds.colonists().rapport(colony, a.getId(), b.getId())));
                     me.bytefox.livingcolonists.bonds.Drift.crossed(change[0], change[1]).ifPresent(turn -> {
                         String where = coworkers && a.getWorkBuilding().getBuildingType() != null
                                 ? " working together at the " + Component.translatable(

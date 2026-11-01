@@ -283,7 +283,7 @@ public final class DebugCommand {
     }
 
     private static int showRelations(CommandSourceStack source, BondsService bonds, ICitizenData citizen) {
-        Map<String, Relation> relations = bonds.colonistRelations(citizen);
+        Map<String, Relation> relations = bonds.colonists().colonistRelations(citizen);
         if (relations.isEmpty()) {
             source.sendSuccess(() -> Component.translatable("livingcolonists.debug.relations.empty", citizen.getName()), false);
             return 0;
@@ -299,7 +299,7 @@ public final class DebugCommand {
         if (colony == null) {
             throw failure("livingcolonists.colony.outside");
         }
-        Map<String, Relation> relations = bonds.colonyRelations(colony);
+        Map<String, Relation> relations = bonds.colonists().colonyRelations(colony);
         if (relations.isEmpty()) {
             source.sendSuccess(() -> Component.translatable("livingcolonists.debug.relations.empty", colony.getName()), false);
             return 0;

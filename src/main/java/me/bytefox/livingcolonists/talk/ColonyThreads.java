@@ -269,7 +269,7 @@ public final class ColonyThreads {
             if (other.getId() == speaker.getId() || isHushed(colony.getID(), other.getId())) {
                 continue;
             }
-            double base = Bonds.replyWeight(bonds.rapport(colony, other.getId(), speaker.getId()));
+            double base = Bonds.replyWeight(bonds.colonists().rapport(colony, other.getId(), speaker.getId()));
             candidates.add(new ThreadPolicy.Candidate<>(other.getId(),
                     ThreadPolicy.joinWeight(base, distance(speaker, other), coworkers(speaker, other), 0)));
         }
@@ -489,7 +489,7 @@ public final class ColonyThreads {
         if (player != null) {
             present.add(Fact.aboutPlayer(player.getUUID()));
         }
-        String along = bonds.colonistBlock(citizen, chatPeople(colony, thread));
+        String along = bonds.colonists().colonistBlock(citizen, chatPeople(colony, thread));
         if (!along.isEmpty()) {
             values.put("bonds", values.get("bonds").isEmpty() ? along : values.get("bonds") + "\n" + along);
         }
@@ -514,7 +514,7 @@ public final class ColonyThreads {
         if (!answeringPlayer && opening == null && chatter == null) {
             values.put("initiative", Prompts.chatInitiative(random));
             String stance = Prompts.stance(Bonds.contrarinessWith(contrariness(citizen),
-                    bonds.rapport(colony, citizen.getId(), thread.lastSpeaker)), thread.colonistTurns, random, thread.topics);
+                    bonds.colonists().rapport(colony, citizen.getId(), thread.lastSpeaker)), thread.colonistTurns, random, thread.topics);
             String topic = Prompts.topicOf(stance);
             if (topic != null) {
                 thread.topics.add(topic);
@@ -687,7 +687,7 @@ public final class ColonyThreads {
         for (int i = 0; i < citizens.size(); i++) {
             ICitizenData citizen = citizens.get(i);
             double weight = ThreadPolicy.joinWeight(
-                    talkativeness(citizen) * Bonds.replyWeight(bonds.rapport(colony, citizen.getId(), thread.lastSpeaker)),
+                    talkativeness(citizen) * Bonds.replyWeight(bonds.colonists().rapport(colony, citizen.getId(), thread.lastSpeaker)),
                     distance(citizen, last), coworkers(citizen, last), thread.lines.getOrDefault(citizen.getId(), 0));
             if (hushed.getOrDefault(TalkService.key(colony.getID(), citizen.getId()), Long.MIN_VALUE) > currentTick
                     && !(named.isPresent() && named.getAsInt() == i)) {
