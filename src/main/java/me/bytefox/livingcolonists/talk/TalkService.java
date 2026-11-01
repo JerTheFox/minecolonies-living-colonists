@@ -99,6 +99,7 @@ public final class TalkService {
     private InitiativeData initiativeData;
     private final GiftWatch gifts;
     private final PlayerDeeds deeds;
+    private final RelationsDrift drift;
     /** One budget for every line colonists say unprompted (#40). */
     private final Airtime airtime = new Airtime();
     /** How close a colonist must be to see what a player holds and wears, in blocks. */
@@ -143,10 +144,12 @@ public final class TalkService {
         this.events = new ColonyEvents(threads);
         this.initiative = new Initiative(this, threads, perception, memory, bonds);
         this.arrivals = new Arrivals(this, threads, events, initiative, bonds, perception, memory);
-        ModEvents.BUS.on(GameEvents.JobChanged.class, this::jobChanged);
-        ModEvents.BUS.on(GameEvents.FellIll.class, this::fellIll);
+        LifeNews news = new LifeNews(memory, events);
+        ModEvents.BUS.on(GameEvents.JobChanged.class, news::jobChanged);
+        ModEvents.BUS.on(GameEvents.FellIll.class, news::fellIll);
         this.gifts = new GiftWatch(this, bonds, memory);
         this.deeds = new PlayerDeeds(events);
+        this.drift = new RelationsDrift(this, threads, bonds, memory);
     }
 
     public ColonyThreads threads() {
@@ -182,61 +185,6 @@ public final class TalkService {
         initiative.detach();
         arrivals.detach();
         events.detach();
-    }
-
-    /**
-     * A job the colony gave a colonist. Right after a building was finished it came with that building,
-     * which was the news; otherwise the colonist remembers it. A job taken away is no news.
-     */
-    private void jobChanged(GameEvents.JobChanged change) {
-        ICitizenData citizen = change.citizen();
-        IColony colony = citizen.getColony();
-        if (change.to() == null || citizen.isChild() || colony.getWorld() == null
-                || events.builtJustNow(colony.getID(), colony.getWorld().getGameTime())) {
-            return;
-        }
-        memory.rememberSeen(colony, List.of(citizen.getId()), citizen.getName(), citizen.getName() + " became the colony's "
-                + change.to() + (change.from() == null ? "" : ", no longer a " + change.from()) + ".", 3);
-        // Now and then the people close to them remark on it (#57).
-        if (random.nextDouble() < LIFE_NEWS_CHANCE) {
-            events.announce(colony.getWorld().getServer(), colony, citizen.getName() + " has just become the colony's "
-                    + change.to() + ".", closeTo(citizen));
-        }
-    }
-
-    /** How often something in a colonist's life (a new job, an illness) becomes something the others remark on. */
-    private static final double LIFE_NEWS_CHANCE = 0.5;
-
-    /** A colonist fell ill: now and then their family or coworkers bring it up (#57). */
-    private void fellIll(GameEvents.FellIll ill) {
-        ICitizenData citizen = ill.citizen();
-        IColony colony = citizen.getColony();
-        if (colony.getWorld() == null || random.nextDouble() >= LIFE_NEWS_CHANCE) {
-            return;
-        }
-        events.announce(colony.getWorld().getServer(), colony, citizen.getName() + " has fallen ill with " + ill.illness()
-                + ".", closeTo(citizen));
-    }
-
-    /** Family and coworkers of a colonist, the likeliest to remark on their life; never the colonist. */
-    private static List<Integer> closeTo(ICitizenData citizen) {
-        List<Integer> close = new ArrayList<>();
-        var parents = citizen.getParents();
-        for (ICitizenData other : citizen.getColony().getCitizenManager().getCitizens()) {
-            if (other.getId() == citizen.getId()) {
-                continue;
-            }
-            var theirParents = other.getParents();
-            boolean family = parents != null && (other.getName().equals(parents.getA()) || other.getName().equals(parents.getB()))
-                    || theirParents != null && (citizen.getName().equals(theirParents.getA())
-                    || citizen.getName().equals(theirParents.getB()));
-            boolean coworker = citizen.getWorkBuilding() != null && citizen.getWorkBuilding().equals(other.getWorkBuilding());
-            if (family || coworker) {
-                close.add(other.getId());
-            }
-        }
-        java.util.Collections.shuffle(close);
-        return close;
     }
 
     /** Drops what gone colonists brought up, by their {@code colonyId:citizenId} key. */
@@ -316,62 +264,12 @@ public final class TalkService {
         errands.tick(server);
         initiative.tick(server);
         arrivals.tick(server);
-        drift(server);
+        drift.tick(server);
         if (now % SWEEP_TICKS == 0) {
             sweep(server, now);
         }
         events.tick(server);
         typing.tick(server);
-    }
-
-    /** The game day relations last drifted (#59). */
-    private long driftDay = -1;
-
-    /**
-     * Once a game day, relations between colonists drift from real life (#59): coworkers grow closer,
-     * housemates closer or apart by their characters. Crossing into friends or at odds is a fact for both.
-     */
-    private void drift(MinecraftServer server) {
-        long day = server.overworld().getGameTime() / 24000L;
-        if (day == driftDay) {
-            return;
-        }
-        boolean first = driftDay < 0;
-        driftDay = day;
-        if (first) {
-            return;
-        }
-        for (IColony colony : me.bytefox.livingcolonists.colony.Colonies.all()) {
-            if (!active(colony)) {
-                continue;
-            }
-            List<ICitizenData> citizens = colony.getCitizenManager().getCitizens().stream().filter(c -> !c.isChild()).toList();
-            for (int i = 0; i < citizens.size(); i++) {
-                for (int j = i + 1; j < citizens.size(); j++) {
-                    ICitizenData a = citizens.get(i);
-                    ICitizenData b = citizens.get(j);
-                    boolean coworkers = a.getWorkBuilding() != null && a.getWorkBuilding().equals(b.getWorkBuilding());
-                    boolean housemates = a.getHomeBuilding() != null && a.getHomeBuilding().equals(b.getHomeBuilding());
-                    boolean compatible = threads.contrariness(a) < me.bytefox.livingcolonists.bonds.Drift.CONTRARY
-                            || threads.contrariness(b) < me.bytefox.livingcolonists.bonds.Drift.CONTRARY;
-                    double chemistry = me.bytefox.livingcolonists.bonds.Drift.chemistry(colony.getID() + ":"
-                            + Math.min(a.getId(), b.getId()) + ":" + Math.max(a.getId(), b.getId()));
-                    int[] change = bonds.colonists().nudge(colony, a.getId(), b.getId(), me.bytefox.livingcolonists.bonds.Drift.daily(
-                            coworkers, housemates, compatible, chemistry, bonds.colonists().rapport(colony, a.getId(), b.getId())));
-                    me.bytefox.livingcolonists.bonds.Drift.crossed(change[0], change[1]).ifPresent(turn -> {
-                        String where = coworkers && a.getWorkBuilding().getBuildingType() != null
-                                ? " working together at the " + Component.translatable(
-                                a.getWorkBuilding().getBuildingType().getTranslationKey()).getString()
-                                : housemates ? " living under one roof" : "";
-                        String fact = turn == me.bytefox.livingcolonists.bonds.Drift.Turn.FRIENDS
-                                ? a.getName() + " and " + b.getName() + " became friends" + where + "."
-                                : a.getName() + " and " + b.getName() + " got on each other's nerves" + where + ".";
-                        memory.rememberSeen(colony, List.of(a.getId(), b.getId()), a.getName(), fact, 3);
-                        ModLog.action("{}", fact);
-                    });
-                }
-            }
-        }
     }
 
     /** How often what is kept for gone players and long-past timers is dropped (ten minutes). */
