@@ -49,6 +49,21 @@ public final class Languages {
      * @return empty when the code can't be sure (another Latin-alphabet language than English, or
      * mixed alphabets): the prompt then leaves it to the model
      */
+    /** An English word the model slipped into a Russian (Cyrillic) line, like "sketches"; empty if none. */
+    public static Optional<String> strayEnglish(String line) {
+        long cyrillic = line.codePoints().filter(c -> Character.UnicodeScript.of(c) == UnicodeScript.CYRILLIC).count();
+        long latin = line.codePoints().filter(c -> Character.UnicodeScript.of(c) == UnicodeScript.LATIN).count();
+        if (cyrillic <= latin) {
+            return Optional.empty();
+        }
+        // A word in small letters: names start with a capital, abbreviations are all capitals.
+        java.util.regex.Matcher word = STRAY.matcher(line);
+        return word.find() ? Optional.of(word.group(1)) : Optional.empty();
+    }
+
+    private static final java.util.regex.Pattern STRAY =
+            java.util.regex.Pattern.compile("(?<![\\p{L}\\p{N}])([a-z][a-z']{2,})(?![\\p{L}\\p{N}])");
+
     public static Optional<String> reply(String message, String locale, Collection<String> names, Optional<String> previous) {
         Map<UnicodeScript, Integer> letters = new EnumMap<>(UnicodeScript.class);
         boolean kana = false;

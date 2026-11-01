@@ -69,6 +69,7 @@ final class Stage implements AutoCloseable {
     final TalkService talk;
     final BondsService bonds;
     final MemoryService memory;
+    final PersonalityService personalities;
     final IColony colony;
     final List<ICitizenData> citizens = new ArrayList<>();
     final ServerPlayer player;
@@ -170,7 +171,7 @@ final class Stage implements AutoCloseable {
         prompts.reload();
         ArchetypeLibrary archetypes = new ArchetypeLibrary(directory);
         archetypes.reload();
-        PersonalityService personalities = new PersonalityService(prompts, archetypes, client);
+        personalities = new PersonalityService(prompts, archetypes, client);
         personalities.attach(PersonalityData.factory().constructor().get());
         bonds = new BondsService();
         bonds.attach(BondsData.factory().constructor().get());

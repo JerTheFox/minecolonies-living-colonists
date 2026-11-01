@@ -72,6 +72,13 @@ public final class PersonalityService {
         return archetypes;
     }
 
+    /** A colonist brought back from the dead keeps their character under the new key. */
+    public void move(String from, String to) {
+        if (data != null) {
+            data.move(from, to);
+        }
+    }
+
     /** Forgets the characters of colonists whose key matches (gone colonists, a deleted colony). */
     public void forget(Predicate<String> key) {
         if (data != null) {

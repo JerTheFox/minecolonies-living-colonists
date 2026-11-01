@@ -35,6 +35,13 @@ public final class PersonalityData extends SavedData {
         setDirty();
     }
 
+    /** The character of a colonist brought back from the dead, under their new key. */
+    public void move(String from, String to) {
+        if (me.bytefox.livingcolonists.Citizens.move(personalities, from, to)) {
+            setDirty();
+        }
+    }
+
     /** Drops the colonists whose key matches; returns how many. */
     public int removeIf(Predicate<String> key) {
         int before = personalities.size();

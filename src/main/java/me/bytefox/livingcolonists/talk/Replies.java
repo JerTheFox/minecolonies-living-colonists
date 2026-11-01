@@ -90,7 +90,7 @@ final class Replies {
             generate(citizen, prompt, conversation, asker, true, server, done);
             return;
         }
-        if (asker != null || recent.isEmpty()) {
+        if (asker != null) {
             generate(citizen, prompt, conversation, asker, server, done);
             return;
         }
@@ -100,13 +100,15 @@ final class Replies {
         String name = citizen.getName();
         generate(citizen, prompt, conversation, null, server, result -> {
             Optional<String> problem = result instanceof ChatResult.Reply reply && !reply.text().isBlank()
-                    ? Repeats.problem(reply.text(), recent, names, true) : Optional.empty();
+                    ? Repeats.problem(reply.text(), recent, names, true).or(() -> stray(reply.text())) : Optional.empty();
             if (problem.isEmpty()) {
                 done.accept(result);
                 return;
             }
-            ModLog.action("{}'s line went round in circles ({}), asking again", name, problem.get());
-            Counters.add("repeats.caught");
+            boolean english = problem.get().startsWith(STRAY);
+            ModLog.action("{}'s line {} ({}), asking again", name, english ? "slipped into English" : "went round in circles",
+                    problem.get());
+            Counters.add(english ? "english.caught" : "repeats.caught");
             generate(citizen, prompt + "\nYour first try was no good: " + problem.get() + ". Say something different, "
                     + "on another subject if need be, or answer [silence].", conversation, null, server, second -> {
                 if (second instanceof ChatResult.Reply reply && Repeats.problem(reply.text(), recent, names, true).isPresent()) {
@@ -117,6 +119,14 @@ final class Replies {
                 done.accept(second);
             });
         });
+    }
+
+    private static final String STRAY = "it has the English word";
+
+    /** An English word in a line in another language ("Пока только sketches в голове"), as a reason to ask again. */
+    private static Optional<String> stray(String text) {
+        return Languages.strayEnglish(text).map(word -> STRAY + " \"" + word + "\" in a line that isn't English: "
+                + "every word must be in the line's language");
     }
 
     /**

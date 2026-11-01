@@ -109,11 +109,29 @@ public final class PerceptionService {
         if (level == Level.OFF) {
             return "";
         }
-        String text = Situation.render(facts(citizen), level);
+        String text = Situation.render(facts(citizen), level) + mourning(citizen);
         List<DiaryBook.Entry> day = diary(citizen, DIARY_SHOWN);
         // Real things the colonist did, so they have something true to tell instead of making it up.
         return day.isEmpty() ? text : text + "\nYour day so far, as background (bring it up only if asked or if it fits): "
                 + DiaryBook.text(day) + ".";
+    }
+
+    /**
+     * MineColonies' mourning: after a death, close family and friends don't work the next day. The colonist knows
+     * it, or they make up a reason when asked why they aren't working.
+     */
+    private static String mourning(ICitizenData citizen) {
+        try {
+            var mourn = citizen.getCitizenMournHandler();
+            if (mourn == null || !mourn.isMourning()) {
+                return "";
+            }
+            String dead = String.join(", ", mourn.getDeceasedCitizens());
+            return "\nYou are in mourning for " + (dead.isEmpty() ? "someone close who died" : dead)
+                    + ": out of respect you don't work today, as is the colony's custom.";
+        } catch (RuntimeException | LinkageError e) {
+            return "";
+        }
     }
 
     /** The colonist's latest doings of the last game day, oldest first. */

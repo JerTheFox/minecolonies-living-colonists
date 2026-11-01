@@ -58,6 +58,21 @@ class LanguagesTest {
         assertEquals(Optional.of("Korean"), reply("안녕하세요 잘 지내요", "en_us"));
     }
 
+    @Test
+    void findsAnEnglishWordStrayedIntoARussianLine() {
+        assertEquals(Optional.of("sketches"), Languages.strayEnglish("Пока только sketches в голове."));
+        assertEquals(Optional.of("well"), Languages.strayEnglish("Ну, well, посмотрим, что выйдет к вечеру."));
+    }
+
+    @Test
+    void namesAbbreviationsAndEnglishLinesAreLeftAlone() {
+        assertEquals(Optional.empty(), Languages.strayEnglish("Adair, спроси у Dev, он знает."), "names start with a capital");
+        assertEquals(Optional.empty(), Languages.strayEnglish("Поставь TNT подальше от склада, ок?"), "an abbreviation");
+        assertEquals(Optional.empty(), Languages.strayEnglish("Not yet, the bakery needs more wheat."), "an English line");
+        assertEquals(Optional.empty(), Languages.strayEnglish("Хлеба 64 штуки, x2 к вечеру."), "a short token");
+        assertEquals(Optional.empty(), Languages.strayEnglish(""));
+    }
+
     private static Optional<String> reply(String message, String locale) {
         return Languages.reply(message, locale, NAMES, Optional.empty());
     }

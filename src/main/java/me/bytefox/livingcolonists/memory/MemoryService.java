@@ -466,6 +466,31 @@ public final class MemoryService {
         }
     }
 
+    /** Colonists who died lately, waiting in case they are brought back. */
+    public Graves graves() {
+        return data == null ? new Graves() : data.graves;
+    }
+
+    /** The graves changed: save them with the world. */
+    public void gravesChanged() {
+        if (data != null) {
+            data.setDirty();
+        }
+    }
+
+    /** A colonist brought back from the dead keeps their memories, life story and private talks under the new key. */
+    public void move(String from, String to) {
+        if (data == null) {
+            return;
+        }
+        boolean moved = me.bytefox.livingcolonists.Citizens.move(data.facts, from, to);
+        moved |= me.bytefox.livingcolonists.Citizens.move(data.stories, from, to);
+        moved |= me.bytefox.livingcolonists.Citizens.move(data.privateTalks, from, to);
+        if (moved) {
+            data.setDirty();
+        }
+    }
+
     /** Forgets a deleted colony's chat; its colonists go through {@link #forget}. */
     public void forgetColonyChat(int colonyId) {
         if (data != null && data.colonyChats.remove(colonyId) != null) {

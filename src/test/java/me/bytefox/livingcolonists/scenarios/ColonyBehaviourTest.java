@@ -80,6 +80,19 @@ class ColonyBehaviourTest {
     }
 
     @Test
+    void anEnglishWordInARussianLineIsAskedForAgain() throws Exception {
+        try (Stage stage = stage()) {
+            stage.model.replyLine = "Пока только sketches в голове.";
+            stage.model.saysWhenAsked("the English word", "Пока только наброски в голове.");
+            stage.runTicks(150);
+            stage.citizenEvent("citizen_born", "Ann Lowe");
+            assertTrue(stage.runUntil(() -> stage.chat.stream().anyMatch(line -> line.contains("наброски")), WAIT),
+                    "not asked again: " + stage.chat);
+            assertTrue(stage.chat.stream().noneMatch(line -> line.contains("sketches")), "the English word reached the chat");
+        }
+    }
+
+    @Test
     void aModelStuckOnOneLineDoesntMakeTheChatGoRound() throws Exception {
         try (Stage stage = stage()) {
             stage.model.replyLine = "Опять этот дождь, третий день подряд.";

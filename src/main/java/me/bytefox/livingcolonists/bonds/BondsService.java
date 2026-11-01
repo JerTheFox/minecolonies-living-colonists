@@ -646,6 +646,19 @@ public final class BondsService {
         return out;
     }
 
+    /** A colonist brought back from the dead keeps the promises made to them and how they get on with players. */
+    public void move(String from, String to) {
+        if (data == null) {
+            return;
+        }
+        boolean moved = me.bytefox.livingcolonists.Citizens.move(data.promises, from, to);
+        moved |= me.bytefox.livingcolonists.Citizens.move(data.relations, from, to);
+        moved |= me.bytefox.livingcolonists.Citizens.move(data.credited, from, to);
+        if (moved) {
+            data.setDirty();
+        }
+    }
+
     /** Forgets promises and relations of colonists whose key matches (gone colonists, a deleted colony). */
     public void forget(Predicate<String> key) {
         if (data == null) {

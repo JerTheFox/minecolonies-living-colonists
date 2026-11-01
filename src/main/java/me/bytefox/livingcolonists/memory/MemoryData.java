@@ -32,6 +32,8 @@ public final class MemoryData extends SavedData {
     final Map<String, FactBook> facts = new HashMap<>();
     /** {@code colonyId:citizenId}: the colonist's life story (#51) and the game time it was written. */
     final Map<String, Story> stories = new HashMap<>();
+    /** Colonists who died lately, kept in case they are brought back. */
+    Graves graves = new Graves();
 
     record Story(String text, long written) {
     }
@@ -44,6 +46,7 @@ public final class MemoryData extends SavedData {
 
     private static MemoryData load(CompoundTag tag) {
         MemoryData data = new MemoryData();
+        data.graves = Graves.load(tag.getCompound("graves"));
         CompoundTag talks = tag.getCompound("private");
         CompoundTag talksDigested = tag.getCompound("privateDigested");
         for (String key : talks.getAllKeys()) {
@@ -97,6 +100,7 @@ public final class MemoryData extends SavedData {
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         DataVersions.stamp(tag, VERSION);
+        tag.put("graves", graves.save());
         CompoundTag talks = new CompoundTag();
         CompoundTag talksDigested = new CompoundTag();
         privateTalks.forEach((key, transcript) -> {

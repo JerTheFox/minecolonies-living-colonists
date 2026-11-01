@@ -25,6 +25,21 @@ public final class Citizens {
     }
 
     /**
+     * Moves what a map keeps for one colonist ({@code colony:citizen}, or that and more after a colon, like a player)
+     * to another key: a colonist brought back from the dead gets a new id. Returns whether anything moved.
+     */
+    public static <V> boolean move(java.util.Map<String, V> map, String from, String to) {
+        boolean moved = false;
+        for (String key : java.util.List.copyOf(map.keySet())) {
+            if (key.equals(from) || key.startsWith(from + ":")) {
+                map.put(to + key.substring(from.length()), map.remove(key));
+                moved = true;
+            }
+        }
+        return moved;
+    }
+
+    /**
      * Whether the key's colonist no longer lives in a loaded colony. A colony that isn't loaded
      * counts as still there, so nothing is dropped by mistake.
      */

@@ -99,6 +99,7 @@ public final class LivingColonists {
             HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).connectTimeout(Duration.ofSeconds(5)).build(), usage),
             prompts, bonds);
     private final TalkService talk = new TalkService(client, prompts, personalities, perception, memory, bonds);
+    private final Afterlife afterlife = new Afterlife(personalities, memory, bonds);
     private UsageData usageData;
     private final Conversations conversations = new Conversations(talk);
     private final SettingsHandler settings = new SettingsHandler(new SettingsService(client, usage));
@@ -150,6 +151,10 @@ public final class LivingColonists {
         });
         NeoForge.EVENT_BUS.addListener((LivingDeathEvent event) -> {
             talk.errands().tally().onDeath(event.getEntity(), event.getSource().getEntity());
+            if (event.getEntity() instanceof com.minecolonies.api.entity.citizen.AbstractEntityCitizen citizen
+                    && !citizen.level().isClientSide() && citizen.getCitizenData() != null) {
+                afterlife.died(citizen.getCitizenData(), citizen.level().getGameTime());
+            }
             if (event.getEntity() instanceof ServerPlayer player) {
                 ModEvents.BUS.post(new GameEvents.PlayerDied(player));
             }
@@ -172,7 +177,11 @@ public final class LivingColonists {
             perception.tick(event.getServer());
             bonds.tick(event.getServer());
             if (event.getServer().getTickCount() % GONE_CHECK_INTERVAL == 0) {
-                forget(Citizens::isGone);
+                // The dead wait a few days for the undertaker; those brought back get their memories first.
+                long now = event.getServer().overworld().getGameTime();
+                afterlife.expire(now);
+                me.bytefox.livingcolonists.colony.Colonies.all().forEach(afterlife::check);
+                forget(afterlife.forgettable(now));
             }
             if (event.getServer().getTickCount() % USAGE_SAVE_INTERVAL == 0) {
                 markUsageDirty();
