@@ -2,11 +2,14 @@
 
 # Living Colonists for MineColonies
 
+> [!IMPORTANT]
+> **This project is frozen.** While building it, I realised it was going the wrong way. Chatting with colonists through a language model turned out less fun than actually playing with them: the notebook, friendship, gifts, birthdays, holidays, letters. That is what I wanted from the start. So I'm working on a new mod built around that: the colony's social life plus a panel in the town hall to run the colony from one place, with AI only as an optional add-on later. 0.7.0 is the last version of this one for now, and it plays without an API key too. There will be an update later, when the new mod is ready.
+
 A [MineColonies](https://github.com/ldtteam/minecolonies) addon for NeoForge that lets colonists talk in text chat almost like other players. They start conversations, answer you, remember what you told them and gossip about the colony with each other. The words come from a language model behind any OpenAI-compatible API: DeepSeek, Gemini, OpenRouter, or a model running on your own machine.
 
-> **Status: 0.6.0, early development.** Everything below works and is played on our home server, but the insides are still being reworked, and settings, prompt files and whole features can change between versions. Read the [changelog](CHANGELOG.md) before updating, keep a backup of your world, and please report problems in [Issues](https://github.com/JerTheFox/minecolonies-living-colonists/issues).
+> **Status: 0.7.0, frozen.** Everything below works and is played on our home server. Read the [changelog](CHANGELOG.md) before updating and keep a backup of your world.
 
-> **You need a language model.** The mod doesn't include one. Colonists only talk once the server can reach an OpenAI-compatible API with your own key (paid by use) or a local model, for example in Ollama. Without it, players who write to colonists only get a note that no API key is set.
+> **A language model is optional.** With an OpenAI-compatible API key (paid by use) or a local model, for example in Ollama, colonists talk in free chat. Without one they still greet you, react to the colony's life in set lines and talk to you through a menu.
 
 ## An example
 
@@ -21,6 +24,7 @@ You look at the baker and press **U**: whatever you type now goes to him. You as
 
 ## Features
 
+- Plays without an API key: press U at a colonist for a talk menu (how are you, how's work, what do you like, birthday, a compliment), words in passing in speech bubbles, set lines in four voices, a daily talk that builds friendship.
 - Colonists speak first, reply and talk among themselves, but only while a player is in the colony, so an empty server spends no tokens.
 - They know their situation from MineColonies (job, home, hunger, health, happiness, what their workplace waits for, raids, weather, family, coworkers) and see what you hold and wear.
 - Look-ups and orders go through the colony's own systems, based on [Colonist Errands](https://github.com/Lovkar-Squid/colonist-errands): stock, research, construction; build, craft, deliver, arm the guards and more. Orders wait for your yes.
