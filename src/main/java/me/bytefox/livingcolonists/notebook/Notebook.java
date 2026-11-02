@@ -42,10 +42,12 @@ public final class Notebook {
 
     private final BondsService bonds;
     private final Errands errands;
+    private final me.bytefox.livingcolonists.mood.ColonyMoods moods;
 
-    public Notebook(BondsService bonds, Errands errands) {
+    public Notebook(BondsService bonds, Errands errands, me.bytefox.livingcolonists.mood.ColonyMoods moods) {
         this.bonds = bonds;
         this.errands = errands;
+        this.moods = moods;
     }
 
     /** Opens the notebook for the player, or refreshes it if it is open. */
@@ -60,7 +62,7 @@ public final class Notebook {
                 new Section("promises", title("promises"), bonds.notebook(player)),
                 new Section("relations", title("relations"), relations(player, colonies)),
                 new Section("orders", title("orders"), orders(player)),
-                new Section("colony", title("colony"), colony(colonies)),
+                new Section("colony", title("colony"), colony(colonies, player.server.getTickCount())),
                 new Section("help", title("help"), help(player, colonies)));
     }
 
@@ -151,12 +153,15 @@ public final class Notebook {
         return citizen == null ? "?" : citizen.getName();
     }
 
-    private static List<Component> colony(List<IColony> colonies) {
+    private List<Component> colony(List<IColony> colonies, long now) {
         Pager pager = new Pager(title("colony"));
         for (IColony colony : colonies) {
             if (colonies.size() > 1) {
                 pager.add(Component.literal(colony.getName()).withStyle(ChatFormatting.BOLD));
             }
+            // The colony's mood (#65): calm most of the time.
+            pager.add(Component.translatable("livingcolonists.book.colony.mood."
+                    + moods.leading(colony.getID(), now).mood().name().toLowerCase(java.util.Locale.ROOT)).withStyle(ChatFormatting.ITALIC));
             int before = pager.size();
             for (ICitizenData citizen : colony.getCitizenManager().getCitizens()) {
                 try {

@@ -305,5 +305,16 @@
   "livingcolonists.book.help.colony": "The colonists of the colony you stand in:",
   "livingcolonists.book.help.colony_off": "[Silence them]",
   "livingcolonists.book.help.colony_off.hint": "They stop talking in this colony until you let them talk again.",
-  "livingcolonists.book.help.colony_on": "[Let them talk]"
+  "livingcolonists.book.help.colony_on": "[Let them talk]",
+  "livingcolonists.book.colony.mood.calm": "The colony is calm.",
+  "livingcolonists.book.colony.mood.panic": "The colony is in a panic.",
+  "livingcolonists.book.colony.mood.grief": "The colony is in mourning.",
+  "livingcolonists.book.colony.mood.joy": "The colony is in high spirits.",
+  "livingcolonists.book.colony.mood.pride": "The colony is proud of itself.",
+  "livingcolonists.book.colony.mood.relief": "The colony breathes again.",
+  "livingcolonists.book.colony.mood.curiosity": "The colony is curious.",
+  "livingcolonists.book.colony.mood.worry": "The colony is uneasy.",
+  "livingcolonists.book.colony.mood.gloom": "The colony is glum.",
+  "livingcolonists.book.colony.mood.anger": "The colony is angry.",
+  "livingcolonists.book.colony.mood.festive": "The colony is celebrating."
 }

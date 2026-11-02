@@ -92,6 +92,11 @@ public final class ThreadPolicy {
         return -Math.log(1 - random.nextDouble()) * mean;
     }
 
+    /** Energy added to a talk about an event by how much it matters to the colony (#65), 0 to 3: about 2 lines a step. */
+    public static double interestEnergy(int interest) {
+        return 2.0 * Math.max(0, Math.min(3, interest));
+    }
+
     /** What a line did to the conversation, as code can tell. */
     public record LineTraits(boolean question, boolean namesSomeone, boolean disagreed, boolean shortReaction) {
     }

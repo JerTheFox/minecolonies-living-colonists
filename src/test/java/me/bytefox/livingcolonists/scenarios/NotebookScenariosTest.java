@@ -34,7 +34,7 @@ class NotebookScenariosTest {
     void setUp() throws Exception {
         stage = new Stage("Darcy Abbott", "Hunter Casey");
         darcy = stage.citizens.get(0);
-        notebook = new Notebook(stage.bonds, stage.talk.errands());
+        notebook = new Notebook(stage.bonds, stage.talk.errands(), stage.talk.moods());
     }
 
     @AfterEach

@@ -305,5 +305,16 @@
   "livingcolonists.book.help.colony": "Колонисты колонии, где вы стоите:",
   "livingcolonists.book.help.colony_off": "[Пусть молчат]",
   "livingcolonists.book.help.colony_off.hint": "Колонисты замолкают в этой колонии, пока вы снова их не включите.",
-  "livingcolonists.book.help.colony_on": "[Пусть говорят]"
+  "livingcolonists.book.help.colony_on": "[Пусть говорят]",
+  "livingcolonists.book.colony.mood.calm": "В колонии спокойно.",
+  "livingcolonists.book.colony.mood.panic": "Колония в панике.",
+  "livingcolonists.book.colony.mood.grief": "Колония в трауре.",
+  "livingcolonists.book.colony.mood.joy": "Колония радуется.",
+  "livingcolonists.book.colony.mood.pride": "Колония гордится собой.",
+  "livingcolonists.book.colony.mood.relief": "Колония выдохнула с облегчением.",
+  "livingcolonists.book.colony.mood.curiosity": "Колонии любопытно.",
+  "livingcolonists.book.colony.mood.worry": "В колонии тревожно.",
+  "livingcolonists.book.colony.mood.gloom": "Колония приуныла.",
+  "livingcolonists.book.colony.mood.anger": "Колония злится.",
+  "livingcolonists.book.colony.mood.festive": "Колония празднует."
 }

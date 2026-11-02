@@ -69,6 +69,7 @@ public final class DebugCommand {
         dispatcher.register(Commands.literal("lcdebug")
                 .requires(source -> source.hasPermission(PERMISSION_LEVEL))
                 .then(Commands.literal("stats").executes(context -> showStats(context.getSource(), stats)))
+                .then(Commands.literal("mood").executes(context -> showMood(context.getSource(), talk)))
                 .then(profileCommand())
                 .then(withColonist(Commands.literal("colonist"),
                         (context, citizen) -> showColonist(context.getSource(), personalities, citizen)))
@@ -327,6 +328,21 @@ public final class DebugCommand {
             source.sendSuccess(() -> Component.literal(line), false);
         }
         return log.size();
+    }
+
+    /** The colony's mood (#65): what stirred it and how strongly it is felt now. */
+    private static int showMood(CommandSourceStack source, TalkService talk) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        IColony colony = IColonyManager.getInstance().getColonyByPosFromWorld(player.level(), player.blockPosition());
+        if (colony == null) {
+            throw failure("livingcolonists.colony.outside");
+        }
+        long now = source.getServer().getTickCount();
+        var leading = talk.moods().leading(colony.getID(), now);
+        source.sendSuccess(() -> Component.literal(colony.getName() + ": " + leading.mood()
+                + String.format(java.util.Locale.ROOT, " (%.1f)", leading.intensity())), false);
+        talk.moods().describe(colony.getID(), now).forEach(line -> source.sendSuccess(() -> Component.literal("  " + line), false));
+        return 1;
     }
 
     private static int showThread(CommandSourceStack source, TalkService talk) throws CommandSyntaxException {

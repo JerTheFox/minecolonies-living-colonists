@@ -1,0 +1,48 @@
+{
+  "calm": 1.5,
+  "tones": {
+    "PANIC": "The whole colony is in a panic ({cause}): people speak in short, scared, urgent lines and think of nothing else.",
+    "GRIEF": "The colony is in mourning ({cause}): people speak quietly and sadly, remember the dead and what they were like.",
+    "JOY": "The colony is in high spirits ({cause}): people are cheerful and glad to talk about it.",
+    "PRIDE": "The colony is proud ({cause}): people speak of it with satisfaction and a little boasting.",
+    "RELIEF": "The colony breathes again ({cause}): people are relieved, still a little shaken, glad it is over.",
+    "CURIOSITY": "The colony is curious ({cause}): people wonder about it, guess and ask each other.",
+    "WORRY": "The colony is uneasy ({cause}): people are wary and keep coming back to it.",
+    "GLOOM": "The colony is glum ({cause}): people are tired and low, and grumble more than usual.",
+    "ANGER": "The colony is angry ({cause}): people are bitter and resentful, and say so.",
+    "FESTIVE": "The colony is celebrating ({cause}): people are merry, joke and wish each other well."
+  },
+  "close": {
+    "PANIC": "You are right in the middle of it and frightened for your own.",
+    "GRIEF": "It is your own loss: you grieve deeply and can hardly think of anything else.",
+    "JOY": "It is your own joy: you are happier than anyone.",
+    "PRIDE": "It is your own doing: you are prouder than anyone.",
+    "RELIEF": "It was you in danger: you are more relieved than anyone.",
+    "CURIOSITY": "It is about you: everyone's eyes are on you, and you feel it.",
+    "WORRY": "It concerns you closely: you are more worried than the rest.",
+    "GLOOM": "It is your own trouble: you feel it more than the rest.",
+    "ANGER": "It is your own loss: you are angrier than anyone.",
+    "FESTIVE": "It is your celebration: you are in the best of spirits."
+  },
+  "occasions": {
+    "raid":              {"mood": "PANIC",     "strength": 5, "fadeMinutes": 15, "cooldownMinutes": 2,  "interest": 3},
+    "raid_over":         {"mood": "RELIEF",    "strength": 3, "fadeMinutes": 10, "cooldownMinutes": 5,  "interest": 1},
+    "raid_fought":       {"mood": "PRIDE",     "strength": 2, "fadeMinutes": 10, "cooldownMinutes": 5,  "interest": 1},
+    "enemies":           {"mood": "WORRY",     "strength": 2, "fadeMinutes": 5,  "cooldownMinutes": 3,  "interest": 1},
+    "monsters_cleared":  {"mood": "PRIDE",     "strength": 2, "fadeMinutes": 10, "cooldownMinutes": 10, "interest": 1},
+    "death":             {"mood": "GRIEF",     "strength": 5, "fadeMinutes": 40, "cooldownMinutes": 0,  "interest": 3},
+    "killed_by_player":  {"mood": "ANGER",     "strength": 4, "fadeMinutes": 30, "cooldownMinutes": 5,  "interest": 3},
+    "player_died":       {"mood": "WORRY",     "strength": 3, "fadeMinutes": 10, "cooldownMinutes": 5,  "interest": 2},
+    "birth":             {"mood": "JOY",       "strength": 3, "fadeMinutes": 15, "cooldownMinutes": 0,  "interest": 2},
+    "grown_up":          {"mood": "JOY",       "strength": 2, "fadeMinutes": 10, "cooldownMinutes": 0,  "interest": 1},
+    "newcomer":          {"mood": "CURIOSITY", "strength": 2, "fadeMinutes": 10, "cooldownMinutes": 0,  "interest": 1},
+    "new_site":          {"mood": "CURIOSITY", "strength": 1, "fadeMinutes": 5,  "cooldownMinutes": 5,  "interest": 0},
+    "building_built":    {"mood": "PRIDE",     "strength": 2, "fadeMinutes": 10, "cooldownMinutes": 5,  "interest": 1},
+    "building_upgraded": {"mood": "PRIDE",     "strength": 1, "fadeMinutes": 5,  "cooldownMinutes": 5,  "interest": 0},
+    "milestone":         {"mood": "PRIDE",     "strength": 3, "fadeMinutes": 20, "cooldownMinutes": 0,  "interest": 2},
+    "illness":           {"mood": "WORRY",     "strength": 2, "fadeMinutes": 15, "cooldownMinutes": 10, "interest": 1},
+    "hunger":            {"mood": "GLOOM",     "strength": 2, "fadeMinutes": 20, "cooldownMinutes": 15, "interest": 1},
+    "homeless":          {"mood": "GLOOM",     "strength": 2, "fadeMinutes": 20, "cooldownMinutes": 15, "interest": 1},
+    "unhappy":           {"mood": "GLOOM",     "strength": 2, "fadeMinutes": 20, "cooldownMinutes": 15, "interest": 1}
+  }
+}

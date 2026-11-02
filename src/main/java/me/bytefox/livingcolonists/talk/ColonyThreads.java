@@ -233,7 +233,8 @@ public final class ColonyThreads {
      * Opens a colony conversation about an event, if the chat is free. An urgent one (a death, a raid)
      * cuts into colonists' own chatter and skips the gap between events, but never into a talk with a player.
      */
-    public boolean startEvent(MinecraftServer server, IColony colony, String what, List<Integer> preferred, boolean urgent) {
+    public boolean startEvent(MinecraftServer server, IColony colony, String what, List<Integer> preferred, boolean urgent,
+                              int interest) {
         if (!talk.active(colony)) {
             return false;
         }
@@ -272,7 +273,8 @@ public final class ColonyThreads {
         thread.opening = what;
         thread.chatter = null;
         thread.lines.clear();
-        thread.energy = 1 + ThreadPolicy.startEnergy(Config.level(Module.CONVERSATION), random);
+        // What matters to the colony is talked about longer: a raid or a death, not a new site (#65).
+        thread.energy = 1 + ThreadPolicy.startEnergy(Config.level(Module.CONVERSATION), random) + ThreadPolicy.interestEnergy(interest);
         thread.language = Languages.ofLocale(Audience.language(audience));
         preferred.stream().limit(1).forEach(thread.addressed::add);
         ModLog.action("Colony {} talks about: {}", colony.getName(), what);

@@ -64,18 +64,24 @@ public final class ColonyEvents {
      *
      * @param newborns colonists just born, who don't chat yet
      */
-    private record Event(String what, List<Integer> speakers, List<Integer> newborns, boolean building, boolean urgent) {
+    private record Event(String what, List<Integer> speakers, List<Integer> newborns, boolean building, boolean urgent,
+                         String occasion) {
         Event(String what, List<Integer> speakers) {
-            this(what, speakers, List.of(), false, false);
+            this(what, speakers, List.of(), false, false, "");
         }
 
         Event(String what, List<Integer> speakers, List<Integer> newborns) {
-            this(what, speakers, newborns, false, false);
+            this(what, speakers, newborns, false, false, "");
         }
 
         /** A death or a raid: it cuts into colonists' own chatter and waits longer for its turn. */
         Event urgently() {
-            return new Event(what, speakers, newborns, building, true);
+            return new Event(what, speakers, newborns, building, true, occasion);
+        }
+
+        /** Which row of the mood table it is (#65): how it stirs the colony and how long it is talked about. */
+        Event as(String occasion) {
+            return new Event(what, speakers, newborns, building, urgent, occasion);
         }
     }
 
@@ -91,8 +97,11 @@ public final class ColonyEvents {
     private static final long URGENT_WAIT_TICKS = 10 * 60 * 20;
     private static final int MAX_WAITING = 5;
 
-    public ColonyEvents(ColonyThreads threads) {
+    private final me.bytefox.livingcolonists.mood.ColonyMoods moods;
+
+    public ColonyEvents(ColonyThreads threads, me.bytefox.livingcolonists.mood.ColonyMoods moods) {
         this.threads = threads;
+        this.moods = moods;
         ModEvents.BUS.on(GameEvents.ColonyHappened.class, this::remember);
     }
 
@@ -132,11 +141,16 @@ public final class ColonyEvents {
 
     /** The same, with the colonists likeliest to bring it up first. */
     void announce(MinecraftServer server, IColony colony, String what, List<Integer> speakers) {
+        announce(server, colony, what, speakers, "");
+    }
+
+    /** The same, as an occasion of the mood table (#65). */
+    void announce(MinecraftServer server, IColony colony, String what, List<Integer> speakers, String occasion) {
         if (colony.getWorld() == null) {
             return;
         }
         ModEvents.BUS.post(new GameEvents.ColonyHappened(colony, what, false, false));
-        queue(colony.getID(), new Event(what, speakers), server.getTickCount());
+        queue(colony.getID(), new Event(what, speakers).as(occasion), server.getTickCount());
     }
 
     private void queue(int colonyId, Event event, long now) {
@@ -144,6 +158,12 @@ public final class ColonyEvents {
     }
 
     private void queue(int colonyId, Event event, long now, long wait) {
+        // The colony feels it at once, whether or not anyone gets to talk about it (#65).
+        if (!event.occasion().isEmpty()) {
+            List<Integer> close = new ArrayList<>(event.speakers());
+            close.addAll(event.newborns());
+            moods.raise(colonyId, event.occasion(), event.what(), close, now);
+        }
         Deque<Queued> queue = waiting.computeIfAbsent(colonyId, id -> new ArrayDeque<>());
         queue.addLast(new Queued(event, now + wait));
         while (queue.size() > MAX_WAITING) {
@@ -207,7 +227,7 @@ public final class ColonyEvents {
                     Queued next = queue.stream().filter(queued -> queued.event().urgent()).findFirst()
                             .orElse(queue.peekFirst());
                     if (next != null && threads.startEvent(server, colony, next.event().what(), next.event().speakers(),
-                            next.event().urgent())) {
+                            next.event().urgent(), me.bytefox.livingcolonists.mood.MoodTable.row(next.event().occasion()).interest())) {
                         queue.remove(next);
                     }
                 }
@@ -231,7 +251,7 @@ public final class ColonyEvents {
                         && building.getBuildingType() != null) {
                     events.add(new Event("Someone has just set out the place for a new "
                             + Component.translatable(building.getBuildingType().getTranslationKey()).getString()
-                            + " in the colony.", builders(colony)));
+                            + " in the colony.", builders(colony)).as("new_site"));
                 }
             }
         }
@@ -246,7 +266,7 @@ public final class ColonyEvents {
                 }
             }
             Event event = new Event(raid ? RAID
-                    : "The raid on the colony is over.", guards(colony));
+                    : "The raid on the colony is over.", guards(colony)).as(raid ? "raid" : "raid_over");
             events.add(raid ? event.urgently() : event);
         }
         List<IColonyEventDescription> log = Colonies.eventLog(colony);
@@ -278,26 +298,27 @@ public final class ColonyEvents {
                 List<Integer> children = childrenOf(colony, name);
                 String family = names(colony, children);
                 return new Event(name + " has died" + cause + "." + (family.isEmpty() ? "" : " They leave behind " + family + ".")
-                        + " The colony is shaken.", children).urgently();
+                        + " The colony is shaken.", children).urgently().as("death");
             }
             if (type.contains("born")) {
                 List<Integer> parents = parentsOf(colony, name);
                 String family = names(colony, parents);
                 return new Event("A baby, " + name + ", was just born in the colony" + (family.isEmpty() ? "" : " to " + family)
-                        + ".", parents, named(colony, name));
+                        + ".", parents, named(colony, name)).as("birth");
             }
             if (type.contains("grown")) {
-                return new Event(name + " has just grown up and is an adult now.", named(colony, name));
+                return new Event(name + " has just grown up and is an adult now.", named(colony, name)).as("grown_up");
             }
             if (type.equals("citizen_spawn")) {
-                return new Event(name + " has just arrived in the colony as a new colonist.", named(colony, name));
+                return new Event(name + " has just arrived in the colony as a new colonist.", named(colony, name)).as("newcomer");
             }
             return null;
         }
         if (entry instanceof IBuildingEventDescription building && (type.contains("built") || type.contains("upgraded"))) {
             String name = Component.translatable(building.getBuildingName()).getString();
             return new Event(type.contains("built") ? "The " + name + " was just finished."
-                    : "The " + name + " was just upgraded to level " + building.getLevel() + ".", List.of(), List.of(), true, false);
+                    : "The " + name + " was just upgraded to level " + building.getLevel() + ".", List.of(), List.of(), true, false,
+                    type.contains("built") ? "building_built" : "building_upgraded");
         }
         return null;
     }
@@ -357,7 +378,7 @@ public final class ColonyEvents {
             List<Enemies.Seen> raiders = Enemies.raiders(colony);
             if (sightings.stragglers(colony.getID(), true, raiders.size(), now)) {
                 found.add(new Event(LAST_RAIDERS + Enemies.groups(colony, raiders).stream().map(Sightings.Group::text)
-                        .collect(Collectors.joining("; ")) + ".", guards(colony)).urgently());
+                        .collect(Collectors.joining("; ")) + ".", guards(colony)).urgently().as("raid"));
             }
         } else {
             sightings.stragglers(colony.getID(), false, 0, now);
@@ -369,7 +390,7 @@ public final class ColonyEvents {
                 }
                 speakers.addAll(guards(colony));
                 found.add(new Event(ENEMIES + group.text() + "." + (seer == null ? "" : " " + seer.getName() + " sees them."),
-                        speakers).urgently());
+                        speakers).urgently().as("enemies"));
             }
         }
         for (Event event : found) {

@@ -101,7 +101,7 @@ public final class LivingColonists {
     private final TalkService talk = new TalkService(client, prompts, personalities, perception, memory, bonds);
     private final Afterlife afterlife = new Afterlife(personalities, memory, bonds);
     private final me.bytefox.livingcolonists.notebook.Notebook notebook =
-            new me.bytefox.livingcolonists.notebook.Notebook(bonds, talk.errands());
+            new me.bytefox.livingcolonists.notebook.Notebook(bonds, talk.errands(), talk.moods());
     private UsageData usageData;
     private final Conversations conversations = new Conversations(talk);
     private final SettingsHandler settings = new SettingsHandler(new SettingsService(client, usage));
@@ -113,6 +113,7 @@ public final class LivingColonists {
                 Handbook.use(prompts.content(PromptLibrary.HANDBOOK));
                 Rumours.use(prompts.content(PromptLibrary.RUMOURS));
                 Prompts.useTopics(prompts.content(PromptLibrary.TOPICS));
+                me.bytefox.livingcolonists.mood.MoodTable.use(prompts.content(PromptLibrary.MOODS));
             } catch (RuntimeException e) {
                 ModLog.warn("A content file in config/livingcolonists/content is broken, fix or delete it", e);
             }
@@ -156,6 +157,12 @@ public final class LivingColonists {
             if (event.getEntity() instanceof com.minecolonies.api.entity.citizen.AbstractEntityCitizen citizen
                     && !citizen.level().isClientSide() && citizen.getCitizenData() != null) {
                 afterlife.died(citizen.getCitizenData(), citizen.level().getGameTime());
+                // A colonist killed by a player angers the colony (#65).
+                if (event.getSource().getEntity() instanceof ServerPlayer killer) {
+                    talk.moods().raise(citizen.getCitizenData().getColony().getID(), "killed_by_player",
+                            citizen.getCitizenData().getName() + " was killed by " + Audience.playerName(killer), java.util.List.of(),
+                            killer.server.getTickCount());
+                }
             }
             if (event.getEntity() instanceof ServerPlayer player) {
                 ModEvents.BUS.post(new GameEvents.PlayerDied(player));
@@ -280,6 +287,7 @@ public final class LivingColonists {
         int id = event.getColony().getID();
         forget(key -> key.startsWith(id + ":"));
         memory.forgetColonyChat(id);
+        talk.moods().forget(id);
     }
 
     private void markUsageDirty() {

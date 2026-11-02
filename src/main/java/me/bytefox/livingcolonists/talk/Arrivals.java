@@ -184,7 +184,7 @@ final class Arrivals {
         if (news != null) {
             IColony colony = Colonies.ownedBy(player);
             if (colony != null) {
-                events.announce(player.server, colony, news);
+                events.announce(player.server, colony, news, List.of(), "milestone");
             }
             return;
         }

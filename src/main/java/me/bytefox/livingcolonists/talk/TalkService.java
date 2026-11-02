@@ -70,6 +70,7 @@ public final class TalkService {
     private final MemoryService memory;
     private final BondsService bonds;
     private final ColonyTools tools;
+    private final me.bytefox.livingcolonists.mood.ColonyMoods moods = new me.bytefox.livingcolonists.mood.ColonyMoods();
     private final Errands errands;
     private final Initiative initiative;
     private final Arrivals arrivals;
@@ -118,7 +119,23 @@ public final class TalkService {
         this.errands = new Errands(perception, this::writeFirst, memory::rememberDeed);
         this.replies = new Replies(this, client, tools, errands, memory);
         this.threads = new ColonyThreads(this, prompts, memory, personalities, output, typing, bonds);
-        this.events = new ColonyEvents(threads);
+        this.events = new ColonyEvents(threads, moods);
+        // A player dying in the colony worries it (#65).
+        ModEvents.BUS.on(GameEvents.PlayerDied.class, event -> {
+            IColony colony = me.bytefox.livingcolonists.colony.Colonies.at(event.player());
+            if (colony != null) {
+                moods.raise(colony.getID(), "player_died", Audience.playerName(event.player()) + " died in the colony",
+                        List.of(), event.player().server.getTickCount());
+            }
+        });
+        // An illness worries the colony a little (#65); the news itself is LifeNews's.
+        ModEvents.BUS.on(GameEvents.FellIll.class, event -> {
+            ICitizenData ill = event.citizen();
+            if (ill.getColony().getWorld() != null && ill.getColony().getWorld().getServer() != null) {
+                moods.raise(ill.getColony().getID(), "illness", ill.getName() + " has fallen ill with " + event.illness(),
+                        List.of(ill.getId()), ill.getColony().getWorld().getServer().getTickCount());
+            }
+        });
         this.initiative = new Initiative(this, threads, perception, memory, bonds);
         this.arrivals = new Arrivals(this, threads, events, initiative, bonds, perception, memory);
         LifeNews news = new LifeNews(memory, events);
@@ -139,6 +156,35 @@ public final class TalkService {
 
     public BondsService bonds() {
         return bonds;
+    }
+
+    /** How often the colony's lasting troubles stir its mood: every two minutes. */
+    private static final long CONDITIONS_TICKS = 2 * 60 * 20;
+
+    /** Hunger, homelessness and unhappiness that last make the colony glum (#65). */
+    private void colonyConditions(long now) {
+        for (IColony colony : me.bytefox.livingcolonists.colony.Colonies.all()) {
+            if (!active(colony)) {
+                continue;
+            }
+            try {
+                List<ICitizenData> adults = colony.getCitizenManager().getCitizens().stream().filter(c -> !c.isChild()).toList();
+                int hungry = (int) adults.stream().filter(c -> c.getSaturation() < me.bytefox.livingcolonists.mood.Conditions.HUNGRY).count();
+                int homeless = (int) adults.stream().filter(c -> c.getHomeBuilding() == null).count();
+                int unhappy = (int) adults.stream()
+                        .filter(c -> c.getCitizenHappinessHandler().getHappiness(colony, c) < me.bytefox.livingcolonists.mood.Conditions.UNHAPPY)
+                        .count();
+                me.bytefox.livingcolonists.mood.Conditions.troubles(adults.size(), hungry, homeless, unhappy)
+                        .forEach(trouble -> moods.raise(colony.getID(), trouble.occasion(), trouble.cause(), List.of(), now));
+            } catch (RuntimeException | LinkageError e) {
+                // A colony MineColonies can't tell about now is looked at next time.
+            }
+        }
+    }
+
+    /** The colonies' moods (#65). */
+    public me.bytefox.livingcolonists.mood.ColonyMoods moods() {
+        return moods;
     }
 
     public Errands errands() {
@@ -229,6 +275,9 @@ public final class TalkService {
     /** Sends private replies whose turn has come and moves colony threads on. Server tick. */
     public void tick(MinecraftServer server) {
         long now = server.getTickCount();
+        if (now % CONDITIONS_TICKS == 0) {
+            colonyConditions(now);
+        }
         while (!pending.isEmpty() && pending.peek().tick() <= now) {
             PendingLine line = pending.poll();
             ICitizenData citizen = Audience.resolve(line.dimension(), line.speaker().colonyId(), line.speaker().citizenId());
@@ -483,6 +532,11 @@ public final class TalkService {
         values.put("mood", plain ? "calm and busy with your work" : Prompts.mood(citizen.getId(),
                 citizen.getColony().getWorld().getDayTime() / 24000, happiness(citizen)));
         values.put("situation", perception.situation(citizen));
+        // The colony's mood colours every line, harder for those it touches closely (#65).
+        if (citizen.getColony().getWorld() != null && citizen.getColony().getWorld().getServer() != null) {
+            moods.tone(citizen.getColony().getID(), citizen.getId(), citizen.getColony().getWorld().getServer().getTickCount())
+                    .ifPresent(tone -> values.put("situation", values.get("situation") + "\n" + tone));
+        }
         List<String> lately = errands.lookups(citizen.getColony().getID(), citizen.getColony().getWorld().getGameTime());
         if (!lately.isEmpty()) {
             // What anyone in the colony looked up lately is known to all (#56).

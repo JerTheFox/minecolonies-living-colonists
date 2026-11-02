@@ -16,8 +16,8 @@ import net.minecraft.util.FormattedCharSequence;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
- * The Colony Notebook (#66): an open book, two pages at a time, with bookmarks for its sections on the right. Drawn on
- * MineColonies' own town hall book and bookmark ribbons so it looks like part of the colony; those textures are theirs
+ * The Colony Notebook (#66): an open book, two pages at a time, with tabs for its sections on the right, as in MineColonies' own windows. Drawn on
+ * MineColonies' own town hall book, window tabs and icons so it looks like part of the colony; those textures are theirs
  * and stay in their jar (we only point to them), and without them the notebook is drawn on plain paper. The pages come
  * from the server; after a button in them is used, the notebook asks for them again.
  */
@@ -31,11 +31,16 @@ public final class NotebookScreen extends Screen {
     private static final int TEXT_WIDTH = 130;
     private static final int LINES = 18;
     private static final int INK = 0x3B2A1A;
-    private static final int TAB_WIDTH = 31;
-    private static final int TAB_HEIGHT = 14;
-    private static final int TAB_STEP = 22;
-    /** The size bookmark icons are drawn at. */
-    private static final int ICON = 10;
+    /** MineColonies' window tabs: 32 by 26, 28 apart, 12 of their width under the paper, the icon 5 from the end. */
+    private static final int TAB_WIDTH = 32;
+    private static final int TAB_HEIGHT = 26;
+    private static final int TAB_STEP = 28;
+    private static final int TAB_TOP = 36;
+    private static final int TAB_UNDER = 12;
+    /** The open section's tab sticks out a little further. */
+    private static final int TAB_OUT = 3;
+    private static final int ICON_INSET = 5;
+    private static final int ICON = 20;
     /** Ticks after a button before the pages are asked for again: the command runs first. */
     private static final int REFRESH_DELAY = 8;
 
@@ -155,16 +160,21 @@ public final class NotebookScreen extends Screen {
         int left = left();
         int top = top();
         boolean colonies = minecraft.getResourceManager().getResource(BOOK).isPresent();
-        // Bookmarks first, so the book covers their inner ends.
+        // Tabs as in MineColonies' own windows: their paper tab with a module icon on it, tucked under the book.
         for (int i = 0; i < sections.size(); i++) {
-            int x = left + WIDTH - 12 + (i == section ? 6 : 0);
-            int y = top + 24 + i * TAB_STEP;
-            ResourceLocation ribbon = ResourceLocation.fromNamespaceAndPath("minecolonies",
-                    "textures/gui/bookmark_short_ribbon_0" + (i % 6 + 1) + ".png");
-            if (colonies && minecraft.getResourceManager().getResource(ribbon).isPresent()) {
-                graphics.blit(ribbon, x, y, 0, 0, TAB_WIDTH, TAB_HEIGHT, TAB_WIDTH, TAB_HEIGHT);
+            int x = tabX(i);
+            int y = tabY(i);
+            ResourceLocation tab = ResourceLocation.fromNamespaceAndPath("minecolonies",
+                    "textures/gui/modules/tab_right_side" + (i % 4 + 1) + ".png");
+            ResourceLocation icon = ResourceLocation.fromNamespaceAndPath("minecolonies",
+                    "textures/gui/modules/" + icon(sections.get(i).key()) + ".png");
+            if (colonies && minecraft.getResourceManager().getResource(tab).isPresent()) {
+                graphics.blit(tab, x, y, 0, 0, TAB_WIDTH, TAB_HEIGHT, TAB_WIDTH, TAB_HEIGHT);
             } else {
-                graphics.fill(x, y, x + TAB_WIDTH, y + TAB_HEIGHT, 0xFF7A3B2A + i * 0x101010);
+                graphics.fill(x, y, x + TAB_WIDTH, y + TAB_HEIGHT, 0xFFE8D9B8);
+            }
+            if (minecraft.getResourceManager().getResource(icon).isPresent()) {
+                graphics.blit(icon, x + TAB_WIDTH - ICON_INSET - ICON, y + 3, 0, 0, ICON, ICON, ICON, ICON);
             }
         }
         if (colonies) {
@@ -173,16 +183,14 @@ public final class NotebookScreen extends Screen {
             graphics.fill(left, top, left + WIDTH, top + HEIGHT, 0xFF5A2A1A);
             graphics.fill(left + 6, top + 6, left + WIDTH - 6, top + HEIGHT - 6, 0xFFF3E9D2);
         }
-        // What each bookmark is for: MineColonies' own small module icons, on the ribbon's end outside the book.
-        for (int i = 0; i < sections.size(); i++) {
-            int x = left + WIDTH + (i == section ? 6 : 0) + (TAB_WIDTH - 12 - ICON) / 2;
-            int y = top + 24 + i * TAB_STEP + (TAB_HEIGHT - ICON) / 2;
-            ResourceLocation icon = ResourceLocation.fromNamespaceAndPath("minecolonies",
-                    "textures/gui/modules/" + icon(sections.get(i).key()) + ".png");
-            if (minecraft.getResourceManager().getResource(icon).isPresent()) {
-                graphics.blit(icon, x, y, ICON, ICON, 0, 0, 20, 20, 20, 20);
-            }
-        }
+    }
+
+    private int tabX(int index) {
+        return left() + WIDTH - TAB_UNDER + (index == section ? TAB_OUT : 0);
+    }
+
+    private int tabY(int index) {
+        return top() + TAB_TOP + index * TAB_STEP;
     }
 
     /** MineColonies' module icon for a section. */
@@ -201,12 +209,10 @@ public final class NotebookScreen extends Screen {
         return lines.size() > LINES ? lines.subList(0, LINES) : lines;
     }
 
-    /** The bookmark under the mouse, or -1. */
+    /** The tab under the mouse, or -1. */
     private int tabAt(double mouseX, double mouseY) {
         for (int i = 0; i < sections.size(); i++) {
-            int x = left() + WIDTH - 12 + (i == section ? 6 : 0);
-            int y = top() + 24 + i * TAB_STEP;
-            if (mouseX >= left() + WIDTH && mouseX < x + TAB_WIDTH && mouseY >= y && mouseY < y + TAB_HEIGHT) {
+            if (mouseX >= left() + WIDTH && mouseX < tabX(i) + TAB_WIDTH && mouseY >= tabY(i) && mouseY < tabY(i) + TAB_HEIGHT) {
                 return i;
             }
         }

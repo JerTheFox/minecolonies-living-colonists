@@ -45,7 +45,7 @@ class ColonyChatScenariosTest {
     void anOrderRightAfterColonyNewsStillGetsTheOrders() throws Exception {
         // 0.3.3: the colonist answering was still on the news and had no orders, so "everyone go home" did nothing.
         stage.talk.threads().startEvent(stage.server(), stage.colony, "Someone has just set out the place for a new Guard Tower.",
-                java.util.List.of(), false);
+                java.util.List.of(), false, 0);
         stage.playerWritesToColony("все по домам");
         assertTrue(stage.runUntil(() -> stage.model.requests.stream()
                         .anyMatch(r -> FakeModel.isReply(r) && r.toString().contains("все по домам") && FakeModel.offers(r, "everyone_home")),

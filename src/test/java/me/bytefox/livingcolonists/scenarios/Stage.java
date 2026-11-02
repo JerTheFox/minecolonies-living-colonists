@@ -167,6 +167,7 @@ final class Stage implements AutoCloseable {
             me.bytefox.livingcolonists.errands.Handbook.use(prompts.content(PromptLibrary.HANDBOOK));
             me.bytefox.livingcolonists.talk.Rumours.use(prompts.content(PromptLibrary.RUMOURS));
             me.bytefox.livingcolonists.talk.Prompts.useTopics(prompts.content(PromptLibrary.TOPICS));
+            me.bytefox.livingcolonists.mood.MoodTable.use(prompts.content(PromptLibrary.MOODS));
         });
         prompts.reload();
         ArchetypeLibrary archetypes = new ArchetypeLibrary(directory);
@@ -204,6 +205,10 @@ final class Stage implements AutoCloseable {
         when(citizen.isFemale()).thenReturn(id % 2 == 1);
         // As in MineColonies: no modifier of an id until someone adds one.
         when(citizen.getCitizenHappinessHandler().getModifier(org.mockito.ArgumentMatchers.anyString())).thenReturn(null);
+        // Fed and content, unless a test says otherwise.
+        when(citizen.getSaturation()).thenReturn(20.0);
+        when(citizen.getCitizenHappinessHandler().getHappiness(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(8.0);
         return citizen;
     }
 
