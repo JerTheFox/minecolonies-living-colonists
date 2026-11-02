@@ -59,6 +59,7 @@ public final class SettingsSchema {
                     value -> Config.EXTRA_ADVANCEMENTS.set(value.isEmpty() ? List.of() : List.of(value.split("\n")))),
             bool("speechBubbles", Tab.BEHAVIOUR, Config.SPEECH_BUBBLES),
             bool("playerBubbles", Tab.BEHAVIOUR, Config.PLAYER_BUBBLES),
+            bool("barks", Tab.BEHAVIOUR, Config.BARKS),
             number("bubbleRange", Tab.BEHAVIOUR, Config.BUBBLE_RANGE, 8, 64),
             bool("colonyChatAnywhere", Tab.BEHAVIOUR, Config.COLONY_CHAT_ANYWHERE),
             bool("membersOnly", Tab.BEHAVIOUR, Config.MEMBERS_ONLY),

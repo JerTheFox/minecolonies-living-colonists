@@ -44,6 +44,43 @@ public final class SetLines {
         }
     }
 
+    /** The same in a voice ({@link me.bytefox.livingcolonists.social.Voices}): its own lines first, else the plain ones. */
+    public static Optional<String> pick(String occasion, String voice, String locale, Random random, Object... args) {
+        if (voice != null && !voice.isEmpty()) {
+            Optional<String> voiced = pick(occasion + "." + voice, locale, random, args);
+            if (voiced.isPresent()) {
+                return voiced;
+            }
+        }
+        return pick(occasion, locale, random, args);
+    }
+
+    /** The translation key of a line in a voice, else a plain one. */
+    public static Optional<String> key(String occasion, String voice, Random random) {
+        if (voice != null && !voice.isEmpty()) {
+            Optional<String> voiced = key(occasion + "." + voice, random);
+            if (voiced.isPresent()) {
+                return voiced;
+            }
+        }
+        return key(occasion, random);
+    }
+
+    /** Two colonists' small talk on a topic (#68): a line and its answer, in the locale; empty if the topic has none. */
+    public static Optional<String[]> pair(String topic, String locale, Random random) {
+        Map<String, String> lines = lines(locale == null ? "en_us" : locale.toLowerCase(Locale.ROOT));
+        if (count(lines, "pair." + topic) == 0) {
+            lines = lines("en_us");
+        }
+        int count = count(lines, "pair." + topic);
+        if (count == 0) {
+            return Optional.empty();
+        }
+        String key = PREFIX + "pair." + topic + "." + (1 + random.nextInt(count));
+        String reply = lines.get(key + ".reply");
+        return reply == null ? Optional.empty() : Optional.of(new String[] {lines.get(key), reply});
+    }
+
     /** The translation key of one of the occasion's lines, picked by the dice: for a line each player reads in their language. */
     public static Optional<String> key(String occasion, Random random) {
         int count = count(lines("en_us"), occasion);

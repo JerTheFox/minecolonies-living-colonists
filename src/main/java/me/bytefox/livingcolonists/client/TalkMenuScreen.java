@@ -25,6 +25,8 @@ public final class TalkMenuScreen extends Screen {
     private final int citizenId;
     private final Component who;
     private Component line;
+    private List<String> options;
+    private int hearts;
 
     private TalkMenuScreen(TalkMenuState state) {
         super(Component.literal(state.name()));
@@ -33,6 +35,8 @@ public final class TalkMenuScreen extends Screen {
         who = state.jobKey().isEmpty() ? Component.literal(state.name())
                 : Component.literal(state.name() + ", ").append(Component.translatable(state.jobKey()));
         line = state.line();
+        options = state.options();
+        hearts = state.hearts();
     }
 
     public static void apply(TalkMenuState state) {
@@ -42,6 +46,12 @@ public final class TalkMenuScreen extends Screen {
         } else if (minecraft.screen instanceof TalkMenuScreen open && open.colonyId == state.colonyId()
                 && open.citizenId == state.citizenId()) {
             open.line = state.line();
+            boolean grew = !open.options.equals(state.options());
+            open.options = state.options();
+            open.hearts = state.hearts();
+            if (grew) {
+                open.rebuildWidgets();
+            }
         }
     }
 
@@ -57,8 +67,8 @@ public final class TalkMenuScreen extends Screen {
     protected void init() {
         int columns = 2;
         int buttonWidth = (WIDTH - 2 * PADDING - 6) / columns;
-        int y = top() + HEIGHT - PADDING - 3 * (BUTTON_HEIGHT + 4) + 4;
-        List<String> options = TalkMenuState.OPTIONS;
+        int rows = (options.size() + columns - 1) / columns;
+        int y = top() + HEIGHT - PADDING - rows * (BUTTON_HEIGHT + 4) + 4;
         for (int i = 0; i < options.size(); i++) {
             String option = options.get(i);
             int x = left() + PADDING + (i % columns) * (buttonWidth + 6);
@@ -92,6 +102,14 @@ public final class TalkMenuScreen extends Screen {
         int x = left() + PADDING;
         int y = top() + PADDING;
         graphics.drawString(font, who.copy().withStyle(style -> style.withBold(true)), x, y, INK, false);
+        // Friendship in hearts, as in Stardew Valley.
+        StringBuilder shown = new StringBuilder();
+        for (int i = 0; i < me.bytefox.livingcolonists.social.Acquaintance.MAX_HEARTS; i++) {
+            shown.append('\u2764');
+        }
+        int heartsX = left() + WIDTH - PADDING - font.width(shown.toString());
+        graphics.drawString(font, Component.literal(shown.substring(0, hearts)).withStyle(net.minecraft.ChatFormatting.RED), heartsX, y, 0xFFC0392B, false);
+        graphics.drawString(font, shown.substring(hearts), heartsX + font.width(shown.substring(0, hearts)), y, 0xFFB8A88A, false);
         y += font.lineHeight + 6;
         for (FormattedCharSequence part : font.split(line, WIDTH - 2 * PADDING)) {
             graphics.drawString(font, part, x, y, INK, false);

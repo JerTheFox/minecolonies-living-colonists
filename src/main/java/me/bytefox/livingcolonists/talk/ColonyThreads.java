@@ -612,7 +612,10 @@ public final class ColonyThreads {
             int rapport = thread.lastPlayer == null ? 0 : bonds.playerRapport(citizen, thread.lastPlayer);
             text = SetLines.pick("reply." + TalkService.warmth(rapport), locale, random);
         } else if (chatter) {
-            setLine(server, colony, thread, version, citizen, true);
+            // Mostly small talk on what's going on, now and then a catchphrase.
+            if (random.nextDouble() >= SMALL_TALK || !smallTalk(server, colony, thread, version, citizen, locale)) {
+                setLine(server, colony, thread, version, citizen, true);
+            }
             return;
         }
         if (text.isEmpty()) {
@@ -636,6 +639,38 @@ public final class ColonyThreads {
                 scheduled.add(new Scheduled(then, () -> say(server, colony, thread, version, other, reaction.get(), false)));
             }
         }
+    }
+
+    /** Without a model, the share of a colonist's own chat that is small talk rather than a catchphrase. */
+    private static final double SMALL_TALK = 0.75;
+
+    /** Two colonists chat about the moment in set lines (#68); someone at odds answers with a jab. */
+    private boolean smallTalk(MinecraftServer server, IColony colony, ChatThread thread, long version, ICitizenData citizen,
+                              String locale) {
+        List<ICitizenData> others = colony.getCitizenManager().getCitizens().stream()
+                .filter(c -> c.getId() != citizen.getId() && !c.isChild()).toList();
+        if (others.isEmpty() || colony.getWorld() == null) {
+            return false;
+        }
+        ICitizenData other = others.get(random.nextInt(others.size()));
+        String topic = me.bytefox.livingcolonists.social.SmallTalk.topic(talk.moods().leading(colony.getID(), server.getTickCount()).mood(),
+                colony.getWorld().isRaining(), colony.getWorld().getDayTime(),
+                citizen.getSaturation() < me.bytefox.livingcolonists.mood.Conditions.HUNGRY, random.nextDouble());
+        Optional<String[]> pair = SetLines.pair(topic, locale, random);
+        if (pair.isEmpty()) {
+            return false;
+        }
+        String answer = me.bytefox.livingcolonists.social.SmallTalk.jab(bonds.colonists().rapport(colony, citizen.getId(), other.getId()))
+                ? SetLines.pick("pair.jab", locale, random).orElse(pair.get()[1]) : pair.get()[1];
+        Speaker first = Audience.speakerOf(citizen);
+        Speaker second = Audience.speakerOf(other);
+        long at = server.getTickCount() + Math.round(CHATTER_PACE * LinePacing.typingTicks(pair.get()[0].length()));
+        long then = at + Math.round(CHATTER_PACE * LinePacing.typingTicks(answer.length()));
+        thread.lastLineTick = then;
+        scheduled.add(new Scheduled(at, () -> say(server, colony, thread, version, first, pair.get()[0], false)));
+        scheduled.add(new Scheduled(then, () -> say(server, colony, thread, version, second, answer, false)));
+        Counters.add("lines.small_talk");
+        return true;
     }
 
     /** Occasions answered with a sad word rather than a glad one. */

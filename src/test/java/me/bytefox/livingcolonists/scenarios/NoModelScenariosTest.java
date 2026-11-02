@@ -142,6 +142,36 @@ class NoModelScenariosTest {
     }
 
     @Test
+    void aFriendCanTellAboutThemselvesAndTheMenuShowsHearts() {
+        stage.bonds.gift(darcy, stage.player.getUUID(), "Alex", "Alex gave me cake", 3, List.of("Cake"), Taste.LOVE, Map.of(), 2);
+        stage.talk.menu().open(stage.player, darcy);
+        var menu = sent(me.bytefox.livingcolonists.network.TalkMenuState.class).get(0);
+        assertTrue(menu.options().contains("about"), menu.options().toString());
+        assertTrue(menu.hearts() >= 2, "hearts " + menu.hearts());
+        stage.talk.menu().choose(stage.player, darcy, "about");
+        var answer = sent(me.bytefox.livingcolonists.network.TalkMenuState.class);
+        assertTrue(answer.get(answer.size() - 1).line().toString().contains("livingcolonists.about.origin."), answer.toString());
+    }
+
+    @Test
+    void aStrangerCantAskForNews() {
+        stage.talk.menu().choose(stage.player, darcy, "news");
+        assertTrue(sent(me.bytefox.livingcolonists.network.TalkMenuState.class).isEmpty(), "news told to a stranger");
+    }
+
+    @Test
+    void walkingPastAColonistGetsAWordInABubble() throws Exception {
+        boolean bubbles = Config.SPEECH_BUBBLES.get();
+        Config.SPEECH_BUBBLES.set(true);
+        stage.dice(0);
+        stage.body(darcy, net.minecraft.core.BlockPos.ZERO.east(2));
+        stage.runTicks(200);
+        assertTrue(!sent(me.bytefox.livingcolonists.network.SpeechBubble.class).isEmpty(), "no word in passing");
+        assertTrue(stage.chat.stream().noneMatch(l -> l.startsWith("<Darcy Abbott>")), "a word in passing went to the chat");
+        Config.SPEECH_BUBBLES.set(bubbles);
+    }
+
+    @Test
     void theNotebookHasNoOrdersWithoutAModel() {
         var notebook = new me.bytefox.livingcolonists.notebook.Notebook(stage.bonds, stage.talk.errands(), stage.talk.moods(),
                 stage.talk.calendar(), stage.talk.letters());

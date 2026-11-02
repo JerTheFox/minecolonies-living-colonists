@@ -149,6 +149,9 @@ public final class TalkService {
         this.help = new me.bytefox.livingcolonists.friendship.Help(bonds);
         this.workBoost = new me.bytefox.livingcolonists.friendship.WorkBoost(bonds);
         this.menu = new TalkMenu(bonds, calendar, perception, personalities);
+        this.barks = new me.bytefox.livingcolonists.social.Barks(bonds, moods, this::voice,
+                (occasion, voice, locale, dice) -> SetLines.pick(occasion, voice, locale, dice),
+                (colonist, text, player) -> Bubbles.line(colonist, text, List.of(player)));
         FriendshipNews friendshipNews = new FriendshipNews(this, bonds, memory);
         ModEvents.BUS.on(GameEvents.FriendshipMilestone.class, friendshipNews::milestone);
         CalendarNews calendarNews = new CalendarNews(events, errands.tally(), calendar);
@@ -199,6 +202,13 @@ public final class TalkService {
     private final me.bytefox.livingcolonists.friendship.WorkBoost workBoost;
 
     private final TalkMenu menu;
+    private final me.bytefox.livingcolonists.social.Barks barks;
+
+    /** How a colonist sounds in set lines, by their character (#68). */
+    String voice(ICitizenData citizen) {
+        me.bytefox.livingcolonists.personality.Personality personality = personalities.get(citizen);
+        return me.bytefox.livingcolonists.social.Voices.of(personality == null ? null : personality.archetype());
+    }
 
     /** The talk menu without a model (#68). */
     public TalkMenu menu() {
@@ -335,6 +345,7 @@ public final class TalkService {
         }
         calendar.tick(server);
         help.tick(server);
+        barks.tick(server);
         workBoost.tick(server);
         threads.tick(server);
         errands.tick(server);
@@ -562,7 +573,7 @@ public final class TalkService {
      * the occasion had a line.
      */
     boolean whisper(ServerPlayer player, ICitizenData citizen, SetLine line) {
-        Optional<String> text = SetLines.pick(line.occasion(), player.clientInformation().language(), random, line.args());
+        Optional<String> text = SetLines.pick(line.occasion(), voice(citizen), player.clientInformation().language(), random, line.args());
         if (text.isEmpty()) {
             return false;
         }
