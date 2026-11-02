@@ -76,4 +76,13 @@ class ColonyMoodTest {
         assertTrue(MoodTable.row("death").interest() > MoodTable.row("building_built").interest());
         assertEquals(0, MoodTable.row("no such occasion").interest());
     }
+
+    @Test
+    void theLeadingMoodSaysWhatStirredIt() {
+        ColonyMood mood = new ColonyMood();
+        mood.raise("death", "Randolph Casey has died", Set.of(), 0);
+        ColonyMood.Leading leading = mood.leading(MINUTE);
+        assertEquals("death", leading.occasion());
+        assertEquals("Randolph Casey has died", leading.cause());
+    }
 }

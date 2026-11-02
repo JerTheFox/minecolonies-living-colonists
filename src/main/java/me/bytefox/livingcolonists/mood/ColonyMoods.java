@@ -23,7 +23,7 @@ public final class ColonyMoods {
 
     public ColonyMood.Leading leading(int colonyId, long now) {
         ColonyMood mood = colonies.get(colonyId);
-        return mood == null ? new ColonyMood.Leading(Mood.CALM, 0) : mood.leading(now);
+        return mood == null ? new ColonyMood.Leading(Mood.CALM, 0, "", "") : mood.leading(now);
     }
 
     public List<String> describe(int colonyId, long now) {

@@ -33,6 +33,24 @@ public final class ColonyRouter {
     }
 
     /**
+     * How much the message matters to the colonists, 0 (small talk) to 3 (something grave), from the same answer
+     * (#65): a talk about it then runs longer. 0 when the answer doesn't say.
+     */
+    public static int interest(String reply) {
+        int start = reply.indexOf('{');
+        int end = reply.lastIndexOf('}');
+        if (start < 0 || end <= start) {
+            return 0;
+        }
+        try {
+            JsonElement interest = JsonParser.parseString(reply.substring(start, end + 1)).getAsJsonObject().get("interest");
+            return interest == null || !interest.isJsonPrimitive() ? 0 : Math.max(0, Math.min(3, interest.getAsInt()));
+        } catch (JsonParseException | IllegalStateException | NumberFormatException | UnsupportedOperationException e) {
+            return 0;
+        }
+    }
+
+    /**
      * @return zero-based indices of the addressed colonists, or an empty list for "everyone" and
      * for anything that can't be understood
      */

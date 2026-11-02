@@ -43,6 +43,16 @@ class ColonyMoodScenariosTest {
     }
 
     @Test
+    void whileGriefIsStrongTheColonistsOwnTalkComesBackToIt() throws Exception {
+        stage.citizenEvent("citizen_died", "Ann Lowe");
+        assertTrue(stage.runUntil(() -> stage.replies().stream().anyMatch(r -> r.toString().contains("has died")), WAIT),
+                "the death never came up");
+        assertTrue(stage.runUntil(() -> stage.replies().stream()
+                .anyMatch(r -> r.toString().contains("what the whole colony feels right now")), Duration.ofSeconds(40)),
+                "the colonists' own talk never came back to the death");
+    }
+
+    @Test
     void aHungryColonyTurnsGlum() throws Exception {
         stage.citizens.forEach(c -> org.mockito.Mockito.when(c.getSaturation()).thenReturn(2.0));
         assertTrue(stage.runUntil(() -> stage.talk.moods().leading(stage.colony.getID(), stage.server().getTickCount()).mood()

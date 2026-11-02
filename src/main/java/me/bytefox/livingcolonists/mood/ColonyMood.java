@@ -14,8 +14,8 @@ import java.util.Set;
  * strong. Kept in memory: after a restart the colony starts calm. Server thread only.
  */
 public final class ColonyMood {
-    /** The mood that leads now, and how strongly it is felt. */
-    public record Leading(Mood mood, double intensity) {
+    /** The mood that leads now, how strongly it is felt, and what stirred it ({@code ""} while calm). */
+    public record Leading(Mood mood, double intensity, String occasion, String cause) {
     }
 
     /** What stirred the mood: who it touches closely (a dead colonist's family) feel it harder. */
@@ -45,7 +45,11 @@ public final class ColonyMood {
 
     public Leading leading(long now) {
         List<Stir> felt = felt(now);
-        return felt.isEmpty() ? new Leading(Mood.CALM, 0) : new Leading(felt.get(0).mood(), felt.get(0).intensity(now));
+        if (felt.isEmpty()) {
+            return new Leading(Mood.CALM, 0, "", "");
+        }
+        Stir first = felt.get(0);
+        return new Leading(first.mood(), first.intensity(now), first.occasion(), first.cause());
     }
 
     /**

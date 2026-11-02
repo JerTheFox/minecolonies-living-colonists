@@ -167,6 +167,12 @@ public final class ColonyThreads {
      */
     boolean startChatter(MinecraftServer server, IColony colony, int speakerId, String about, int askedId,
                          Airtime.Kind kind) {
+        return startChatter(server, colony, speakerId, about, askedId, kind, 0);
+    }
+
+    /** The same, about something that matters {@code interest} (0-3) to the colony, so it runs longer (#65). */
+    boolean startChatter(MinecraftServer server, IColony colony, int speakerId, String about, int askedId,
+                         Airtime.Kind kind, int interest) {
         if (!talk.active(colony)) {
             return false;
         }
@@ -200,7 +206,7 @@ public final class ColonyThreads {
         thread.lastLineTick = now;
         thread.opening = null;
         thread.chatter = about;
-        thread.energy = ThreadPolicy.startEnergy(level, random);
+        thread.energy = ThreadPolicy.startEnergy(level, random) + ThreadPolicy.interestEnergy(interest);
         thread.language = Languages.ofLocale(Audience.language(audience));
         thread.addressed.add(speakerId);
         thread.asked = askedId;
@@ -368,6 +374,8 @@ public final class ColonyThreads {
                     if (result instanceof ChatResult.Reply reply) {
                         List<Integer> picked = ColonyRouter.parse(reply.text(), ids.size()).stream().distinct()
                                 .limit(MAX_ADDRESSED).toList();
+                        // What matters to them is talked about longer (#65).
+                        thread.energy += ThreadPolicy.interestEnergy(ColonyRouter.interest(reply.text()));
                         picked.forEach(index -> thread.addressed.add(ids.get(index)));
                         thread.askedByPlayer.addAll(thread.addressed);
                         if (picked.isEmpty() && !Addressing.toEveryone(message) && ids.contains(thread.lastAnswerer)) {

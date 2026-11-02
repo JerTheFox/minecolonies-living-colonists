@@ -43,6 +43,9 @@ final class Initiative {
     /** How often a colonist opening a colony chat turns to someone by name. */
     private static final double ASK_SOMEONE = 0.4;
 
+    /** A colony mood this strong (of 5) pulls colonists' own talk back to its cause. */
+    private static final double PULL_BACK = 3.0;
+    private static final double PULL_BACK_CHANCE = 0.6;
     private final TalkService talk;
     private final ColonyThreads threads;
     private final PerceptionService perception;
@@ -236,6 +239,14 @@ final class Initiative {
         String about = topic.get().kind() == InitiativePolicy.Kind.NEWS
                 ? "to pass on a bit of news you heard, as hearsay: " + topic.get().text() + "."
                 : "about " + topic.get().text() + ".";
+        // While the colony's mood is strong, talk keeps coming back to what stirred it (#65).
+        int interest = 0;
+        me.bytefox.livingcolonists.mood.ColonyMood.Leading mood = talk.moods().leading(colony.getID(), player.server.getTickCount());
+        if (mood.intensity() >= PULL_BACK && random.nextDouble() < PULL_BACK_CHANCE) {
+            about = "about what the whole colony feels right now: " + mood.cause() + ". Say how it touches you, ask how others"
+                    + " are taking it, remember or wonder; don't just repeat the news.";
+            interest = me.bytefox.livingcolonists.mood.MoodTable.row(mood.occasion()).interest();
+        }
         int asked = -1;
         if (random.nextDouble() < ASK_SOMEONE) {
             Optional<ICitizenData> other = threads.pickAddressee(colony, speaker);
@@ -245,7 +256,7 @@ final class Initiative {
                 asked = other.get().getId();
             }
         }
-        if (!threads.startChatter(player.server, colony, speaker.getId(), about, asked, Airtime.Kind.CHATTER)) {
+        if (!threads.startChatter(player.server, colony, speaker.getId(), about, asked, Airtime.Kind.CHATTER, interest)) {
             return Optional.empty();
         }
         note(speaker, player, topic.get(), now);

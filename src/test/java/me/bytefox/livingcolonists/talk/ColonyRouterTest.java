@@ -40,4 +40,13 @@ class ColonyRouterTest {
         assertTrue(ColonyRouter.parse("{\"to\": [0, 9]}", ROSTER.size()).isEmpty());
     }
 
+
+    @Test
+    void theRouterAlsoSaysHowMuchTheMessageMatters() {
+        org.junit.jupiter.api.Assertions.assertEquals(0, ColonyRouter.interest("{\"to\": \"everyone\", \"interest\": 0}"));
+        org.junit.jupiter.api.Assertions.assertEquals(3, ColonyRouter.interest("{\"to\": [1], \"interest\": 3}"));
+        org.junit.jupiter.api.Assertions.assertEquals(3, ColonyRouter.interest("{\"to\": [1], \"interest\": 9}"), "not capped");
+        org.junit.jupiter.api.Assertions.assertEquals(0, ColonyRouter.interest("{\"to\": \"everyone\"}"), "missing is none");
+        org.junit.jupiter.api.Assertions.assertEquals(0, ColonyRouter.interest("not json"));
+    }
 }
