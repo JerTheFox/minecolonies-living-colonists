@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-02
+
 ### Added
 
 - Each colony has its own calendar: four seasons of 24 days, 96 days a year. A calendar day passes only on a game day when a member of the colony spent five minutes inside it, so a server running with nobody on doesn't use up holidays.
@@ -363,7 +365,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A colony conversation that ended while a reply was still on its way no longer comes back to life.
 - Old conversations that are fully written down no longer pile up in the world's data.
 
-[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.5...v0.4.0
 [0.3.5]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.3...v0.3.4
