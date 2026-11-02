@@ -118,6 +118,7 @@ public final class LivingColonists {
                 me.bytefox.livingcolonists.talk.Catchphrases.use(prompts.content(PromptLibrary.CATCHPHRASES));
                 me.bytefox.livingcolonists.friendship.GiftTastes.use(prompts.content(PromptLibrary.GIFTS));
                 me.bytefox.livingcolonists.friendship.CalendarTable.use(prompts.content(PromptLibrary.CALENDAR));
+                me.bytefox.livingcolonists.friendship.FriendshipLevels.use(prompts.content(PromptLibrary.FRIENDSHIP));
             } catch (RuntimeException e) {
                 ModLog.warn("A content file in config/livingcolonists/content is broken, fix or delete it", e);
             }

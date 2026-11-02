@@ -160,7 +160,12 @@ public final class Bonds {
         }
         int rapport = relation.rapport();
         String tone;
-        if (rapport >= 25) {
+        String level = me.bytefox.livingcolonists.friendship.FriendshipLevels.level(rapport).id();
+        if (level.equals("best")) {
+            tone = "your best friend here: treat them like family, easy, warm and completely open.";
+        } else if (level.equals("close")) {
+            tone = "a close friend who has stood by you, so be openly fond of them, joke with them and share personal things.";
+        } else if (rapport >= 25) {
             tone = "consistently kind and respectful, so be warm and open with them and glad to help.";
         } else if (rapport >= 8) {
             tone = "mostly pleasant so far, so be friendly.";

@@ -42,6 +42,14 @@ public final class GameEvents {
     public record ColonyHappened(IColony colony, String what, boolean building, boolean urgent) {
     }
 
+    /** How a colonist feels about a player changed: talk, a gift, a promise (not cooling with time). */
+    public record RapportChanged(ICitizenData citizen, java.util.UUID player, int before, int after) {
+    }
+
+    /** A colonist reached a warmer friendship level with a player for the first time (#67). */
+    public record FriendshipMilestone(ICitizenData citizen, java.util.UUID player, String level) {
+    }
+
     /** A baby was born in the colony. */
     public record CitizenBorn(ICitizenData citizen) {
     }

@@ -592,8 +592,11 @@ public final class BondsService {
     }
 
     private void note(ICitizenData citizen, UUID player, int delta, String text, long now) {
+        int before = data.relations.getOrDefault(key(citizen, player), Relation.EMPTY).rapport();
         data.relations.merge(key(citizen, player), Relation.EMPTY.with(delta, text, now),
                 (old, fresh) -> old.with(delta, text, now));
+        me.bytefox.livingcolonists.events.ModEvents.BUS.post(new me.bytefox.livingcolonists.events.GameEvents.RapportChanged(
+                citizen, player, before, data.relations.get(key(citizen, player)).rapport()));
         data.setDirty();
         // How a player treats them shows in their happiness for a few days (#61).
         if (delta != 0) {
@@ -693,6 +696,64 @@ public final class BondsService {
         return true;
     }
 
+    /** The warmest friendship level the colonist reached with the player, by rank; -1 for none yet (#67). */
+    public int reached(ICitizenData citizen, UUID player) {
+        return data == null ? -1 : data.reached.getOrDefault(key(citizen, player), -1);
+    }
+
+    public void reach(ICitizenData citizen, UUID player, int rank) {
+        if (data != null) {
+            data.reached.put(key(citizen, player), rank);
+            data.setDirty();
+        }
+    }
+
+    /** The colonist and the player had something to do with each other on this calendar day. */
+    public void contact(ICitizenData citizen, UUID player, int day) {
+        if (data != null) {
+            data.contact.put(key(citizen, player), day);
+            data.setDirty();
+        }
+    }
+
+    /**
+     * A new calendar day in the colony (#67): friendships with players the colonist hasn't seen for a while cool a little,
+     * grudges fade a little ({@link me.bytefox.livingcolonists.friendship.FriendshipLevels#cooled}). Nothing to remember,
+     * no change in happiness.
+     */
+    public void cool(int colonyId, int today) {
+        if (data == null) {
+            return;
+        }
+        String prefix = colonyId + ":";
+        for (Map.Entry<String, Relation> entry : data.relations.entrySet()) {
+            if (!entry.getKey().startsWith(prefix)) {
+                continue;
+            }
+            Integer last = data.contact.get(entry.getKey());
+            if (last == null || last > today) {
+                // Known from before the calendar: the days without contact count from now.
+                data.contact.put(entry.getKey(), today);
+                data.setDirty();
+                continue;
+            }
+            Relation relation = entry.getValue();
+            int cooled = me.bytefox.livingcolonists.friendship.FriendshipLevels.cooled(relation.rapport(), today - last);
+            if (cooled != relation.rapport()) {
+                entry.setValue(new Relation(cooled, relation.notes()));
+                data.setDirty();
+            }
+        }
+    }
+
+    /** The colonist told the player what they think of an item, as if it had been a gift. */
+    public void learnTaste(ICitizenData citizen, UUID player, String item, Taste taste) {
+        if (data != null) {
+            data.tastes.computeIfAbsent(key(citizen, player), k -> new HashMap<>()).put(item, taste.name());
+            data.setDirty();
+        }
+    }
+
     /** What the colonist thought of the things the player gave them, item ids by taste, in no set order. */
     public Map<Taste, List<String>> knownTastes(ICitizenData citizen, UUID player) {
         Map<Taste, List<String>> out = new java.util.EnumMap<>(Taste.class);
@@ -740,6 +801,8 @@ public final class BondsService {
         moved |= me.bytefox.livingcolonists.Citizens.move(data.credited, from, to);
         moved |= me.bytefox.livingcolonists.Citizens.move(data.gifted, from, to);
         moved |= me.bytefox.livingcolonists.Citizens.move(data.tastes, from, to);
+        moved |= me.bytefox.livingcolonists.Citizens.move(data.reached, from, to);
+        moved |= me.bytefox.livingcolonists.Citizens.move(data.contact, from, to);
         if (moved) {
             data.setDirty();
         }
@@ -757,6 +820,8 @@ public final class BondsService {
         data.moods.keySet().removeIf(key);
         data.gifted.keySet().removeIf(key);
         data.tastes.keySet().removeIf(key);
+        data.reached.keySet().removeIf(key);
+        data.contact.keySet().removeIf(key);
         // A pair is dropped when either colonist matches.
         data.colonists.keySet().removeIf(pair -> {
             String[] parts = pair.split(":");

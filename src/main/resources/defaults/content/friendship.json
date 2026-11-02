@@ -1,0 +1,21 @@
+{
+  "_comment": "Friendship with players (#67). levels: from which rapport (-100..100) each level starts, lowest first. cooling: after graceDays calendar days without any contact (talk, a gift, a promise), rapport above warmFloor drops by perDay each calendar day and rapport below coldFloor rises by it, so close friendships need keeping up and grudges fade, but a friend stays a friend. milestones: what the colonist tells the player, privately, the first time they reach a level (for the model, in English; {favourite} is their own odd favourite gift).",
+  "levels": [
+    {"id": "enemy",   "from": -100},
+    {"id": "odds",    "from": -39},
+    {"id": "cool",    "from": -19},
+    {"id": "neutral", "from": -4},
+    {"id": "likes",   "from": 5},
+    {"id": "friend",  "from": 20},
+    {"id": "good",    "from": 40},
+    {"id": "close",   "from": 60},
+    {"id": "best",    "from": 80}
+  ],
+  "cooling": {"graceDays": 3, "perDay": 1, "warmFloor": 20, "coldFloor": -20},
+  "milestones": {
+    "friend": "to tell them, briefly and in your own way, that you've come to think of them as a friend.",
+    "good": "to tell them something personal you don't tell just anyone: that you have a soft spot for {favourite}.",
+    "close": "to tell them, briefly and warmly, that they've become one of the people you trust most here, and to ask them to drop by your workplace some time.",
+    "best": "to tell them, in your own way and without fuss, that they are your best friend here and that you'd do anything for them."
+  }
+}

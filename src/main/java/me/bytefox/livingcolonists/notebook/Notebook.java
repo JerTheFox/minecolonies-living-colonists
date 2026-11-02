@@ -147,9 +147,7 @@ public final class Notebook {
 
     /** How a colonist feels about the player, by rapport. */
     static String level(int rapport) {
-        String level = rapport >= 40 ? "close" : rapport >= 20 ? "friend" : rapport >= 5 ? "likes"
-                : rapport > -5 ? "neutral" : rapport > -20 ? "cool" : "odds";
-        return "livingcolonists.book.level." + level;
+        return "livingcolonists.book.level." + me.bytefox.livingcolonists.friendship.FriendshipLevels.level(rapport).id();
     }
 
     private List<Component> orders(ServerPlayer player) {

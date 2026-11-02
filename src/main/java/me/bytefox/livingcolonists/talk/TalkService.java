@@ -144,6 +144,9 @@ public final class TalkService {
         this.gifts = new GiftWatch(this, bonds, memory, personalities);
         this.deeds = new PlayerDeeds(events);
         this.drift = new RelationsDrift(this, threads, bonds, memory);
+        this.friendship = new me.bytefox.livingcolonists.friendship.Friendship(bonds, calendar);
+        FriendshipNews friendshipNews = new FriendshipNews(this, bonds, memory);
+        ModEvents.BUS.on(GameEvents.FriendshipMilestone.class, friendshipNews::milestone);
         CalendarNews calendarNews = new CalendarNews(events, errands.tally(), calendar);
         ModEvents.BUS.on(GameEvents.CalendarDay.class, calendarNews::newDay);
     }
@@ -185,6 +188,8 @@ public final class TalkService {
     }
 
     private final me.bytefox.livingcolonists.friendship.Calendar calendar = new me.bytefox.livingcolonists.friendship.Calendar();
+
+    private final me.bytefox.livingcolonists.friendship.Friendship friendship;
 
     /** The colony calendars (#67). */
     public me.bytefox.livingcolonists.friendship.Calendar calendar() {

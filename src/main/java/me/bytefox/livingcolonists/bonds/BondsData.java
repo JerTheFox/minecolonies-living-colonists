@@ -38,6 +38,10 @@ public final class BondsData extends SavedData {
     final java.util.Set<UUID> bookGiven = new java.util.HashSet<>();
     /** When gifts last counted (#67), game time, oldest first; key as {@link #relations}. */
     final Map<String, List<Long>> gifted = new HashMap<>();
+    /** The warmest friendship level each colonist reached with each player (#67), by rank; key as {@link #relations}. */
+    final Map<String, Integer> reached = new HashMap<>();
+    /** The colony calendar day of a colonist's last contact with each player (#67); key as {@link #relations}. */
+    final Map<String, Integer> contact = new HashMap<>();
     /** What a colonist thought of each thing a player gave them: item id to taste; key as {@link #relations}. */
     final Map<String, Map<String, String>> tastes = new HashMap<>();
     long nextId = 1;
@@ -89,6 +93,10 @@ public final class BondsData extends SavedData {
             }
             data.gifted.put(key, times);
         }
+        CompoundTag reached = tag.getCompound("reached");
+        reached.getAllKeys().forEach(key -> data.reached.put(key, reached.getInt(key)));
+        CompoundTag contact = tag.getCompound("contact");
+        contact.getAllKeys().forEach(key -> data.contact.put(key, contact.getInt(key)));
         CompoundTag tastes = tag.getCompound("tastes");
         for (String key : tastes.getAllKeys()) {
             CompoundTag one = tastes.getCompound(key);
@@ -182,6 +190,12 @@ public final class BondsData extends SavedData {
         CompoundTag giftedTag = new CompoundTag();
         gifted.forEach((key, times) -> giftedTag.putLongArray(key, times.stream().mapToLong(Long::longValue).toArray()));
         tag.put("gifted", giftedTag);
+        CompoundTag reachedTag = new CompoundTag();
+        reached.forEach(reachedTag::putInt);
+        tag.put("reached", reachedTag);
+        CompoundTag contactTag = new CompoundTag();
+        contact.forEach(contactTag::putInt);
+        tag.put("contact", contactTag);
         CompoundTag tasteTag = new CompoundTag();
         tastes.forEach((key, items) -> {
             CompoundTag one = new CompoundTag();
