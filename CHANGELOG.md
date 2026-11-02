@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-02
+
 ### Added
 
 - Letters from colonists. A friend now and then leaves a short note with a small gift in the Colony Notebook, more often the closer you are and at most once a week; the gift fits their job (a baker's bread, a miner's torches) and is made from nothing, not taken from the warehouse. On the Gift Exchange someone who likes you sends a gift without a name, and a new best friend sends a keepsake. Gifts wait in the notebook's new Letters tab until you take them. The lists are in `config/livingcolonists/content/letters.json`.
@@ -375,7 +377,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A colony conversation that ended while a reply was still on its way no longer comes back to life.
 - Old conversations that are fully written down no longer pile up in the world's data.
 
-[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.5...v0.4.0
 [0.3.5]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.4...v0.3.5
