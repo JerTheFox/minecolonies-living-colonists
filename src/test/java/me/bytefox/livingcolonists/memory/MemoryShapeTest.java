@@ -1,5 +1,6 @@
 package me.bytefox.livingcolonists.memory;
 
+import me.bytefox.livingcolonists.bonds.PlayerMarks;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;

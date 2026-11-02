@@ -1,5 +1,6 @@
 package me.bytefox.livingcolonists.memory;
 
+import me.bytefox.livingcolonists.bonds.PlayerMarks;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

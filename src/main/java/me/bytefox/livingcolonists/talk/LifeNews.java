@@ -39,7 +39,7 @@ final class LifeNews {
         // Now and then the people close to them remark on it (#57).
         if (random.nextDouble() < LIFE_NEWS_CHANCE) {
             events.announce(colony.getWorld().getServer(), colony, citizen.getName() + " has just become the colony's "
-                    + change.to() + ".", closeTo(citizen));
+                    + change.to() + ".", closeTo(citizen), "new_job");
         }
     }
 
@@ -54,7 +54,7 @@ final class LifeNews {
             return;
         }
         events.announce(colony.getWorld().getServer(), colony, citizen.getName() + " has fallen ill with " + ill.illness()
-                + ".", closeTo(citizen));
+                + ".", closeTo(citizen), "illness");
     }
 
     /** Family and coworkers of a colonist, the likeliest to remark on their life; never the colonist. */

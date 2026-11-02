@@ -44,19 +44,22 @@ final class FriendshipNews {
         if (player == null || said.isEmpty()) {
             return;
         }
+        String favouriteName = "";
         if (said.contains("{favourite}")) {
             ItemStack favourite = GiftTastes.oddLove(citizen.getColony().getID() + ":" + citizen.getId());
             if (favourite.isEmpty()) {
                 return;
             }
             bonds.learnTaste(citizen, event.player(), BuiltInRegistries.ITEM.getKey(favourite.getItem()).toString(), Taste.LOVE);
-            said = said.replace("{favourite}", ItemNames.of(favourite));
+            favouriteName = ItemNames.of(favourite);
+            said = said.replace("{favourite}", favouriteName);
         }
         String playerName = Audience.playerName(player);
         Counters.add("friendship.milestones");
         ModLog.action("{} now sees {} as {}", citizen.getName(), playerName, AS.getOrDefault(event.level(), event.level()));
         memory.rememberSeen(citizen.getColony(), List.of(citizen.getId()), playerName,
                 citizen.getName() + " has come to see " + playerName + " as " + AS.getOrDefault(event.level(), event.level()) + ".", 4);
-        talk.writeFirst(player, citizen, said, false, null, false, Airtime.Kind.NOTE);
+        talk.writeFirst(player, citizen, said, false, null, false, Airtime.Kind.NOTE,
+                new TalkService.SetLine("milestone." + event.level(), favouriteName));
     }
 }

@@ -61,6 +61,13 @@ public final class Config {
                     "LIVINGCOLONISTS_API_KEY.")
             .define("apiKeyEnv", "LIVINGCOLONISTS_API_KEY");
 
+    public static final ModConfigSpec.BooleanValue USE_MODEL = BUILDER
+            .translation("livingcolonists.configuration.useModel")
+            .comment("On: colonists talk through the language model below. Off, or with no API key: they react with set lines",
+                    "from the language files, and everything else (the notebook, promises from MineColonies' windows, gifts,",
+                    "letters, help, the calendar, happiness) works as usual. Default on.")
+            .define("useModel", true);
+
     public static final ModConfigSpec.IntValue TIMEOUT_SECONDS = BUILDER
             .translation("livingcolonists.configuration.timeoutSeconds")
             .comment("How long to wait for one answer before giving up and retrying, in seconds. From 1 to 300, default",
@@ -370,6 +377,11 @@ public final class Config {
     }
 
     /** The main API key from the config, or else from the environment variable; empty if neither is set. */
+    /** Whether colonists talk through a language model now; without one they use set lines (#68). */
+    public static boolean modelOn() {
+        return llmSettings(ModelRole.CHAT).isPresent();
+    }
+
     public static Optional<String> apiKey() {
         return key(API_KEY.get(), API_KEY_ENV.get());
     }
@@ -403,6 +415,9 @@ public final class Config {
 
     /** A snapshot of the current settings for a kind of request, or empty when there is no API key. Server thread. */
     public static Optional<LlmSettings> llmSettings(ModelRole role) {
+        if (!USE_MODEL.get()) {
+            return Optional.empty();
+        }
         String model = role == ModelRole.CHARACTER && !CHARACTER_MODEL.get().isBlank() ? CHARACTER_MODEL.get() : CHAT_MODEL.get();
         LlmEndpoint fallback = FALLBACK_ENABLED.get() && !FALLBACK_MODEL.get().isBlank()
                 ? new LlmEndpoint(FALLBACK_BASE_URL.get(), FALLBACK_MODEL.get(),

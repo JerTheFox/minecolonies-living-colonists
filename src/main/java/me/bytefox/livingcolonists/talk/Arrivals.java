@@ -290,11 +290,12 @@ final class Arrivals {
         String name = Audience.playerName(player);
         List<String> news = visit.visit().news();
         // News of the colony is everyone's to tell: it goes to the colony chat, where others may join in.
-        boolean said = !news.isEmpty() && threads.startChatter(server, colony, speaker.getId(), "how " + name
+        // Without a model the news isn't told: a greeting in a set line only (#68).
+        boolean said = Config.modelOn() && !news.isEmpty() && threads.startChatter(server, colony, speaker.getId(), "how " + name
                 + " has just come back to the colony, and what happened while they were away: " + String.join(" ",
                 news.stream().limit(3).toList()) + " Tell them what matters most of it, turning to them by name.", -1, Airtime.Kind.NEWS)
                 || talk.writeFirst(player, speaker, ArrivalPolicy.purpose(visit.visit(), name), true, null, true,
-                Airtime.Kind.GREETING)
+                Airtime.Kind.GREETING, new TalkService.SetLine("greet"))
                 == Notes.Delivery.SENT;
         if (said) {
             lastGreeting.put(id, now);
@@ -309,7 +310,7 @@ final class Arrivals {
     /** A colonist remarks in the colony chat that a player left, if others are still there to hear it. */
     private boolean sayGoodbye(MinecraftServer server, UUID id, Farewell farewell, Level level, long now) {
         IColony colony = Colonies.byId(farewell.colonyId(), farewell.dimension());
-        if (colony == null || level == Level.OFF || !talk.canWriteFirst() || threads.isBusy(colony.getID(), now)
+        if (colony == null || level == Level.OFF || !Config.modelOn() || !talk.canWriteFirst() || threads.isBusy(colony.getID(), now)
                 || now - lastFarewell.getOrDefault(id, Long.MIN_VALUE / 2) < ArrivalPolicy.playerGap(level)
                 || now - lastInColony.getOrDefault(colony.getID(), Long.MIN_VALUE / 2) < ArrivalPolicy.colonyGap(level)
                 || random.nextDouble() >= ArrivalPolicy.farewellChance(level)) {

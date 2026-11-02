@@ -27,7 +27,7 @@ import me.bytefox.livingcolonists.bonds.Relation;
 import me.bytefox.livingcolonists.memory.Fact;
 import me.bytefox.livingcolonists.memory.MemoryLine;
 import me.bytefox.livingcolonists.memory.MemoryService;
-import me.bytefox.livingcolonists.memory.PlayerMarks;
+import me.bytefox.livingcolonists.bonds.PlayerMarks;
 import me.bytefox.livingcolonists.perception.PerceptionService;
 import me.bytefox.livingcolonists.personality.Archetype;
 import me.bytefox.livingcolonists.personality.Personality;

@@ -166,6 +166,13 @@ public final class ColonyThreads {
      * Only with players around and nothing going on in the chat. Returns whether it started.
      */
     private final Catchphrases catchphrases = new Catchphrases();
+    /** Dice that always come up, for a catchphrase said on purpose. */
+    private static final Random ALWAYS = new Random() {
+        @Override
+        public double nextDouble() {
+            return 0;
+        }
+    };
     static final String ASKED_BY_NAME = "The last line asked you something by name: answer it first, in your own way.";
 
     /** Below this energy a talk is winding down: one with an ending gets it now. */
@@ -253,6 +260,12 @@ public final class ColonyThreads {
      */
     public boolean startEvent(MinecraftServer server, IColony colony, String what, List<Integer> preferred, boolean urgent,
                               int interest) {
+        return startEvent(server, colony, what, preferred, urgent, interest, "");
+    }
+
+    /** The same, as an occasion of the mood table: without a model, its set line is said (#68). */
+    public boolean startEvent(MinecraftServer server, IColony colony, String what, List<Integer> preferred, boolean urgent,
+                              int interest, String occasion) {
         if (!talk.active(colony)) {
             return false;
         }
@@ -289,6 +302,7 @@ public final class ColonyThreads {
         thread.lastLineTick = now;
         thread.lastEventTick = now;
         thread.opening = what;
+        thread.occasion = occasion;
         thread.chatter = null;
         thread.shape = null;
         thread.ending = null;
@@ -371,6 +385,12 @@ public final class ColonyThreads {
                        String message) {
         var settings = Config.llmSettings(ModelRole.CHAT);
         if (settings.isEmpty()) {
+            // Without a model nobody works out whom it's for: whoever answered last, or someone, says something (#68).
+            int answerer = citizens.stream().anyMatch(c -> c.getId() == thread.lastAnswerer) ? thread.lastAnswerer
+                    : citizens.get(random.nextInt(citizens.size())).getId();
+            thread.addressed.add(answerer);
+            thread.askedByPlayer.add(answerer);
+            nextTurn(server, colony, thread, version);
             return;
         }
         List<ColonyRouter.Member> roster = new ArrayList<>();
@@ -434,6 +454,10 @@ public final class ColonyThreads {
         // never instead of answering a question asked by name.
         if (!answeringPlayer && opening == null && chatter == null && thread.questionTo != citizen.getId()
                 && setLine(server, colony, thread, version, citizen)) {
+            return;
+        }
+        if (!Config.modelOn()) {
+            withoutModel(server, colony, thread, version, citizen, answeringPlayer, opening != null, chatter != null);
             return;
         }
         ServerPlayer player = thread.lastPlayer == null ? null : server.getPlayerList().getPlayer(thread.lastPlayer);
@@ -575,10 +599,44 @@ public final class ColonyThreads {
     }
 
     /**
+     * A turn without a model (#68): an event is brought up with its set line, a player gets a set reply by how the
+     * colonist feels about them, a chat of their own is a catchphrase; nothing else, so the talk ends there.
+     */
+    private void withoutModel(MinecraftServer server, IColony colony, ChatThread thread, long version, ICitizenData citizen,
+                              boolean answeringPlayer, boolean event, boolean chatter) {
+        String locale = Audience.language(Audience.colonyAudience(server, colony, null));
+        Optional<String> text = Optional.empty();
+        if (event) {
+            text = SetLines.pick("event." + thread.occasion, locale, random);
+        } else if (answeringPlayer) {
+            int rapport = thread.lastPlayer == null ? 0 : bonds.playerRapport(citizen, thread.lastPlayer);
+            text = SetLines.pick("reply." + TalkService.warmth(rapport), locale, random);
+        } else if (chatter) {
+            setLine(server, colony, thread, version, citizen, true);
+            return;
+        }
+        if (text.isEmpty()) {
+            return;
+        }
+        Counters.add("lines.set");
+        Speaker speaker = Audience.speakerOf(citizen);
+        String line = text.get();
+        long at = server.getTickCount() + Math.round(CHATTER_PACE * LinePacing.typingTicks(line.length()));
+        thread.lastLineTick = at;
+        scheduled.add(new Scheduled(at, () -> say(server, colony, thread, version, speaker, line, false)));
+    }
+
+    /**
      * Says a catchphrase's set reply, or now and then a catchphrase (#65), as written in the content file: never while the
      * colony panics or grieves. Returns whether the colonist said one, so the model isn't asked for a line.
      */
     private boolean setLine(MinecraftServer server, IColony colony, ChatThread thread, long version, ICitizenData citizen) {
+        return setLine(server, colony, thread, version, citizen, false);
+    }
+
+    /** The same; {@code surely} without the dice, for a chat of their own without a model (the cooldowns still hold). */
+    private boolean setLine(MinecraftServer server, IColony colony, ChatThread thread, long version, ICitizenData citizen,
+                            boolean surely) {
         String text = thread.setReply;
         thread.setReply = null;
         if (text == null) {
@@ -598,7 +656,7 @@ public final class ColonyThreads {
             }
             String language = thread.language == null ? "English" : thread.language;
             Optional<Catchphrases.Said> said = catchphrases.maybe(colony.getID(), colony.getID() + ":" + citizen.getId(),
-                    language, friend, enemy, server.getTickCount(), colony.getWorld().getGameTime(), random);
+                    language, friend, enemy, server.getTickCount(), colony.getWorld().getGameTime(), surely ? ALWAYS : random);
             if (said.isEmpty()) {
                 return false;
             }

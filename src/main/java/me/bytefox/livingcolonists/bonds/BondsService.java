@@ -21,7 +21,6 @@ import me.bytefox.livingcolonists.ModLog;
 import me.bytefox.livingcolonists.friendship.Taste;
 import me.bytefox.livingcolonists.Citizens;
 import me.bytefox.livingcolonists.memory.Digests;
-import me.bytefox.livingcolonists.memory.PlayerMarks;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;

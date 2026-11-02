@@ -224,8 +224,9 @@ public final class TalkService {
     /** Whether colonists can write first at all now: conversation on, a model set and the day's tokens left. */
     boolean canWriteFirst() {
         Optional<LlmSettings> settings = Config.llmSettings(ModelRole.CHAT);
+        // Without a model colonists still greet and now and then say a catchphrase, in set lines (#68).
         return Config.level(Module.CONVERSATION) != me.bytefox.livingcolonists.behaviour.Level.OFF
-                && !client.overDailyLimit() && settings.isPresent() && !client.paused(settings.get());
+                && (settings.isEmpty() || !client.overDailyLimit() && !client.paused(settings.get()));
     }
 
     /** When the player last wrote to colonists, in server ticks; long ago if never. */
@@ -382,7 +383,16 @@ public final class TalkService {
         if (errands.answer(player, message)) {
             return;
         }
-        if (!admit(player, citizen.getColony()) || settings(player).isEmpty()) {
+        if (!admit(player, citizen.getColony())) {
+            return;
+        }
+        if (!Config.modelOn()) {
+            // Without a model the colonist answers with a set line by how they feel about the player (#68).
+            Speaker speaker = Audience.speakerOf(citizen);
+            output.playerWhispered(player, speaker, message);
+            memory.rememberPrivate(citizen, player.getUUID(), Audience.playerName(player), message);
+            noModelHint(player);
+            whisper(player, citizen, new SetLine("reply." + warmth(bonds.playerRapport(citizen, player.getUUID()))));
             return;
         }
         Speaker speaker = Audience.speakerOf(citizen);
@@ -442,7 +452,8 @@ public final class TalkService {
      */
     public boolean remindPromise(ServerPlayer player, ICitizenData citizen, Promise promise) {
         boolean sent = writeFirst(player, citizen, "to remind them of a promise that is overdue now: \"" + promise.text()
-                + "\". Say it in your own way and mood, in one or two sentences.", true, null, false) == Notes.Delivery.SENT;
+                + "\". Say it in your own way and mood, in one or two sentences.", true, null, false, Airtime.Kind.NOTE,
+                new SetLine("promise.overdue", promise.display().getString())) == Notes.Delivery.SENT;
         if (sent) {
             ModLog.action("{} reminds {} of an overdue promise: {}", citizen.getName(),
                     player.getGameProfile().getName(), promise.text());
@@ -468,11 +479,21 @@ public final class TalkService {
     /** The same, as a line of {@code kind} for the shared budget: held back for later if it is spent. */
     Notes.Delivery writeFirst(ServerPlayer player, ICitizenData citizen, String purpose, boolean inColonyOnly,
                               Runnable failed, boolean ownTopic, Airtime.Kind kind) {
+        return writeFirst(player, citizen, purpose, inColonyOnly, failed, ownTopic, kind, null);
+    }
+
+    /** What a colonist says without a model (#68): an occasion of {@link SetLines} and what fills it in. */
+    record SetLine(String occasion, Object... args) {
+    }
+
+    /** The same; without a model, {@code fallback} is said instead, if there is one. */
+    Notes.Delivery writeFirst(ServerPlayer player, ICitizenData citizen, String purpose, boolean inColonyOnly,
+                              Runnable failed, boolean ownTopic, Airtime.Kind kind, SetLine fallback) {
         IColony colony = citizen.getColony();
         Speaker speaker = Audience.speakerOf(citizen);
         long key = key(speaker.colonyId(), speaker.citizenId());
         if (Config.level(Module.CONVERSATION) == me.bytefox.livingcolonists.behaviour.Level.OFF
-                || client.overDailyLimit() || Config.llmSettings(ModelRole.CHAT).isEmpty()) {
+                || Config.modelOn() && client.overDailyLimit() || !Config.modelOn() && fallback == null) {
             return Notes.Delivery.NEVER;
         }
         if (!active(colony)) {
@@ -488,6 +509,9 @@ public final class TalkService {
         }
         airtime.spend(bucket, player.server.getTickCount());
         Counters.add("said." + kind.key());
+        if (!Config.modelOn()) {
+            return whisper(player, citizen, fallback) ? Notes.Delivery.SENT : Notes.Delivery.NEVER;
+        }
         String playerName = Audience.playerName(player);
         List<ChatMessage> messages = new ArrayList<>();
         for (MemoryLine line : memory.privateTalk(citizen, player.getUUID())) {
@@ -525,6 +549,25 @@ public final class TalkService {
         return Notes.Delivery.SENT;
     }
 
+    /**
+     * A set line said privately to the player, after a typing pause, as a reply from the model would be (#68). Whether
+     * the occasion had a line.
+     */
+    boolean whisper(ServerPlayer player, ICitizenData citizen, SetLine line) {
+        Optional<String> text = SetLines.pick(line.occasion(), player.clientInformation().language(), random, line.args());
+        if (text.isEmpty()) {
+            return false;
+        }
+        Speaker speaker = Audience.speakerOf(citizen);
+        MinecraftServer server = player.server;
+        long earliest = server.getTickCount() + LinePacing.gap(random);
+        typing.start(server, speaker, List.of(player), earliest);
+        long at = LinePacing.slot(server.getTickCount(), earliest + LinePacing.typingTicks(text.get().length()), 0);
+        pending.add(new PendingLine(at, citizen.getColony().getDimension(), speaker, player.getUUID(), text.get()));
+        Counters.add("lines.set");
+        return true;
+    }
+
     /** The colonist passed a fact on as gossip, so they won't retell it. */
     void told(ResourceKey<Level> dimension, Speaker speaker, Fact fact) {
         ICitizenData citizen = Audience.resolve(dimension, speaker.colonyId(), speaker.citizenId());
@@ -536,7 +579,10 @@ public final class TalkService {
     /** A message to the whole colony goes into its conversation thread. */
     public void sayToColony(ServerPlayer player, IColony colony, String message) {
         lastMessage.put(player.getUUID(), (long) player.server.getTickCount());
-        if (admit(player, colony) && settings(player).isPresent()) {
+        if (admit(player, colony)) {
+            if (!Config.modelOn()) {
+                noModelHint(player);
+            }
             threads.onPlayerMessage(player, colony, message);
         }
     }
@@ -647,12 +693,19 @@ public final class TalkService {
 
 
 
-    private static Optional<LlmSettings> settings(ServerPlayer player) {
-        Optional<LlmSettings> settings = Config.llmSettings(ModelRole.CHAT);
-        if (settings.isEmpty()) {
-            player.sendSystemMessage(Component.translatable("livingcolonists.talk.no_key"));
+    /** Players already told this run that colonists talk in set lines. */
+    private final Set<UUID> toldNoModel = new HashSet<>();
+
+    /** Once a run, the player hears that colonists answer with set lines: no language model is set up (#68). */
+    private void noModelHint(ServerPlayer player) {
+        if (toldNoModel.add(player.getUUID())) {
+            player.sendSystemMessage(Component.translatable("livingcolonists.talk.no_model").withStyle(net.minecraft.ChatFormatting.GRAY));
         }
-        return settings;
+    }
+
+    /** How a reply without a model sounds: warm, neutral or cold, by how the colonist feels about the player. */
+    static String warmth(int rapport) {
+        return rapport >= 20 ? "warm" : rapport <= -20 ? "cold" : "neutral";
     }
 
 

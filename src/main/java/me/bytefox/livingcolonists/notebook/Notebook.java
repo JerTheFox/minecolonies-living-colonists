@@ -439,6 +439,8 @@ public final class Notebook {
                             Component.translatable("livingcolonists.book.help.colony_off.hint"))).append(" ")
                     .append(button("livingcolonists.book.help.colony_on", ChatFormatting.DARK_GREEN, "/lc colony on", null)));
         }
+        pager.add(Component.translatable(me.bytefox.livingcolonists.Config.modelOn()
+                ? "livingcolonists.book.settings.model_on" : "livingcolonists.book.settings.model_off"));
         pager.add(Component.translatable(me.bytefox.livingcolonists.Config.MEMBERS_ONLY.get()
                 ? "livingcolonists.book.settings.members_only" : "livingcolonists.book.settings.everyone"));
         if (me.bytefox.livingcolonists.Config.COLONY_CHAT_ANYWHERE.get()) {

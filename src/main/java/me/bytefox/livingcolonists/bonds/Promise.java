@@ -117,7 +117,7 @@ public record Promise(long id, UUID maker, String makerName, String text, int wo
             return net.minecraft.network.chat.Component.translatable(parts[0], args);
         }
         return net.minecraft.network.chat.Component.literal(shown.isEmpty()
-                ? me.bytefox.livingcolonists.memory.PlayerMarks.resolve(text) : shown);
+                ? PlayerMarks.resolve(text) : shown);
     }
 
     /** Marks a translation key in {@link #shown}; arguments are tab-separated, a key among them marked the same. */

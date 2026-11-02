@@ -5,6 +5,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- The mod works without a language model. With no API key, or with `useModel` turned off in `[llm]`, colonists answer and react in set lines from the language files: a short reply when you write to them (warmer or colder by how they feel about you), thanks for a gift by taste, a word at each new friendship level, a reminder of an overdue promise, a greeting when you come back, a line about a death, a birth, a raid, a new building, a holiday or a birthday, and now and then a catchphrase. The notebook, promises from MineColonies' windows, gifts, letters, help in trouble, the calendar, happiness and the work bonus work as usual. What needs the model (look-ups and orders in your own words, memory, life stories) stays off, nothing is sent anywhere, and the first time you write to a colonist you're told why the answers are short. The notebook's Settings tab says which way colonists talk.
+
+### Removed
+
+- The note that no API key is set, in favour of the set lines above.
+
 ## [0.6.0] - 2026-11-02
 
 ### Added

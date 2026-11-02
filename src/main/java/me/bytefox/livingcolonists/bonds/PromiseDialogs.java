@@ -15,7 +15,6 @@ import com.minecolonies.api.colony.requestsystem.token.IToken;
 import com.minecolonies.api.colony.requestsystem.token.StandardToken;
 import me.bytefox.livingcolonists.Citizens;
 import me.bytefox.livingcolonists.ModLog;
-import me.bytefox.livingcolonists.memory.PlayerMarks;
 import me.bytefox.livingcolonists.perception.ItemNames;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;

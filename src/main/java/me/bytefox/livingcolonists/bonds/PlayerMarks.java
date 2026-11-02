@@ -1,4 +1,4 @@
-package me.bytefox.livingcolonists.memory;
+package me.bytefox.livingcolonists.bonds;
 
 import java.util.Collection;
 import java.util.Map;
@@ -110,7 +110,7 @@ public final class PlayerMarks {
     }
 
     /** The word is the name, or for a Cyrillic name its form with a short case ending. */
-    static boolean isForm(String word, String name) {
+    public static boolean isForm(String word, String name) {
         String w = word.toLowerCase(java.util.Locale.ROOT).replace('ё', 'е');
         String n = name.toLowerCase(java.util.Locale.ROOT).replace('ё', 'е');
         if (n.isEmpty() || n.contains(" ")) {

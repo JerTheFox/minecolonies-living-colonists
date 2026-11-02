@@ -6,7 +6,7 @@ import java.util.Map;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import me.bytefox.livingcolonists.memory.PlayerMarks;
+import me.bytefox.livingcolonists.bonds.PlayerMarks;
 
 /** Builds the body of an OpenAI-compatible {@code POST /chat/completions} request. */
 public final class ChatRequests {

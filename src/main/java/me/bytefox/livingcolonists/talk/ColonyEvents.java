@@ -227,7 +227,8 @@ public final class ColonyEvents {
                     Queued next = queue.stream().filter(queued -> queued.event().urgent()).findFirst()
                             .orElse(queue.peekFirst());
                     if (next != null && threads.startEvent(server, colony, next.event().what(), next.event().speakers(),
-                            next.event().urgent(), me.bytefox.livingcolonists.mood.MoodTable.row(next.event().occasion()).interest())) {
+                            next.event().urgent(), me.bytefox.livingcolonists.mood.MoodTable.row(next.event().occasion()).interest(),
+                            next.event().occasion())) {
                         queue.remove(next);
                     }
                 }

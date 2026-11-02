@@ -102,7 +102,8 @@ public final class GiftWatch {
         if (counted) {
             talk.writeFirst(player, citizen, reaction(taste) + " what they just put in your bag: " + what + "."
                     + (birthday ? " It is your birthday today, and they remembered." : ""),
-                    false, null, false, Airtime.Kind.NOTE);
+                    false, null, false, Airtime.Kind.NOTE,
+                    new TalkService.SetLine(birthday ? "gift.birthday" : "gift." + taste.name().toLowerCase(java.util.Locale.ROOT)));
         }
     }
 

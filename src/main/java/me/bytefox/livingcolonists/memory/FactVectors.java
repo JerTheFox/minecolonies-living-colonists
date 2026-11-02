@@ -1,5 +1,7 @@
 package me.bytefox.livingcolonists.memory;
 
+import me.bytefox.livingcolonists.bonds.PlayerMarks;
+
 import java.time.Duration;
 import java.util.Collection;
 import java.util.HashSet;

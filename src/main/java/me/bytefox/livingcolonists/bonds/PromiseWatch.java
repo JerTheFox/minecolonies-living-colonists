@@ -19,7 +19,6 @@ import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.colony.colonyEvents.descriptions.IBuildingEventDescription;
 import com.minecolonies.api.colony.colonyEvents.descriptions.IColonyEventDescription;
 import me.bytefox.livingcolonists.ModLog;
-import me.bytefox.livingcolonists.memory.PlayerMarks;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;

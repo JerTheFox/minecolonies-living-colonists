@@ -27,6 +27,7 @@ public final class SettingsSchema {
             number("timeoutSeconds", Tab.CONNECTION, Config.TIMEOUT_SECONDS, 1, 300),
             number("retries", Tab.CONNECTION, Config.RETRIES, 0, 5),
             bool("useTools", Tab.CONNECTION, Config.USE_TOOLS),
+            bool("useModel", Tab.CONNECTION, Config.USE_MODEL),
             number("maxTokens", Tab.CONNECTION, Config.MAX_TOKENS, 16, 32768),
             new Setting("temperature", Tab.CONNECTION, new Kind(Type.DOUBLE, 0, 2, List.of()),
                     () -> String.valueOf(Config.TEMPERATURE.get()), value -> Config.TEMPERATURE.set(Double.parseDouble(value))),

@@ -3,7 +3,6 @@ package me.bytefox.livingcolonists.bonds;
 import java.util.ArrayList;
 import java.util.List;
 
-import me.bytefox.livingcolonists.memory.PlayerMarks;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
