@@ -27,6 +27,11 @@ You look at the baker and press **U**: a line above the chat input shows "→ Jo
 - Memory of recent lines, long-term facts like "Max promised to build me a house", promises with deadlines, and once a game week a short life story. It is stored with the world and goes into your backups.
 - Every colonist has a personality, a mood for the day, a voice and a hope of their own; a hungry colonist grumbles, one who just survived a raid is shaken. Relations between colonists change by themselves: coworkers grow close, two contrary housemates get on each other's nerves.
 - They notice things without being told: you coming back, a big deed, a gift in their bag, a new building site, a fight with raiders, a neighbour falling ill or getting a new job.
+- The colony has a mood: panic in a raid, mourning after a death, joy at a birth, pride in a new building, relief after a fight, gloom when people go hungry or have no home. It colours what everyone says, and big events are talked about longer than small ones.
+- Talks take different shapes: mostly ordinary chat, sometimes teasing, gossip, an argument or a yarn. Colonists carry on their own stories with each other, and once in a while someone says a catchphrase and gets an answer. They talk in plain words, like people typing in a game chat.
+- How you treat colonists shows in their MineColonies happiness: kind words, gifts and kept promises help, rudeness and broken promises hurt. Friends at home or at work help a little too.
+- The Colony Notebook, the mod's own book next to MineColonies' ones, is handed over with your first real promise: your promises, how each colonist feels about you, your orders with undo, who is mourning, ill or unhappy, and help. A lost one is crafted from a book, a feather and paper.
+- If the undertaker brings a colonist back from the grave, they remember who they were, and that they died. Mourning colonists know why they don't work today.
 - Everything colonists say unprompted shares one budget per colony and per player, so a busy server stays quiet: a death or a raid always gets through, small talk gives way first.
 - Speech bubbles over colonists' heads with typing dots, also with shaders. Each player can hide colonists' colony lines from their chat and keep only the bubbles. Bubbles over players are off by default, in case you already use another chat bubble mod; turn on `playerBubbles` and players get the same bubbles and typing dots as colonists.
 - Any OpenAI-compatible provider, with separate models for chat and for writing characters, retries, a fallback endpoint and token statistics. Players' answers go first; when the provider keeps failing, background chatter pauses for a few minutes. An in-game settings screen, and `/lcdebug` for operators.
@@ -180,9 +185,9 @@ The mod follows the game's language; English and Russian are included. To add a 
 7. ✅ Colonists talk to each other.
 8. ✅ Speech bubbles.
 
-Since then: memory by player account and by meaning, colonists' real day, goals and voices, the mechanics handbook, names in the players' language, colonists noticing players come and go, rumours of big deeds, one budget for unprompted lines, gifts, deadlines from your own words, provider presets, life stories, shared look-ups, relations that drift, bubbles-only chat, on/off switches.
+Since then: memory by player account and by meaning, colonists' real day, goals and voices, the mechanics handbook, names in the players' language, colonists noticing players come and go, rumours of big deeds, one budget for unprompted lines, gifts, deadlines from your own words, provider presets, life stories, shared look-ups, relations that drift, bubbles-only chat, on/off switches, the Colony Notebook, happiness from relations, the colony's mood, talk shapes, running stories and catchphrases, resurrection and mourning.
 
-Next: playing 0.3.4 on a live server and fixing what comes up; then a longer memory for long-running servers and small requests from colonists with a reward.
+Next: friendship in the spirit of Stardew Valley (gift tastes, birthdays, friendship levels, help when you're in trouble), then small quests from colonists with a reward.
 
 ## About this project
 
