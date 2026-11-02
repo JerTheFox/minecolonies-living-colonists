@@ -53,6 +53,30 @@ class MemoryScenariosTest {
     }
 
     @Test
+    void aPromiseIsShownToThePlayerInTheirLanguage() throws Exception {
+        stage.model.remembersWhen("принесу тебе изумруд",
+                "promise | 1 | supply | 3 | Alex promised to bring Darcy Abbott an emerald | принести Дарси изумруд");
+        stage.playerWritesTo("Darcy Abbott", "принесу тебе изумруд");
+        assertTrue(stage.runUntil(() -> !stage.bonds.promises(darcy).isEmpty(), WAIT), "the promise was not written down");
+        Promise promise = stage.bonds.promises(darcy).get(0);
+        assertEquals("принести Дарси изумруд", promise.display().getString());
+        assertTrue(promise.text().contains("an emerald"), "the kept text is no longer English: " + promise.text());
+    }
+
+    @Test
+    void aSettledPromiseIsNotWrittenDownAgain() throws Exception {
+        stage.model.remembersWhen("принесу тебе изумруд", "promise | 1 | supply | 3 | Alex promised to bring Darcy Abbott an emerald");
+        stage.playerWritesTo("Darcy Abbott", "принесу тебе изумруд");
+        assertTrue(stage.runUntil(() -> !stage.bonds.promises(darcy).isEmpty(), WAIT), "the promise was not written down");
+        stage.bonds.gift(darcy, stage.player.getUUID(), "Alex", "gave Darcy Abbott an emerald", 3, List.of("Emerald"),
+                me.bytefox.livingcolonists.friendship.Taste.LIKE, java.util.Map.of(), 1);
+        stage.playerWritesTo("Darcy Abbott", "вот твой изумруд, как обещал");
+        assertTrue(stage.runUntil(() -> stage.model.requests.toString().contains("already settled")
+                && stage.model.requests.toString().contains("bring Darcy Abbott an emerald (kept)"), WAIT),
+                "the kept promise wasn't listed for the next digest");
+    }
+
+    @Test
     void factsFromAPrivateTalkAreKept() throws Exception {
         stage.model.remembersWhen("у меня жена болеет", "3 | Alex | Alex's wife is ill.");
         stage.playerWritesTo("Darcy Abbott", "у меня жена болеет");

@@ -100,7 +100,7 @@ class PromiseBookScenariosTest {
                 stage.player, "Alex");
         assertTrue(!stage.bonds.promises(darcy).isEmpty(), "no promise from the dialog");
         verify(stage.player, times(1)).addItem(argThat(stack -> stack.is(ModItems.PROMISE_BOOK.get())));
-        assertTrue(text(stage.bonds.notebook(stage.player)).contains("cured"), "the dialog's promise isn't in the book");
+        assertTrue(text(stage.bonds.notebook(stage.player)).contains("livingcolonists.promise.task.cure"), "the dialog's promise isn't in the book");
     }
 
     @Test
@@ -111,8 +111,8 @@ class PromiseBookScenariosTest {
                 "com.minecolonies.coremod.gui.chat.okay", stage.player, "Alex");
         List<Component> pages = stage.bonds.notebook(stage.player);
         assertEquals(3, pages.size(), text(pages));
-        assertTrue(pages.get(1).getString().contains("cured"), "the one with a deadline comes first: " + text(pages));
-        assertTrue(pages.get(2).getString().contains("better food"), text(pages));
+        assertTrue(pages.get(1).getString().contains("livingcolonists.promise.task.cure"), "the one with a deadline comes first: " + text(pages));
+        assertTrue(pages.get(2).getString().contains("livingcolonists.promise.task.food_quality"), text(pages));
         net.minecraft.server.level.ServerPlayer other = org.mockito.Mockito.mock(net.minecraft.server.level.ServerPlayer.class);
         org.mockito.Mockito.when(other.getUUID()).thenReturn(java.util.UUID.fromString("00000000-0000-0000-0000-0000000000ff"));
         assertEquals(1, stage.bonds.notebook(other).size(), "someone else's promises in the book");

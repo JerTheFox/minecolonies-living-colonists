@@ -141,7 +141,7 @@ public final class BondsService {
             Promise.About about = Promise.About.of(made.about());
             long due = due(citizen.getColony(), playerLines, made.days(), now);
             Promise promise = new Promise(data.nextId++, player, playerName, made.text(), made.worth(), about, now, due,
-                    Promise.Status.OPEN, 0, needUnmet(citizen, about), false, "").asked();
+                    Promise.Status.OPEN, 0, needUnmet(citizen, about), false, "").asked().withShown(made.shown());
             list.add(promise);
             ask(citizen, promise);
             keptByGift(citizen, player, now);
@@ -276,7 +276,7 @@ public final class BondsService {
             long due = due(colony, linesBySpeaker.getOrDefault(made.player(), List.of()), made.days(), now);
             String playerName = data.playerNames.getOrDefault(player, made.player());
             Promise promise = new Promise(data.nextId++, player, playerName, Digests.cleanFact(made.text()), made.worth(), about,
-                    now, due, Promise.Status.OPEN, 0, needUnmet(citizen, about), false, "").asked();
+                    now, due, Promise.Status.OPEN, 0, needUnmet(citizen, about), false, "").asked().withShown(made.shown());
             list.add(promise);
             ask(citizen, promise);
             ModLog.action("{} wrote down a promise from the colony chat: {}", citizen.getName(),
@@ -313,7 +313,7 @@ public final class BondsService {
                         .withHoverEvent(new net.minecraft.network.chat.HoverEvent(
                                 net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT,
                                 Component.translatable("livingcolonists.promise.ask.no.hint", name))));
-        maker.sendSystemMessage(Component.translatable("livingcolonists.promise.ask", name, PlayerMarks.resolve(promise.text()))
+        maker.sendSystemMessage(Component.translatable("livingcolonists.promise.ask", name, promise.display())
                 .withStyle(net.minecraft.ChatFormatting.GRAY).append(" ").append(yes).append(" ").append(no));
     }
 
@@ -441,7 +441,7 @@ public final class BondsService {
             ICitizenData citizen = colony.getCitizenManager().getCivilian(owned.citizenId());
             Promise promise = owned.promise();
             net.minecraft.network.chat.MutableComponent line = Component.literal("- " + (citizen == null ? "?" : citizen.getName())
-                    + ": " + PlayerMarks.resolve(promise.text()) + " ");
+                    + ": ").append(promise.display()).append(" ");
             if (!promise.binding()) {
                 line.append(Component.translatable("livingcolonists.promise.list.vague")).append(" ");
                 line.append(Component.translatable("livingcolonists.promise.ask.yes").withStyle(style -> style

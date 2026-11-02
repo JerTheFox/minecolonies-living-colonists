@@ -34,8 +34,8 @@ class BondsLogicTest {
                 rude | Max called Anna lazy.
                 """, 5);
         assertEquals(1, digest.facts().size());
-        assertEquals(List.of(new Digests.NewPromise(1, "supply", 0, "Max promised to bring 10 oak planks."),
-                new Digests.NewPromise(0, "housing", 0, "Max promised to build Anna a house.")), digest.promises());
+        assertEquals(List.of(new Digests.NewPromise(1, "supply", 0, "Max promised to bring 10 oak planks.", ""),
+                new Digests.NewPromise(0, "housing", 0, "Max promised to build Anna a house.", "")), digest.promises());
         assertEquals(List.of(new Digests.Resolution("kept", 2), new Digests.Resolution("broken", 1),
                 new Digests.Resolution("cancelled", 9)), digest.resolutions());
         assertEquals(List.of(new Digests.Conduct(true, "Max brought flowers."),
@@ -57,13 +57,14 @@ class BondsLogicTest {
     @Test
     void theColonyDigestCarriesPromisesToNamedColonists() {
         Digests.Digest digest = Digests.parseAll("""
-                promise | Alex | Idris Y. Crawley | 0 | supply | Alex promised Idris a couple of diamonds.
+                promise | Alex | Idris Y. Crawley | 0 | supply | Alex promised Idris a couple of diamonds. | принести Идрису пару алмазов
                 promise | 1 | supply | A private-talk style line still counts as a promise without names.
                 kept | 1
                 """, 5);
         assertEquals(List.of(new Digests.ColonyPromise("Alex", "Idris Y. Crawley", 0, "supply", 0,
-                "Alex promised Idris a couple of diamonds.")), digest.colonyPromises());
+                "Alex promised Idris a couple of diamonds.", "принести Идрису пару алмазов")), digest.colonyPromises());
         assertEquals(1, digest.promises().size());
+        assertEquals("", digest.promises().get(0).shown());
         assertEquals(List.of(new Digests.Resolution("kept", 1)), digest.resolutions());
     }
 

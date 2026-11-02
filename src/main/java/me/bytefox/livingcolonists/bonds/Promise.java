@@ -25,7 +25,14 @@ import java.util.UUID;
  * @param confirm  whether the player said it was a promise: one the character model found in talk is asked about
  */
 public record Promise(long id, UUID maker, String makerName, String text, int worth, About about, long made, long due,
-                      Status status, long resolved, boolean needSeen, boolean reminded, String requestId, Confirm confirm) {
+                      Status status, long resolved, boolean needSeen, boolean reminded, String requestId, Confirm confirm,
+                      String shown) {
+
+    /** One without its text in the player's language: shown in English, as it is kept. */
+    public Promise(long id, UUID maker, String makerName, String text, int worth, About about, long made, long due,
+                   Status status, long resolved, boolean needSeen, boolean reminded, String requestId, Confirm confirm) {
+        this(id, maker, makerName, text, worth, about, made, due, status, resolved, needSeen, reminded, requestId, confirm, "");
+    }
 
     /** A promise with nothing to confirm: made in one of MineColonies' windows, or from before promises were asked about. */
     public Promise(long id, UUID maker, String makerName, String text, int worth, About about, long made, long due,
@@ -69,15 +76,15 @@ public record Promise(long id, UUID maker, String makerName, String text, int wo
     }
 
     public Promise resolve(Status to, long now) {
-        return new Promise(id, maker, makerName, text, worth, about, made, due, to, now, needSeen, reminded, requestId, confirm);
+        return new Promise(id, maker, makerName, text, worth, about, made, due, to, now, needSeen, reminded, requestId, confirm, shown);
     }
 
     public Promise withNeedSeen() {
-        return new Promise(id, maker, makerName, text, worth, about, made, due, status, resolved, true, reminded, requestId, confirm);
+        return new Promise(id, maker, makerName, text, worth, about, made, due, status, resolved, true, reminded, requestId, confirm, shown);
     }
 
     public Promise withReminded() {
-        return new Promise(id, maker, makerName, text, worth, about, made, due, status, resolved, needSeen, true, requestId, confirm);
+        return new Promise(id, maker, makerName, text, worth, about, made, due, status, resolved, needSeen, true, requestId, confirm, shown);
     }
 
     /** The same promise, now waiting for the player to say whether they meant it. */
@@ -86,7 +93,39 @@ public record Promise(long id, UUID maker, String makerName, String text, int wo
     }
 
     public Promise withConfirm(Confirm to) {
-        return new Promise(id, maker, makerName, text, worth, about, made, due, status, resolved, needSeen, reminded, requestId, to);
+        return new Promise(id, maker, makerName, text, worth, about, made, due, status, resolved, needSeen, reminded, requestId, to, shown);
+    }
+
+    /** The same promise with its text as the player reads it: a short task in their language. */
+    public Promise withShown(String to) {
+        return new Promise(id, maker, makerName, text, worth, about, made, due, status, resolved, needSeen, reminded, requestId,
+                confirm, to == null ? "" : to);
+    }
+
+    /**
+     * What the player reads: the short task in their language when there is one (a translation key and its arguments
+     * after {@link #KEY}, for promises from MineColonies' windows), else the promise as kept.
+     */
+    public net.minecraft.network.chat.Component display() {
+        if (shown.startsWith(KEY)) {
+            String[] parts = shown.substring(KEY.length()).split("\t");
+            Object[] args = new Object[parts.length - 1];
+            for (int i = 1; i < parts.length; i++) {
+                args[i - 1] = parts[i].startsWith(KEY) ? net.minecraft.network.chat.Component.translatable(parts[i].substring(KEY.length()))
+                        : parts[i];
+            }
+            return net.minecraft.network.chat.Component.translatable(parts[0], args);
+        }
+        return net.minecraft.network.chat.Component.literal(shown.isEmpty()
+                ? me.bytefox.livingcolonists.memory.PlayerMarks.resolve(text) : shown);
+    }
+
+    /** Marks a translation key in {@link #shown}; arguments are tab-separated, a key among them marked the same. */
+    public static final String KEY = "@";
+
+    /** A shown text from a translation key and its arguments. */
+    public static String translated(String key, String... args) {
+        return KEY + key + (args.length == 0 ? "" : "\t" + String.join("\t", args));
     }
 
     /** Whether the colonist may hold the player to it: reminders, a grudge if broken, no new promise until it's kept. */

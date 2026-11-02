@@ -45,6 +45,10 @@ final class Digester {
     static final int MAX_DIGESTS_PER_CHECK = 4;
     /** After a failed request, wait this long before trying the same conversation again (five minutes). */
     static final long RETRY_TICKS = 6000;
+    /** After running out of tokens: half a minute. */
+    static final long ROOM_RETRY_TICKS = 600;
+    /** Conversations whose last digest ran out of tokens. */
+    private final Set<String> outOfRoom = new java.util.HashSet<>();
     /** Facts shown to the model as already known, so it doesn't write them again. */
     static final int KNOWN_IN_DIGEST = 20;
     /** Already noted lines shown before the new ones, for context. */
@@ -132,7 +136,8 @@ final class Digester {
         UUID playerId = UUID.fromString(parts[2]);
         List<Promise> open = bonds.open(citizen, playerId);
         values.put("rules", Templates.render(prompts.get(PromptLibrary.MEMORY_PLAYER),
-                Map.of("player", player.get(), "name", name, "promises", Bonds.numbered(open, now))));
+                Map.of("player", player.get(), "name", name, "promises", Bonds.numbered(open, now),
+                        "settled", settled(citizen, playerId, now))));
         int citizenId = citizen.getId();
         String playerName = player.get();
         return request(server, key, transcript, values, lines, MAX_PRIVATE_FACTS, colony, List.of(citizen),
@@ -211,7 +216,9 @@ final class Digester {
         List<Integer> ownerIds = owners.stream().map(ICitizenData::getId).toList();
         MemoryData target = memory.data();
         digesting.add(key);
-        client.complete(settings.get().withMinTokens(MemoryService.DIGEST_TOKENS).inBackground(), List.of(ChatMessage.user(prompt))).thenAccept(result -> server.execute(() -> {
+        // A model that thought too long and ran out of room gets twice as much the next time.
+        int tokens = MemoryService.DIGEST_TOKENS * (outOfRoom.contains(key) ? 2 : 1);
+        client.complete(settings.get().withMinTokens(tokens).inBackground(), List.of(ChatMessage.user(prompt))).thenAccept(result -> server.execute(() -> {
             digesting.remove(key);
             if (memory.data() != target) {
                 return;
@@ -235,12 +242,18 @@ final class Digester {
                     }
                     transcript.markDigested(mark);
                     retryAt.remove(key);
+                    outOfRoom.remove(key);
                     target.setDirty();
                     ModLog.action("Colonists remembered {} facts from {}", entries.size(),
                             key.startsWith("colony:") ? "the colony chat of " + now.getName() : "a private talk");
                 }
                 case ChatResult.Failure failure -> {
-                    retryAt.put(key, (long) server.getTickCount() + RETRY_TICKS);
+                    // Out of tokens is no outage: tried again soon with more room, or a promise waits five minutes.
+                    boolean room = failure.reason().contains("finish_reason=length");
+                    if (room) {
+                        outOfRoom.add(key);
+                    }
+                    retryAt.put(key, (long) server.getTickCount() + (room ? ROOM_RETRY_TICKS : RETRY_TICKS));
                     ModLog.warn("Could not write down a conversation, will retry later: {}",
                             failure.reason());
                 }
@@ -254,13 +267,23 @@ final class Digester {
         Map<UUID, List<String>> names = memory.data().playerNames;
         return new Digests.Digest(digest.facts(),
                 digest.promises().stream().map(made -> new Digests.NewPromise(made.days(), made.about(), made.worth(),
-                        PlayerMarks.markNames(made.text(), names))).toList(),
+                        PlayerMarks.markNames(made.text(), names), made.shown())).toList(),
                 digest.resolutions(),
                 digest.conduct().stream().map(note -> new Digests.Conduct(note.kind(),
                         PlayerMarks.markNames(note.note(), names))).toList(),
                 digest.colonists(),
                 digest.colonyPromises().stream().map(made -> new Digests.ColonyPromise(made.player(), made.colonist(),
-                        made.days(), made.about(), made.worth(), PlayerMarks.markNames(made.text(), names))).toList());
+                        made.days(), made.about(), made.worth(), PlayerMarks.markNames(made.text(), names), made.shown())).toList());
+    }
+
+    /** How long a settled promise is listed for the digest, so it isn't written down again (two game days). */
+    private static final long SETTLED_TICKS = 2 * 24000;
+
+    private String settled(ICitizenData citizen, UUID player, long now) {
+        List<String> settled = bonds.promises(citizen).stream()
+                .filter(p -> !p.isOpen() && player.equals(p.maker()) && now - p.resolved() < SETTLED_TICKS)
+                .map(p -> "- " + p.text() + " (" + p.status().name().toLowerCase(java.util.Locale.ROOT) + ")").toList();
+        return settled.isEmpty() ? "(none)" : String.join("\n", settled);
     }
 
     private boolean ready(MinecraftServer server, String key, boolean force) {

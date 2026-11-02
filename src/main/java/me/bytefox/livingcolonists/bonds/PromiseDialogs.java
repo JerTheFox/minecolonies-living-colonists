@@ -87,8 +87,11 @@ final class PromiseDialogs {
                         : ItemNames.in(asked.getShortDisplayString().getString(), asked.getDisplayStacks().get(0)));
                 String text = PlayerMarks.mark(player.getUUID(), playerName, playerName) + " promised to bring "
                         + citizen.getName() + " " + what + ".";
+                String shown = asked == null || asked.getDisplayStacks().isEmpty() ? Promise.translated("livingcolonists.promise.task.supply_any")
+                        : Promise.translated("livingcolonists.promise.task.supply",
+                                Promise.KEY + asked.getDisplayStacks().get(0).getDescriptionId());
                 list.add(new Promise(bonds.data().nextId++, player.getUUID(), playerName, text, worth(asked), Promise.About.SUPPLY, now,
-                        now + REQUEST_PROMISE_TICKS, Promise.Status.OPEN, 0, false, false, requestId));
+                        now + REQUEST_PROMISE_TICKS, Promise.Status.OPEN, 0, false, false, requestId).withShown(shown));
                 bonds.data().playerNames.put(player.getUUID(), playerName);
                 bonds.data().setDirty();
                 player.displayClientMessage(Component.translatable("livingcolonists.promise.made", citizen.getName()),
@@ -125,11 +128,13 @@ final class PromiseDialogs {
         }
         String name = citizen.getName();
         String text;
+        String shown;
         Promise.About about;
         int days;
         switch (inquiry) {
             case "com.minecolonies.coremod.ai.nohospital", "com.minecolonies.coremod.ai.waitingforcure" -> {
                 text = playerName + " promised to get " + name + " cured.";
+                shown = Promise.translated("livingcolonists.promise.task.cure");
                 about = Promise.About.HEALTH;
                 days = 2;
             }
@@ -139,12 +144,14 @@ final class PromiseDialogs {
                 }
                 text = playerName + " promised to upgrade " + name + "'s "
                         + Component.translatable(citizen.getWorkBuilding().getBuildingDisplayName()).getString() + ".";
+                shown = Promise.translated("livingcolonists.promise.task.upgrade", Promise.KEY + citizen.getWorkBuilding().getBuildingDisplayName());
                 about = Promise.About.BUILDING;
                 days = 3;
             }
             case "com.minecolonies.coremod.job.deliveryman.nowarehouse" -> {
                 text = playerName + " promised to build or upgrade the "
                         + Component.translatable(ModBuildings.wareHouse.get().getTranslationKey()).getString() + ".";
+                shown = Promise.translated("livingcolonists.promise.task.build_or_upgrade", Promise.KEY + ModBuildings.wareHouse.get().getTranslationKey());
                 about = Promise.About.BUILDING;
                 days = 3;
             }
@@ -152,18 +159,22 @@ final class PromiseDialogs {
                 text = playerName + " promised to build a "
                         + Component.translatable(ModBuildings.guardTower.get().getTranslationKey()).getString() + " near "
                         + name + (inquiry.endsWith("home") ? "'s home." : "'s workplace.");
+                shown = Promise.translated(inquiry.endsWith("home") ? "livingcolonists.promise.task.guard_home"
+                        : "livingcolonists.promise.task.guard_work", Promise.KEY + ModBuildings.guardTower.get().getTranslationKey());
                 about = Promise.About.BUILDING;
                 days = 3;
             }
             case "com.minecolonies.coremod.entity.citizen.no.fooddiversity",
                  "com.minecolonies.coremod.entity.citizen.no.fooddiversity.urgent" -> {
                 text = playerName + " promised " + name + " more varied food in the dining hall.";
+                shown = Promise.translated("livingcolonists.promise.task.food_variety");
                 about = Promise.About.FOOD;
                 days = 0;
             }
             case "com.minecolonies.coremod.entity.citizen.no.foodquality",
                  "com.minecolonies.coremod.entity.citizen.no.foodquality.urgent" -> {
                 text = playerName + " promised " + name + " better food in the dining hall.";
+                shown = Promise.translated("livingcolonists.promise.task.food_quality");
                 about = Promise.About.FOOD;
                 days = 0;
             }
@@ -181,7 +192,7 @@ final class PromiseDialogs {
         text = PlayerMarks.markNames(text, Map.of(player.getUUID(), List.of(playerName)));
         list.add(new Promise(bonds.data().nextId++, player.getUUID(), playerName, text, about == Promise.About.FOOD ? 2 : 3, about, now,
                 days > 0 ? now + days * BondsService.DAY : 0,
-                Promise.Status.OPEN, 0, BondsService.needUnmet(citizen, about), false, id));
+                Promise.Status.OPEN, 0, BondsService.needUnmet(citizen, about), false, id).withShown(shown));
         bonds.data().playerNames.put(player.getUUID(), playerName);
         bonds.data().setDirty();
         player.displayClientMessage(Component.translatable("livingcolonists.promise.made", name), true);

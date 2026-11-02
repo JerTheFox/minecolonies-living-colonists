@@ -49,16 +49,17 @@ final class PromiseBook {
 
     private static Component page(Entry entry) {
         Promise promise = entry.promise();
-        String text = PlayerMarks.resolve(promise.text());
-        if (text.length() > MAX_TEXT) {
-            text = text.substring(0, MAX_TEXT - 1).strip() + "…";
+        // The short task in the player's language, or the promise as kept if it has none.
+        Component text = promise.display();
+        if (text.getString().length() > MAX_TEXT) {
+            text = Component.literal(text.getString().substring(0, MAX_TEXT - 1).strip() + "…");
         }
         MutableComponent page = Component.empty()
                 .append(Component.translatable("livingcolonists.book.to", entry.colonist()).withStyle(ChatFormatting.BOLD))
                 .append("\n")
                 .append(Component.literal(entry.colony()).withStyle(ChatFormatting.DARK_GRAY))
                 .append("\n\n")
-                .append(Component.literal(text))
+                .append(text)
                 .append("\n\n")
                 .append(due(promise, entry.now(), entry.dayTime()))
                 .append("\n\n");

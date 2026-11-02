@@ -23,6 +23,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - Look-ups are no longer answered from a ten-minute cache. A colonist kept saying a building had no order while the builder was already digging its foundation. What colonists looked up is still shared with the colony, now with how long ago it was, and it is dropped once an order is carried out.
 - A colonist asked something by name in the colony chat answers it instead of changing the subject.
+- Promises are shown in the player's language, as a short task, in the Colony Notebook and in the question whether you meant one. Promises written before stay in English.
+- A promise that was already kept is not written down again from the same talk.
+- When the model runs out of room while writing down a talk, it tries again within half a minute with more room, not five minutes later. A promise sometimes took up to ten minutes to be noticed.
 
 ## [0.4.0] - 2026-11-02
 
