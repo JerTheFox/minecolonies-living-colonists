@@ -39,7 +39,7 @@ public final class Notebook {
     /** About this many lines of text fit on a page. */
     private static final int PAGE_LINES = 15;
     /** And about this many characters on a line. */
-    private static final int LINE_CHARS = 21;
+    private static final int LINE_CHARS = 23;
     /** Below this happiness a colonist shows up as unhappy. */
     private static final double UNHAPPY = 6.0;
 
@@ -63,6 +63,9 @@ public final class Notebook {
         PacketDistributor.sendToPlayer(player, new NotebookPages(sections(player), open));
     }
 
+    /** Buttons whose command starts with this are the player's own settings, handled by their client, not sent. */
+    public static final String CLIENT = "livingcolonists:client ";
+
     public List<Section> sections(ServerPlayer player) {
         List<IColony> colonies = Colonies.all().stream()
                 .filter(colony -> Colonies.role(player, colony) != ColonyAccess.Role.OTHER).toList();
@@ -71,7 +74,8 @@ public final class Notebook {
                 new Section("relations", title("relations"), relations(player, colonies)),
                 new Section("orders", title("orders"), orders(player)),
                 new Section("colony", title("colony"), colony(colonies, player.server.getTickCount())),
-                new Section("help", title("help"), help(player, colonies)));
+                new Section("settings", title("settings"), settings(player, colonies)),
+                new Section("help", title("help"), help()));
     }
 
     private static Component title(String key) {
@@ -139,6 +143,10 @@ public final class Notebook {
             }
         }
         if (!between.isEmpty()) {
+            // Between colonists starts a page of its own, apart from how they feel about the player.
+            if (!pager.isEmpty()) {
+                pager.newPage();
+            }
             pager.add(Component.translatable("livingcolonists.book.relations.between").withStyle(ChatFormatting.BOLD));
             between.forEach(pager::add);
         }
@@ -261,19 +269,42 @@ public final class Notebook {
         return Component.translatableWithFallback("livingcolonists.calendar.holiday." + holiday.id(), holiday.name());
     }
 
-    private static List<Component> help(ServerPlayer player, List<IColony> colonies) {
+    /** The topics of the help section, in order: each a title and a few lines. */
+    private static final List<String> HELP = List.of("talk", "who", "ask", "orders", "promises", "gifts", "friendship",
+            "calendar", "mood");
+
+    private static List<Component> help() {
         Pager pager = new Pager(title("help"));
-        pager.add(Component.translatable("livingcolonists.book.help.keys"));
-        pager.add(Component.translatable("livingcolonists.book.help.ask"));
-        pager.add(Component.translatable("livingcolonists.book.help.orders"));
-        pager.add(Component.translatable("livingcolonists.book.help.bubbles"));
+        for (String topic : HELP) {
+            pager.add(Component.translatable("livingcolonists.book.help." + topic + ".title").withStyle(ChatFormatting.BOLD)
+                    .append(Component.literal("\n")).append(Component.translatable("livingcolonists.book.help." + topic)
+                            .withStyle(style -> style.withBold(false))));
+        }
         pager.add(button("livingcolonists.book.help.more", ChatFormatting.DARK_BLUE, "/lc help", null));
+        return pager.pages();
+    }
+
+    /** The player's own settings, the colony's switch for its owner, and how the server is set up for talking. */
+    private static List<Component> settings(ServerPlayer player, List<IColony> colonies) {
+        Pager pager = new Pager(title("settings"));
+        pager.add(Component.translatable("livingcolonists.book.settings.lines").append("\n")
+                .append(button("livingcolonists.book.settings.lines.on", ChatFormatting.DARK_GREEN, CLIENT + "lines on", null))
+                .append(" ")
+                .append(button("livingcolonists.book.settings.lines.off", ChatFormatting.DARK_BLUE, CLIENT + "lines off",
+                        Component.translatable("livingcolonists.book.settings.lines.off.hint"))));
         if (colonies.stream().anyMatch(colony -> Colonies.role(player, colony) == ColonyAccess.Role.OWNER)) {
             pager.add(Component.translatable("livingcolonists.book.help.colony").append("\n")
                     .append(button("livingcolonists.book.help.colony_off", ChatFormatting.DARK_RED, "/lc colony off",
                             Component.translatable("livingcolonists.book.help.colony_off.hint"))).append(" ")
                     .append(button("livingcolonists.book.help.colony_on", ChatFormatting.DARK_GREEN, "/lc colony on", null)));
         }
+        pager.add(Component.translatable(me.bytefox.livingcolonists.Config.MEMBERS_ONLY.get()
+                ? "livingcolonists.book.settings.members_only" : "livingcolonists.book.settings.everyone"));
+        if (me.bytefox.livingcolonists.Config.COLONY_CHAT_ANYWHERE.get()) {
+            pager.add(Component.translatable("livingcolonists.book.settings.anywhere"));
+        }
+        pager.add(button("livingcolonists.book.settings.all", ChatFormatting.DARK_BLUE, CLIENT + "settings",
+                Component.translatable("livingcolonists.book.settings.all.hint")));
         return pager.pages();
     }
 
@@ -312,6 +343,13 @@ public final class Notebook {
             return blocks == 0;
         }
 
+        /** What comes next starts on a fresh page. */
+        void newPage() {
+            pages.add(page);
+            page = Component.empty();
+            lines = 0;
+        }
+
         int size() {
             return blocks;
         }
@@ -325,7 +363,17 @@ public final class Notebook {
         private static int height(Component block) {
             int lines = 0;
             for (String line : block.getString().split("\n", -1)) {
-                lines += Math.max(1, (line.length() + LINE_CHARS - 1) / LINE_CHARS);
+                // Wrapped by words, as the screen wraps them.
+                int used = 0;
+                int count = 1;
+                for (String word : line.split(" ")) {
+                    if (used > 0 && used + 1 + word.length() > LINE_CHARS) {
+                        count++;
+                        used = 0;
+                    }
+                    used += (used > 0 ? 1 : 0) + word.length();
+                }
+                lines += count;
             }
             return lines;
         }

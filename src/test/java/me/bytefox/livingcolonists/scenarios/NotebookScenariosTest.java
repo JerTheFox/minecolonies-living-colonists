@@ -82,7 +82,7 @@ class NotebookScenariosTest {
 
     @Test
     void fiveSectionsInOrder() {
-        assertEquals(List.of("promises", "relations", "orders", "colony", "help"),
+        assertEquals(List.of("promises", "relations", "orders", "colony", "settings", "help"),
                 notebook.sections(stage.player).stream().map(Notebook.Section::key).toList());
         notebook.sections(stage.player).forEach(s -> assertTrue(!s.pages().isEmpty(), s.key() + " has no pages"));
     }
@@ -148,9 +148,18 @@ class NotebookScenariosTest {
     }
 
     @Test
-    void helpHasTheKeysAndButtons() {
-        List<String> commands = commands(section("help"));
-        assertTrue(commands.contains("/lc help"), commands.toString());
+    void helpCoversEveryTopic() {
+        String help = text(section("help"));
+        for (String topic : List.of("talk", "orders", "gifts", "friendship", "calendar")) {
+            assertTrue(help.contains("livingcolonists.book.help." + topic), topic + " is missing: " + help);
+        }
+        assertTrue(commands(section("help")).contains("/lc help"));
+    }
+
+    @Test
+    void settingsHaveThePlayersOwnChoicesAndTheOwnersSwitch() {
+        List<String> commands = commands(section("settings"));
+        assertTrue(commands.contains(Notebook.CLIENT + "lines off") && commands.contains(Notebook.CLIENT + "settings"), commands.toString());
         assertTrue(commands.contains("/lc colony off") || commands.contains("/lc colony on"), "the owner's switch is missing: " + commands);
     }
 
@@ -166,6 +175,6 @@ class NotebookScenariosTest {
                 .map(p -> (NotebookPages) ((net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket) p).payload())
                 .reduce((a, b) -> b).orElseThrow();
         assertTrue(!sent.open(), "a refresh opened the book");
-        assertEquals(5, sent.sections().size());
+        assertEquals(6, sent.sections().size());
     }
 }

@@ -31,6 +31,10 @@ public final class NotebookScreen extends Screen {
     private static final int TEXT_WIDTH = 130;
     private static final int LINES = 18;
     private static final int INK = 0x3B2A1A;
+    /** The arrows' top: their bottom as far above the inner frame as the text's top is below it. */
+    private static final int NAV_Y = HEIGHT - 50;
+    private static final int ARROW_WIDTH = 23;
+    private static final int ARROW_HEIGHT = 13;
     /** MineColonies' window tabs: 32 by 26, 28 apart, 12 of their width under the paper, the icon 5 from the end. */
     private static final int TAB_WIDTH = 32;
     private static final int TAB_HEIGHT = 26;
@@ -76,9 +80,10 @@ public final class NotebookScreen extends Screen {
     @Override
     protected void init() {
         int left = left();
-        int bottom = top() + HEIGHT - 30;
-        back = addRenderableWidget(new PageButton(left + 30, bottom, false, button -> turn(-1), true));
-        forward = addRenderableWidget(new PageButton(left + WIDTH - 30 - 23, bottom, true, button -> turn(1), true));
+        int y = top() + NAV_Y;
+        back = addRenderableWidget(new PageButton(left + PAGE_X - 2, y, false, button -> turn(-1), true));
+        forward = addRenderableWidget(new PageButton(left + PAGE_X + PAGE_GAP + TEXT_WIDTH - ARROW_WIDTH + 2, y, true,
+                button -> turn(1), true));
         updateButtons();
     }
 
@@ -140,8 +145,11 @@ public final class NotebookScreen extends Screen {
             for (int i = 0; i < lines.size(); i++) {
                 graphics.drawString(font, lines.get(i), x, top() + TEXT_Y + i * font.lineHeight, INK, false);
             }
+            // Page numbers in the outer corners, beside the arrows.
             Component number = Component.literal((index + 1) + " / " + pages.size());
-            graphics.drawString(font, number, x + TEXT_WIDTH - font.width(number), top() + HEIGHT - 40, 0x8A7556, false);
+            int numberY = top() + NAV_Y + (ARROW_HEIGHT - font.lineHeight) / 2 + 1;
+            int numberX = side == 0 ? x + ARROW_WIDTH + 4 : x + TEXT_WIDTH - ARROW_WIDTH - 4 - font.width(number);
+            graphics.drawString(font, number, numberX, numberY, 0x8A7556, false);
         }
         int tab = tabAt(mouseX, mouseY);
         if (tab >= 0) {
@@ -200,6 +208,7 @@ public final class NotebookScreen extends Screen {
             case "relations" -> "happiness";
             case "orders" -> "scepter";
             case "colony" -> "family";
+            case "settings" -> "settings";
             default -> "help";
         };
     }
@@ -247,12 +256,32 @@ public final class NotebookScreen extends Screen {
                 return true;
             }
             Style style = styleAt(mouseX, mouseY);
+            if (style != null && style.getClickEvent() != null && style.getClickEvent().getValue().startsWith(Notebook.CLIENT)) {
+                clientSetting(style.getClickEvent().getValue().substring(Notebook.CLIENT.length()));
+                return true;
+            }
             if (style != null && style.getClickEvent() != null && handleComponentClicked(style)) {
                 refreshIn = REFRESH_DELAY;
                 return true;
             }
         }
         return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    /** A button of the settings section that is about this client: the player's own choices, or the full settings screen. */
+    private void clientSetting(String what) {
+        switch (what) {
+            case "settings" -> minecraft.setScreen(new me.bytefox.livingcolonists.client.settings.SettingsScreen(this));
+            case "lines on", "lines off" -> {
+                boolean on = what.equals("lines on");
+                ClientConfig.COLONY_CHAT_LINES.set(on);
+                ClientConfig.COLONY_CHAT_LINES.save();
+                minecraft.player.displayClientMessage(Component.translatable(on ? "livingcolonists.book.settings.lines.on.done"
+                        : "livingcolonists.book.settings.lines.off.done"), true);
+            }
+            default -> {
+            }
+        }
     }
 
     @Override
