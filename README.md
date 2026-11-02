@@ -4,7 +4,7 @@
 
 A [MineColonies](https://github.com/ldtteam/minecolonies) addon for NeoForge that lets colonists talk in text chat almost like other players. They start conversations, answer you, remember what you told them and gossip about the colony with each other. The words come from a language model behind any OpenAI-compatible API: DeepSeek, Gemini, OpenRouter, or a model running on your own machine.
 
-> **Status: 0.5.0, early development.** Everything below works and is played on our home server, but the insides are still being reworked, and settings, prompt files and whole features can change between versions. Read the [changelog](CHANGELOG.md) before updating, keep a backup of your world, and please report problems in [Issues](https://github.com/JerTheFox/minecolonies-living-colonists/issues).
+> **Status: 0.6.0, early development.** Everything below works and is played on our home server, but the insides are still being reworked, and settings, prompt files and whole features can change between versions. Read the [changelog](CHANGELOG.md) before updating, keep a backup of your world, and please report problems in [Issues](https://github.com/JerTheFox/minecolonies-living-colonists/issues).
 
 > **You need a language model.** The mod doesn't include one. Colonists only talk once the server can reach an OpenAI-compatible API with your own key (paid by use) or a local model, for example in Ollama. Without it, players who write to colonists only get a note that no API key is set.
 
@@ -29,8 +29,9 @@ You look at the baker and press **U**: whatever you type now goes to him. You as
 - The colony has a mood (panic in a raid, mourning, joy at a birth, gloom when people go hungry) that colours what everyone says.
 - Talks take shapes: mostly ordinary chat, sometimes teasing, gossip or an argument, running stories between colonists, a rare catchphrase. Plain words, like people typing in a game chat.
 - Friendship in the spirit of Stardew Valley: gift tastes by job and character with an odd favourite each, friendship levels with a word at every new one, birthdays, and a colony calendar with eight holidays that only moves while someone plays in the colony.
+- Friends write now and then and leave a small gift in the notebook. When you're badly hurt in the colony, a friend nearby helps by their job: a healer heals, a cook feeds you, a guard goes for the attacker, a builder puts up a wall. Colonists who like you walk faster and learn faster; one who holds a grudge drags their feet.
 - How you treat colonists shows in their MineColonies happiness.
-- The Colony Notebook: promises, relations and known gift tastes, orders with undo, the colony's date and mood, settings and help.
+- The Colony Notebook: promises, letters with gifts, relations and known gift tastes, orders with undo, the colony's date and mood, settings and help.
 - Resurrected colonists remember dying; mourners know who they mourn.
 - One budget for everything colonists say unprompted, so a busy server stays readable: a death or a raid always gets through, small talk gives way.
 - Speech bubbles with typing dots, also with shaders; bubbles-only chat for those who want it.
@@ -99,6 +100,8 @@ Or edit `config/livingcolonists-common.toml` by hand (it appears after the first
 
 `[limits]` (both off by default): `messagesPerPlayerPerHour` and `tokensPerDay` for the whole server.
 
+`[friendship]`: `letters` and `helpInTrouble` (both on), `friendshipWalkPercent` (25) and `friendshipXpPercent` (50), how much faster a best friend walks and learns, and how much slower one with a grudge; 0 turns it off.
+
 Each player also has `colonyChatLines` in `config/livingcolonists-client.toml` (or the Settings tab of the notebook): off keeps colony talk as bubbles only.
 
 ### Personalities, memory and content files
@@ -109,7 +112,7 @@ Once a conversation goes quiet, the character model writes down what the colonis
 
 What colonists look up is shared with the colony for ten minutes, with its age, so they don't contradict each other.
 
-Content files in `config/livingcolonists/content/`: `topics.txt`, `talk.json` (talk shapes), `moods.json` (what stirs the colony's mood), `catchphrases.json`, `gifts.json` (tastes), `calendar.json` (year, holidays), `friendship.json` (levels, cooling, what is said at each), `rumours.json` and `handbook.json`. Prompt templates are in `config/livingcolonists/prompts/`. Files you haven't edited follow the mod's defaults on update; delete one to restore it. `/lcdebug reload` rereads them.
+Content files in `config/livingcolonists/content/`: `topics.txt`, `talk.json` (talk shapes), `moods.json` (what stirs the colony's mood), `catchphrases.json`, `gifts.json` (tastes), `calendar.json` (year, holidays), `friendship.json` (levels, cooling, what is said at each), `letters.json` (how often friends write, gifts by job), `help.json` (help in trouble by job), `rumours.json` and `handbook.json`. Prompt templates are in `config/livingcolonists/prompts/`. Files you haven't edited follow the mod's defaults on update; delete one to restore it. `/lcdebug reload` rereads them.
 
 ### Commands for operators
 
@@ -147,7 +150,7 @@ In the colony chat, name a colonist and they answer first; name a profession ("b
 
 Ask "how much iron do we have?" or "Idris, upgrade the bakery". Look-ups answer at once. Orders come only from the owner and officers, only in your own words, and wait for your yes (buttons, or "yes"/"no" in chat).
 
-Put something into a colonist's inventory through their inventory window, and it's a gift. A calendar day passes when you spend five minutes in the colony that game day. The notebook shows what's new with a small mark on its tabs.
+Put something into a colonist's inventory through their inventory window, and it's a gift. Gifts from colonists wait in the notebook's Letters tab until you take them. A calendar day passes when you spend five minutes in the colony that game day. The notebook shows what's new with a small mark on its tabs.
 
 `/lc` for everyone: `yes`, `no`, `undo`, `lock`, `help`, `promises`, and `colony off` / `colony on` for a colony's owner.
 
@@ -168,9 +171,9 @@ The mod follows the game's language; English and Russian are included. To add on
 
 ## Roadmap
 
-Done: talking without commands, personalities, memory, promises and relations, the settings screen, errands, colonists speaking first and to each other, speech bubbles, the colony's mood, the Colony Notebook, gift tastes, friendship levels, the calendar with birthdays and holidays.
+Done: talking without commands, personalities, memory, promises and relations, the settings screen, errands, colonists speaking first and to each other, speech bubbles, the colony's mood, the Colony Notebook, friendship in the spirit of Stardew Valley (gift tastes, levels, the calendar with birthdays and holidays, letters, help in trouble, friendship in their work).
 
-Next: letters and small gifts from colonists, a work bonus from friendship, help in trouble by profession, then small quests from colonists with a reward.
+Next: small quests from colonists with a reward.
 
 ## About this project
 
