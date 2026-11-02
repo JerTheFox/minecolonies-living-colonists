@@ -764,6 +764,16 @@ public final class BondsService {
         return out;
     }
 
+    /** The player's open promises, for the notebook's mark of something new. */
+    public String promiseNews(ServerPlayer player) {
+        if (data == null) {
+            return "";
+        }
+        return data.promises.values().stream().flatMap(List::stream)
+                .filter(promise -> promise.isOpen() && player.getUUID().equals(promise.maker()))
+                .map(promise -> Long.toString(promise.id())).sorted().collect(java.util.stream.Collectors.joining(","));
+    }
+
     public List<Promise> promises(ICitizenData citizen) {
         List<Promise> list = data == null ? null : data.promises.get(key(citizen));
         return list == null ? List.of() : List.copyOf(list);

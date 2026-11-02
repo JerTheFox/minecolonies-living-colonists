@@ -142,6 +142,7 @@ public final class LivingColonists {
 
         NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent event) -> {
             TalkCommand.register(event.getDispatcher(), talk, conversations);
+            notebook.register(event.getDispatcher());
             DebugCommand.register(event.getDispatcher(), usage, personalities, prompts, talk, conversations, perception,
                     memory, bonds);
         });
@@ -317,7 +318,7 @@ public final class LivingColonists {
      * what is missing. The client-bound handlers are lambdas so client classes load only on the client.
      */
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar("4");
+        PayloadRegistrar registrar = event.registrar("5");
         registrar.playToClient(me.bytefox.livingcolonists.network.NotebookPages.TYPE,
                 me.bytefox.livingcolonists.network.NotebookPages.STREAM_CODEC,
                 (payload, context) -> me.bytefox.livingcolonists.client.NotebookScreen.apply(payload));

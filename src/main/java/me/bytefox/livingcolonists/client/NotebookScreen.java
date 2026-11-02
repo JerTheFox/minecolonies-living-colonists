@@ -11,7 +11,9 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.PageButton;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.util.FormattedCharSequence;
 import net.neoforged.neoforge.network.PacketDistributor;
 
@@ -58,6 +60,31 @@ public final class NotebookScreen extends Screen {
     private NotebookScreen(List<Notebook.Section> sections) {
         super(Component.translatable("item.livingcolonists.promise_book"));
         this.sections = sections;
+        // Opens where it was closed last time.
+        String last = NotebookMemory.section();
+        for (int i = 0; i < sections.size(); i++) {
+            if (sections.get(i).key().equals(last)) {
+                section = i;
+                spread = Math.max(0, Math.min(lastSpread(), NotebookMemory.spread()));
+            }
+        }
+        markSeen();
+    }
+
+    /** The player has seen what is in the open section now. */
+    private void markSeen() {
+        if (!sections.isEmpty()) {
+            NotebookMemory.seen(sections.get(section).key(), sections.get(section).news());
+        }
+    }
+
+    @Override
+    public void removed() {
+        if (!sections.isEmpty()) {
+            NotebookMemory.bookmark(sections.get(section).key(), spread);
+        }
+        NotebookMemory.save();
+        super.removed();
     }
 
     public static void apply(NotebookPages payload) {
@@ -68,6 +95,7 @@ public final class NotebookScreen extends Screen {
             open.sections = payload.sections();
             open.section = Math.min(open.section, open.sections.size() - 1);
             open.spread = Math.min(open.spread, open.lastSpread());
+            open.markSeen();
             open.updateButtons();
         }
     }
@@ -112,6 +140,7 @@ public final class NotebookScreen extends Screen {
     public void open(int index) {
         section = Math.max(0, Math.min(sections.size() - 1, index));
         spread = 0;
+        markSeen();
         updateButtons();
     }
 
@@ -144,6 +173,7 @@ public final class NotebookScreen extends Screen {
             int x = left() + PAGE_X + side * PAGE_GAP;
             for (int i = 0; i < lines.size(); i++) {
                 graphics.drawString(font, lines.get(i), x, top() + TEXT_Y + i * font.lineHeight, INK, false);
+                items(graphics, lines.get(i), x, top() + TEXT_Y + i * font.lineHeight);
             }
             // Page numbers in the outer corners, beside the arrows.
             Component number = Component.literal((index + 1) + " / " + pages.size());
@@ -184,6 +214,12 @@ public final class NotebookScreen extends Screen {
             if (minecraft.getResourceManager().getResource(icon).isPresent()) {
                 graphics.blit(icon, x + TAB_WIDTH - ICON_INSET - ICON, y + 3, 0, 0, ICON, ICON, ICON, ICON);
             }
+            // Something new since the player last looked: a small mark on the tab's corner.
+            if (i != section && NotebookMemory.isNew(sections.get(i).key(), sections.get(i).news())) {
+                int markX = x + TAB_WIDTH - 7;
+                graphics.fill(markX, y + 2, markX + 5, y + 7, 0xFF7A1F12);
+                graphics.fill(markX + 1, y + 3, markX + 4, y + 6, 0xFFD8442E);
+            }
         }
         if (colonies) {
             graphics.blit(BOOK, left, top, 0, 0, WIDTH, HEIGHT, WIDTH, HEIGHT);
@@ -211,6 +247,30 @@ public final class NotebookScreen extends Screen {
             case "settings" -> "settings";
             default -> "help";
         };
+    }
+
+    /** Draws the small item icons the pages mark with {@link Notebook#ITEM}, over the room left for them in the text. */
+    private void items(GuiGraphics graphics, FormattedCharSequence line, int x, int y) {
+        int[] at = {0};
+        String[] drawn = {null};
+        line.accept((index, style, codePoint) -> {
+            String insertion = style.getInsertion();
+            if (insertion != null && insertion.startsWith(Notebook.ITEM) && !insertion.equals(drawn[0])) {
+                drawn[0] = insertion;
+                ResourceLocation id = ResourceLocation.tryParse(insertion.substring(Notebook.ITEM.length()));
+                if (id != null) {
+                    graphics.pose().pushPose();
+                    graphics.pose().translate(x + at[0] + 1, y - 1, 0);
+                    graphics.pose().scale(0.625f, 0.625f, 1);
+                    graphics.renderItem(new ItemStack(BuiltInRegistries.ITEM.get(id)), 0, 0);
+                    graphics.pose().popPose();
+                }
+            } else if (insertion == null || !insertion.startsWith(Notebook.ITEM)) {
+                drawn[0] = null;
+            }
+            at[0] += font.width(FormattedCharSequence.codepoint(codePoint, style));
+            return true;
+        });
     }
 
     private List<FormattedCharSequence> lines(int index) {

@@ -1,5 +1,9 @@
 package me.bytefox.livingcolonists.notebook;
 
+import me.bytefox.livingcolonists.friendship.FriendshipLevels;
+
+import java.util.stream.Collectors;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,7 +37,11 @@ import net.neoforged.neoforge.network.PacketDistributor;
  */
 public final class Notebook {
     /** One bookmark of the notebook. */
-    public record Section(String key, Component title, List<Component> pages) {
+    /**
+     * @param news what in the section is worth a mark on its tab until the player looks (open promises, friendship levels,
+     *             a holiday coming): the client marks the tab while it differs from what it last saw; "" for nothing
+     */
+    public record Section(String key, Component title, List<Component> pages, String news) {
     }
 
     /** About this many lines of text fit on a page. */
@@ -69,13 +77,51 @@ public final class Notebook {
     public List<Section> sections(ServerPlayer player) {
         List<IColony> colonies = Colonies.all().stream()
                 .filter(colony -> Colonies.role(player, colony) != ColonyAccess.Role.OTHER).toList();
+        List<BondsService.PlayerRelation> relations = bonds.relationsOf(player);
         return List.of(
-                new Section("promises", title("promises"), bonds.notebook(player)),
-                new Section("relations", title("relations"), relations(player, colonies)),
-                new Section("orders", title("orders"), orders(player)),
-                new Section("colony", title("colony"), colony(colonies, player.server.getTickCount())),
-                new Section("settings", title("settings"), settings(player, colonies)),
-                new Section("help", title("help"), help()));
+                new Section("promises", title("promises"), bonds.notebook(player), bonds.promiseNews(player)),
+                new Section("relations", title("relations"), relations(player, colonies, relations), relationNews(relations)),
+                new Section("orders", title("orders"), orders(player), orderNews(player)),
+                new Section("colony", title("colony"), colony(colonies, player.server.getTickCount()), colonyNews(colonies)),
+                new Section("settings", title("settings"), settings(player, colonies), ""),
+                new Section("help", title("help"), help(), ""));
+    }
+
+    // ---- what is new
+
+    /** Each colonist's friendship level and how many of their tastes are known: a milestone or a told favourite is news. */
+    private static String relationNews(List<BondsService.PlayerRelation> relations) {
+        return relations.stream().map(r -> r.colonist() + ":" + FriendshipLevels.level(r.rapport()).id() + ":"
+                + r.tastes().values().stream().mapToInt(List::size).sum()).sorted().collect(Collectors.joining(","));
+    }
+
+    private String orderNews(ServerPlayer player) {
+        return errands.waiting(player).map(order -> order.question().getString()).orElse("") + "|" + errands.watches(player).size();
+    }
+
+    /** A holiday or birthday today or within three days, and who is mourning or ill. */
+    private String colonyNews(List<IColony> colonies) {
+        List<String> news = new ArrayList<>();
+        for (IColony colony : colonies) {
+            calendar.holiday(colony).ifPresent(h -> news.add("today " + h.id()));
+            calendar.upcoming(colony, NEWS_DAYS).forEach(next -> news.add(next.holiday() != null ? next.holiday().id() : next.colonist()));
+            for (ICitizenData citizen : colony.getCitizenManager().getCitizens()) {
+                if (calendar.isBirthday(citizen)) {
+                    news.add("birthday " + citizen.getName());
+                }
+                try {
+                    if (citizen.getCitizenMournHandler() != null && citizen.getCitizenMournHandler().isMourning()) {
+                        news.add("mourning " + citizen.getName());
+                    }
+                    if (citizen.getCitizenDiseaseHandler() != null && citizen.getCitizenDiseaseHandler().isSick()) {
+                        news.add("ill " + citizen.getName());
+                    }
+                } catch (RuntimeException | LinkageError e) {
+                    // What MineColonies can't tell now isn't news.
+                }
+            }
+        }
+        return String.join(",", news);
     }
 
     private static Component title(String key) {
@@ -85,12 +131,56 @@ public final class Notebook {
     // ---- sections
 
     /** Gifts shown per taste in a colonist's relation; a few are enough to pick the next gift. */
-    private static final int TASTES_SHOWN = 4;
+    private static final int TASTES_SHOWN = 6;
+    /** A holiday or birthday this many calendar days ahead is news. */
+    private static final int NEWS_DAYS = 3;
+    /** With more colonists than this, relations show friends only until the player asks for all. */
+    static final int FRIENDS_ONLY_ABOVE = 8;
+    /** An item drawn as a small icon by the notebook screen, in place of this style's text (#67). */
+    public static final String ITEM = "livingcolonists:item ";
+    /** Players who asked to see all relations, not only friends; until the server restarts. */
+    private final java.util.Set<java.util.UUID> allRelations = new java.util.HashSet<>();
 
-    private List<Component> relations(ServerPlayer player, List<IColony> colonies) {
+    /** {@code /lc notebook all|friends}: which relations the player sees. */
+    public void register(com.mojang.brigadier.CommandDispatcher<net.minecraft.commands.CommandSourceStack> dispatcher) {
+        dispatcher.register(net.minecraft.commands.Commands.literal("lc").then(net.minecraft.commands.Commands.literal("notebook")
+                .then(net.minecraft.commands.Commands.literal("all").executes(context -> {
+                    allRelations.add(context.getSource().getPlayerOrException().getUUID());
+                    return 1;
+                }))
+                .then(net.minecraft.commands.Commands.literal("friends").executes(context -> {
+                    allRelations.remove(context.getSource().getPlayerOrException().getUUID());
+                    return 1;
+                }))));
+    }
+
+    /** Whether the player sees all relations or friends only. */
+    public void showAll(ServerPlayer player, boolean all) {
+        if (all) {
+            allRelations.add(player.getUUID());
+        } else {
+            allRelations.remove(player.getUUID());
+        }
+    }
+
+    private List<Component> relations(ServerPlayer player, List<IColony> colonies, List<BondsService.PlayerRelation> all) {
         Pager pager = new Pager(title("relations"));
-        List<BondsService.PlayerRelation> relations = bonds.relationsOf(player);
-        if (relations.isEmpty()) {
+        List<BondsService.PlayerRelation> relations = all;
+        if (all.size() > FRIENDS_ONLY_ABOVE) {
+            boolean everyone = allRelations.contains(player.getUUID());
+            int friendRank = FriendshipLevels.byId("friend").map(FriendshipLevels.Level::rank).orElse(Integer.MAX_VALUE);
+            if (!everyone) {
+                relations = all.stream().filter(r -> FriendshipLevels.level(r.rapport()).rank() >= friendRank).toList();
+            }
+            pager.add(Component.empty()
+                    .append(filter("livingcolonists.book.relations.friends_only", !everyone, "/lc notebook friends", relations.size()))
+                    .append(" ")
+                    .append(filter("livingcolonists.book.relations.everyone", everyone, "/lc notebook all", all.size())));
+            if (relations.isEmpty()) {
+                pager.add(Component.translatable("livingcolonists.book.relations.no_friends"));
+            }
+        }
+        if (all.isEmpty()) {
             pager.add(Component.translatable("livingcolonists.book.relations.none"));
         }
         for (BondsService.PlayerRelation relation : relations) {
@@ -110,10 +200,13 @@ public final class Notebook {
                 if (items.isEmpty()) {
                     continue;
                 }
+                // Small item icons, as on the tabs; the name shows on hover.
                 MutableComponent names = Component.empty();
                 for (int i = 0; i < Math.min(items.size(), TASTES_SHOWN); i++) {
-                    names.append(i == 0 ? Component.empty() : Component.literal(", "))
-                            .append(BuiltInRegistries.ITEM.get(ResourceLocation.parse(items.get(i))).getDescription());
+                    String id = items.get(i);
+                    ItemStack stack = new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse(id)));
+                    names.append(Component.literal(ICON_SPACE).withStyle(style -> style.withInsertion(ITEM + id)
+                            .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_ITEM, new HoverEvent.ItemStackInfo(stack)))));
                 }
                 block.append(Component.literal("\n")).append(Component.translatable("livingcolonists.book.tastes."
                         + taste.name().toLowerCase(java.util.Locale.ROOT), names).withStyle(style -> style.withBold(false)));
@@ -306,6 +399,17 @@ public final class Notebook {
         pager.add(button("livingcolonists.book.settings.all", ChatFormatting.DARK_BLUE, CLIENT + "settings",
                 Component.translatable("livingcolonists.book.settings.all.hint")));
         return pager.pages();
+    }
+
+    /** Room for one small item icon in a line of text. */
+    public static final String ICON_SPACE = "   ";
+
+    /** A filter button for relations: the one in use is bold and does nothing. */
+    private static Component filter(String key, boolean current, String command, int count) {
+        MutableComponent label = Component.translatable(key, count);
+        return current ? label.withStyle(ChatFormatting.BOLD)
+                : label.withStyle(style -> style.withColor(ChatFormatting.DARK_BLUE)
+                        .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command)));
     }
 
     private static Component button(String key, ChatFormatting color, String command, Component hint) {

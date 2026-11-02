@@ -23,6 +23,7 @@ public record NotebookPages(List<Notebook.Section> sections, boolean open) imple
             ByteBufCodecs.STRING_UTF8, Notebook.Section::key,
             ComponentSerialization.STREAM_CODEC, Notebook.Section::title,
             ComponentSerialization.STREAM_CODEC.apply(ByteBufCodecs.list(100)), Notebook.Section::pages,
+            ByteBufCodecs.STRING_UTF8, Notebook.Section::news,
             Notebook.Section::new);
 
     public static final StreamCodec<RegistryFriendlyByteBuf, NotebookPages> STREAM_CODEC = StreamCodec.composite(

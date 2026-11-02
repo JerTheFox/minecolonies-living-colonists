@@ -109,13 +109,26 @@ class NotebookScenariosTest {
     }
 
     @Test
+    void aNewPromiseOrFriendshipIsNewsForItsTab() {
+        String promises = section("promises").news();
+        String relations = section("relations").news();
+        stage.bonds.gift(darcy, stage.player.getUUID(), "Alex", "Alex gave me a cake", 3, List.of("Cake"),
+                me.bytefox.livingcolonists.friendship.Taste.LOVE, java.util.Map.of(), 2);
+        assertTrue(!relations.equals(section("relations").news()), "a new friend isn't news");
+        assertEquals(promises, section("promises").news(), "a gift changed the promises' news");
+        assertEquals("", section("help").news());
+    }
+
+    @Test
     void relationsShowWhatAColonistThoughtOfTheGifts() {
         stage.bonds.gift(darcy, stage.player.getUUID(), "Alex", "Alex gave me a cake", 2, List.of("Cake"),
                 me.bytefox.livingcolonists.friendship.Taste.LOVE, java.util.Map.of("minecraft:cake",
                         me.bytefox.livingcolonists.friendship.Taste.LOVE), 1);
         String relations = text(section("relations"));
         assertTrue(relations.contains("livingcolonists.book.tastes.love"), "the loved gift isn't shown: " + relations);
-        assertTrue(relations.contains("block.minecraft.cake"), "the cake isn't named: " + relations);
+        // The icon's text sits in the translation's argument, which tests without the language files don't unfold.
+        assertTrue(section("relations").pages().toString().contains("insertion=" + Notebook.ITEM + "minecraft:cake"),
+                "the cake has no icon: " + section("relations").pages());
     }
 
     @Test
