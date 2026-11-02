@@ -696,6 +696,46 @@ public final class BondsService {
         return true;
     }
 
+    /** How a colonist feels about a player, for letters (#67). */
+    public record Bond(ICitizenData citizen, UUID player, int rapport) {
+    }
+
+    /** Every colonist's relation with every player in the colony that has a history. */
+    public List<Bond> bondsIn(IColony colony) {
+        List<Bond> out = new ArrayList<>();
+        if (data == null) {
+            return out;
+        }
+        String prefix = colony.getID() + ":";
+        for (Map.Entry<String, Relation> entry : data.relations.entrySet()) {
+            if (!entry.getKey().startsWith(prefix) || entry.getValue().isEmpty()) {
+                continue;
+            }
+            String[] parts = entry.getKey().split(":");
+            ICitizenData citizen = colony.getCitizenManager().getCivilian(Integer.parseInt(parts[1]));
+            if (citizen != null) {
+                out.add(new Bond(citizen, UUID.fromString(parts[2]), entry.getValue().rapport()));
+            }
+        }
+        out.sort(java.util.Comparator.comparing((Bond b) -> b.citizen().getId()).thenComparing(Bond::player));
+        return out;
+    }
+
+    /** How the colonist feels about each player who has a history with them (#67). */
+    public List<Integer> rapportWithPlayers(ICitizenData citizen) {
+        List<Integer> out = new ArrayList<>();
+        if (data == null) {
+            return out;
+        }
+        String prefix = key(citizen) + ":";
+        data.relations.forEach((key, relation) -> {
+            if (key.startsWith(prefix) && !relation.isEmpty()) {
+                out.add(relation.rapport());
+            }
+        });
+        return out;
+    }
+
     /** The warmest friendship level the colonist reached with the player, by rank; -1 for none yet (#67). */
     public int reached(ICitizenData citizen, UUID player) {
         return data == null ? -1 : data.reached.getOrDefault(key(citizen, player), -1);

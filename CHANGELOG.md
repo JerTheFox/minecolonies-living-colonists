@@ -5,6 +5,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- Letters from colonists. A friend now and then leaves a short note with a small gift in the Colony Notebook, more often the closer you are and at most once a week; the gift fits their job (a baker's bread, a miner's torches) and is made from nothing, not taken from the warehouse. On the Gift Exchange someone who likes you sends a gift without a name, and a new best friend sends a keepsake. Gifts wait in the notebook's new Letters tab until you take them. The lists are in `config/livingcolonists/content/letters.json`.
+- Help in trouble. When you are badly hurt in your colony, a friend nearby helps by their job: a healer heals you and clears poison, a cook or a baker hands over food, an alchemist a potion, a smith patches your armour, a guard goes for whoever attacked you, a builder puts up a short wall that comes down after a minute, a miner hands over torches in the dark, and anyone else calls the nearest guard or healer. Each friend helps once in five minutes. The jobs and what they do are in `config/livingcolonists/content/help.json`.
+- Friendship shows in colonists' work: a colonist the players get on well with walks faster (up to 25% for a best friend) and earns more experience in their main skill (up to 50%); one who holds a grudge walks slower and learns slower. It counts the average of all players who know them. All of this can be switched off or tuned in the new `[friendship]` section of the config.
+
+### Fixed
+
+- A colonist asked something by name no longer answers with a catchphrase instead.
+
 ## [0.5.0] - 2026-11-02
 
 ### Added

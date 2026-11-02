@@ -245,6 +245,7 @@ public final class NotebookScreen extends Screen {
             case "orders" -> "scepter";
             case "colony" -> "family";
             case "settings" -> "settings";
+            case "letters" -> "inventory";
             default -> "help";
         };
     }

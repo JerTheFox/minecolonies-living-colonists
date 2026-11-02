@@ -430,8 +430,10 @@ public final class ColonyThreads {
         // Not only the first: "the unemployed, come to me" is for each of them, and each needs the functions to come.
         boolean answeringPlayer = opening == null && chatter == null
                 && (thread.askedByPlayer.remove(next) | thread.colonistTurns == 0);
-        // Catchphrases (#65): a set reply waiting for its turn, or now and then a set phrase, both without the model.
-        if (!answeringPlayer && opening == null && chatter == null && setLine(server, colony, thread, version, citizen)) {
+        // Catchphrases (#65): a set reply waiting for its turn, or now and then a set phrase, both without the model;
+        // never instead of answering a question asked by name.
+        if (!answeringPlayer && opening == null && chatter == null && thread.questionTo != citizen.getId()
+                && setLine(server, colony, thread, version, citizen)) {
             return;
         }
         ServerPlayer player = thread.lastPlayer == null ? null : server.getPlayerList().getPlayer(thread.lastPlayer);

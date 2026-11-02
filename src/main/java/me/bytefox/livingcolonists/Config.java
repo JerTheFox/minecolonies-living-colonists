@@ -286,6 +286,34 @@ public final class Config {
 
     static {
         BUILDER.pop();
+        BUILDER.comment("Friendship with players (#67): letters from colonists, help in trouble and friendship in their work")
+                .translation("livingcolonists.configuration.section.friendship").push("friendship");
+    }
+
+    public static final ModConfigSpec.BooleanValue LETTERS = BUILDER
+            .translation("livingcolonists.configuration.letters")
+            .comment("On: friends now and then leave a letter with a small gift in the Colony Notebook. Default on.")
+            .define("letters", true);
+
+    public static final ModConfigSpec.BooleanValue HELP_IN_TROUBLE = BUILDER
+            .translation("livingcolonists.configuration.helpInTrouble")
+            .comment("On: when a player is badly hurt in their colony, a friend nearby helps by their job. Default on.")
+            .define("helpInTrouble", true);
+
+    public static final ModConfigSpec.IntValue FRIENDSHIP_WALK_PERCENT = BUILDER
+            .translation("livingcolonists.configuration.friendshipWalkPercent")
+            .comment("How much faster, in percent, a colonist walks with the best friendship, and slower with a grudge.",
+                    "0 turns it off. Default 25.")
+            .defineInRange("friendshipWalkPercent", 25, 0, 50);
+
+    public static final ModConfigSpec.IntValue FRIENDSHIP_XP_PERCENT = BUILDER
+            .translation("livingcolonists.configuration.friendshipXpPercent")
+            .comment("How much more experience in their main skill, in percent, a colonist gets with the best friendship,",
+                    "and less with a grudge. 0 turns it off. Default 50.")
+            .defineInRange("friendshipXpPercent", 50, 0, 100);
+
+    static {
+        BUILDER.pop();
     }
 
     public static final ModConfigSpec SPEC = BUILDER.build();

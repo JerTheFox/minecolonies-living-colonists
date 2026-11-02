@@ -64,6 +64,10 @@ public final class SettingsSchema {
             new Setting("logLevel", Tab.BEHAVIOUR, new Kind(Type.CHOICE, 0, 0,
                     Arrays.stream(LogLevel.values()).map(Enum::name).toList()),
                     () -> Config.LOG_LEVEL.get().name(), value -> Config.LOG_LEVEL.set(LogLevel.valueOf(value))),
+            bool("letters", Tab.BEHAVIOUR, Config.LETTERS),
+            bool("helpInTrouble", Tab.BEHAVIOUR, Config.HELP_IN_TROUBLE),
+            number("friendshipWalkPercent", Tab.BEHAVIOUR, Config.FRIENDSHIP_WALK_PERCENT, 0, 50),
+            number("friendshipXpPercent", Tab.BEHAVIOUR, Config.FRIENDSHIP_XP_PERCENT, 0, 100),
             number("messagesPerPlayerPerHour", Tab.LIMITS, Config.MESSAGES_PER_PLAYER_PER_HOUR, 0, 100000),
             new Setting("tokensPerDay", Tab.LIMITS, new Kind(Type.LONG, 0, Long.MAX_VALUE, List.of()),
                     () -> String.valueOf(Config.TOKENS_PER_DAY.get()), value -> Config.TOKENS_PER_DAY.set(Long.parseLong(value))));

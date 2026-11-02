@@ -101,7 +101,7 @@ public final class LivingColonists {
     private final TalkService talk = new TalkService(client, prompts, personalities, perception, memory, bonds);
     private final Afterlife afterlife = new Afterlife(personalities, memory, bonds, talk.calendar());
     private final me.bytefox.livingcolonists.notebook.Notebook notebook =
-            new me.bytefox.livingcolonists.notebook.Notebook(bonds, talk.errands(), talk.moods(), talk.calendar());
+            new me.bytefox.livingcolonists.notebook.Notebook(bonds, talk.errands(), talk.moods(), talk.calendar(), talk.letters());
     private UsageData usageData;
     private final Conversations conversations = new Conversations(talk);
     private final SettingsHandler settings = new SettingsHandler(new SettingsService(client, usage));
@@ -119,6 +119,8 @@ public final class LivingColonists {
                 me.bytefox.livingcolonists.friendship.GiftTastes.use(prompts.content(PromptLibrary.GIFTS));
                 me.bytefox.livingcolonists.friendship.CalendarTable.use(prompts.content(PromptLibrary.CALENDAR));
                 me.bytefox.livingcolonists.friendship.FriendshipLevels.use(prompts.content(PromptLibrary.FRIENDSHIP));
+                me.bytefox.livingcolonists.friendship.LetterTable.use(prompts.content(PromptLibrary.LETTERS));
+                me.bytefox.livingcolonists.friendship.HelpTable.use(prompts.content(PromptLibrary.HELP));
             } catch (RuntimeException e) {
                 ModLog.warn("A content file in config/livingcolonists/content is broken, fix or delete it", e);
             }
@@ -213,6 +215,9 @@ public final class LivingColonists {
                     .computeIfAbsent(MemoryData.factory(), MemoryData.NAME));
             bonds.attach(event.getServer().overworld().getDataStorage()
                     .computeIfAbsent(BondsData.factory(), BondsData.NAME));
+            talk.letters().attach(event.getServer().overworld().getDataStorage()
+                    .computeIfAbsent(me.bytefox.livingcolonists.friendship.LettersData.factory(),
+                            me.bytefox.livingcolonists.friendship.LettersData.NAME));
             talk.calendar().attach(event.getServer().overworld().getDataStorage()
                     .computeIfAbsent(me.bytefox.livingcolonists.friendship.CalendarData.factory(),
                             me.bytefox.livingcolonists.friendship.CalendarData.NAME));
@@ -227,7 +232,15 @@ public final class LivingColonists {
             usageData = event.getServer().overworld().getDataStorage()
                     .computeIfAbsent(UsageData.factory(usage), UsageData.NAME);
         });
+        // A friend nearby helps a badly hurt player (#67).
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.living.LivingDamageEvent.Post event) -> {
+            if (event.getEntity() instanceof ServerPlayer player) {
+                talk.help().hurt(player, event.getSource().getEntity() instanceof net.minecraft.world.entity.LivingEntity attacker
+                        ? attacker : null);
+            }
+        });
         NeoForge.EVENT_BUS.addListener((ServerStoppingEvent event) -> {
+            talk.help().beforeStop(event.getServer());
             talk.errands().beforeStop();
             markUsageDirty();
         });

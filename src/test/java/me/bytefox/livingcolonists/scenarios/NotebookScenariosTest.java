@@ -34,7 +34,7 @@ class NotebookScenariosTest {
     void setUp() throws Exception {
         stage = new Stage("Darcy Abbott", "Hunter Casey");
         darcy = stage.citizens.get(0);
-        notebook = new Notebook(stage.bonds, stage.talk.errands(), stage.talk.moods(), stage.talk.calendar());
+        notebook = new Notebook(stage.bonds, stage.talk.errands(), stage.talk.moods(), stage.talk.calendar(), stage.talk.letters());
     }
 
     @AfterEach
@@ -81,8 +81,8 @@ class NotebookScenariosTest {
     }
 
     @Test
-    void fiveSectionsInOrder() {
-        assertEquals(List.of("promises", "relations", "orders", "colony", "settings", "help"),
+    void sevenSectionsInOrder() {
+        assertEquals(List.of("promises", "letters", "relations", "orders", "colony", "settings", "help"),
                 notebook.sections(stage.player).stream().map(Notebook.Section::key).toList());
         notebook.sections(stage.player).forEach(s -> assertTrue(!s.pages().isEmpty(), s.key() + " has no pages"));
     }
@@ -188,6 +188,6 @@ class NotebookScenariosTest {
                 .map(p -> (NotebookPages) ((net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket) p).payload())
                 .reduce((a, b) -> b).orElseThrow();
         assertTrue(!sent.open(), "a refresh opened the book");
-        assertEquals(6, sent.sections().size());
+        assertEquals(7, sent.sections().size());
     }
 }

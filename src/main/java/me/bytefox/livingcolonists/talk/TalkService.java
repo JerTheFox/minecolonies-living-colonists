@@ -145,6 +145,9 @@ public final class TalkService {
         this.deeds = new PlayerDeeds(events);
         this.drift = new RelationsDrift(this, threads, bonds, memory);
         this.friendship = new me.bytefox.livingcolonists.friendship.Friendship(bonds, calendar);
+        this.letters = new me.bytefox.livingcolonists.friendship.Letters(bonds, calendar);
+        this.help = new me.bytefox.livingcolonists.friendship.Help(bonds);
+        this.workBoost = new me.bytefox.livingcolonists.friendship.WorkBoost(bonds);
         FriendshipNews friendshipNews = new FriendshipNews(this, bonds, memory);
         ModEvents.BUS.on(GameEvents.FriendshipMilestone.class, friendshipNews::milestone);
         CalendarNews calendarNews = new CalendarNews(events, errands.tally(), calendar);
@@ -190,6 +193,19 @@ public final class TalkService {
     private final me.bytefox.livingcolonists.friendship.Calendar calendar = new me.bytefox.livingcolonists.friendship.Calendar();
 
     private final me.bytefox.livingcolonists.friendship.Friendship friendship;
+    private final me.bytefox.livingcolonists.friendship.Letters letters;
+    private final me.bytefox.livingcolonists.friendship.Help help;
+    private final me.bytefox.livingcolonists.friendship.WorkBoost workBoost;
+
+    /** Letters from colonists (#67). */
+    public me.bytefox.livingcolonists.friendship.Letters letters() {
+        return letters;
+    }
+
+    /** Help in trouble (#67). */
+    public me.bytefox.livingcolonists.friendship.Help help() {
+        return help;
+    }
 
     /** The colony calendars (#67). */
     public me.bytefox.livingcolonists.friendship.Calendar calendar() {
@@ -309,6 +325,8 @@ public final class TalkService {
             }
         }
         calendar.tick(server);
+        help.tick(server);
+        workBoost.tick(server);
         threads.tick(server);
         errands.tick(server);
         initiative.tick(server);

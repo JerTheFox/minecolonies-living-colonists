@@ -1,0 +1,30 @@
+{
+  "_comment": "Help in trouble (#67): when a player's health drops below healthShare near a colonist who is their friend, the colonist helps by job. do: heal (heals and clears harmful effects), give (items from nowhere, never from the warehouse), repair (patches the armour worn), fight (a guard goes for the attacker), wall (a builder puts up a short wall between the player and the attacker, taken down after wallSeconds), torches (only in the dark), call (the nearest guard goes for the attacker, else the nearest healer heals a little). Several friends nearby: the one whose help comes first in 'order' helps. Each colonist helps each player at most once in cooldownMinutes; a player gets help at most once in playerCooldownSeconds.",
+  "healthShare": 0.4,
+  "radius": 16,
+  "cooldownMinutes": 5,
+  "playerCooldownSeconds": 30,
+  "wallSeconds": 60,
+  "wallBlock": "minecraft:cobblestone",
+  "order": ["fight", "heal", "wall", "give", "repair", "torches", "call"],
+  "jobs": {
+    "healer": {"do": "heal"},
+    "cook": {"do": "give", "items": ["minecraft:cooked_beef 2", "minecraft:baked_potato 3"]},
+    "chef": {"do": "give", "items": ["minecraft:cooked_beef 2", "minecraft:pumpkin_pie 1"]},
+    "baker": {"do": "give", "items": ["minecraft:bread 3"]},
+    "alchemist": {"do": "give", "items": ["potion:minecraft:healing 1", "potion:minecraft:regeneration 1"]},
+    "cowboy": {"do": "give", "items": ["minecraft:milk_bucket 1"]},
+    "beekeeper": {"do": "give", "items": ["minecraft:honey_bottle 2"]},
+    "fisherman": {"do": "give", "items": ["minecraft:cooked_salmon 2", "minecraft:cooked_cod 2"]},
+    "farmer": {"do": "give", "items": ["minecraft:carrot 4", "minecraft:apple 3"]},
+    "planter": {"do": "give", "items": ["minecraft:melon_slice 6", "minecraft:sweet_berries 6"]},
+    "blacksmith": {"do": "repair"},
+    "knight": {"do": "fight"},
+    "archer": {"do": "fight"},
+    "druid": {"do": "fight"},
+    "builder": {"do": "wall"},
+    "miner": {"do": "torches", "items": ["minecraft:torch 6"]},
+    "quarrier": {"do": "torches", "items": ["minecraft:torch 6"]}
+  },
+  "default": {"do": "call"}
+}

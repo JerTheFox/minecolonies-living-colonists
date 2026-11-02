@@ -44,8 +44,10 @@ public final class PromptLibrary {
     public static final String GIFTS = "gifts.json";
     public static final String CALENDAR = "calendar.json";
     public static final String FRIENDSHIP = "friendship.json";
+    public static final String LETTERS = "letters.json";
+    public static final String HELP = "help.json";
     public static final List<String> CONTENT = List.of(HANDBOOK, RUMOURS, TOPICS, MOODS, TALK, CATCHPHRASES, GIFTS, CALENDAR,
-            FRIENDSHIP);
+            FRIENDSHIP, LETTERS, HELP);
 
     private final Path directory;
     private final Path contentDirectory;

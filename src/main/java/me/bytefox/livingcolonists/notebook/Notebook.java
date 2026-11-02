@@ -55,15 +55,17 @@ public final class Notebook {
     private final Errands errands;
     private final me.bytefox.livingcolonists.mood.ColonyMoods moods;
     private final me.bytefox.livingcolonists.friendship.Calendar calendar;
+    private final me.bytefox.livingcolonists.friendship.Letters letters;
     /** Holidays and birthdays shown this many calendar days ahead. */
     private static final int SOON_DAYS = 7;
 
     public Notebook(BondsService bonds, Errands errands, me.bytefox.livingcolonists.mood.ColonyMoods moods,
-                    me.bytefox.livingcolonists.friendship.Calendar calendar) {
+                    me.bytefox.livingcolonists.friendship.Calendar calendar, me.bytefox.livingcolonists.friendship.Letters letters) {
         this.bonds = bonds;
         this.errands = errands;
         this.moods = moods;
         this.calendar = calendar;
+        this.letters = letters;
     }
 
     /** Opens the notebook for the player, or refreshes it if it is open. */
@@ -80,6 +82,7 @@ public final class Notebook {
         List<BondsService.PlayerRelation> relations = bonds.relationsOf(player);
         return List.of(
                 new Section("promises", title("promises"), bonds.notebook(player), bonds.promiseNews(player)),
+                new Section("letters", title("letters"), letters(player), letterNews(player)),
                 new Section("relations", title("relations"), relations(player, colonies, relations), relationNews(relations)),
                 new Section("orders", title("orders"), orders(player), orderNews(player)),
                 new Section("colony", title("colony"), colony(colonies, player.server.getTickCount()), colonyNews(colonies)),
@@ -88,6 +91,46 @@ public final class Notebook {
     }
 
     // ---- what is new
+
+    /** Letters with a gift not taken yet. */
+    private String letterNews(ServerPlayer player) {
+        return letters.of(player.getUUID()).stream().filter(letter -> !letter.taken())
+                .map(letter -> Long.toString(letter.id())).collect(Collectors.joining(","));
+    }
+
+    /** Letters from colonists, newest first, each with its gift and a button to take it (#67). */
+    private List<Component> letters(ServerPlayer player) {
+        Pager pager = new Pager(title("letters"));
+        List<me.bytefox.livingcolonists.friendship.Letter> list = letters.of(player.getUUID());
+        if (list.isEmpty()) {
+            pager.add(Component.translatable("livingcolonists.book.letters.none"));
+        }
+        for (me.bytefox.livingcolonists.friendship.Letter letter : list) {
+            MutableComponent block = (letter.from().isEmpty() ? Component.translatable("livingcolonists.book.letters.secret")
+                    : Component.translatable("livingcolonists.book.letters.from", letter.from())).withStyle(ChatFormatting.BOLD)
+                    .append(Component.literal("\n" + letter.colony()).withStyle(style -> style.withBold(false).withColor(ChatFormatting.DARK_GRAY)))
+                    .append(Component.literal("\n").withStyle(style -> style.withBold(false)))
+                    .append(Component.translatable("livingcolonists.letter." + letter.kind() + "." + letter.variant())
+                            .withStyle(style -> style.withBold(false)));
+            if (!letter.gift().isEmpty()) {
+                String id = BuiltInRegistries.ITEM.getKey(letter.gift().getItem()).toString();
+                ItemStack shown = letter.gift().copy();
+                block.append(Component.literal("\n").withStyle(style -> style.withBold(false)))
+                        .append(Component.literal(ICON_SPACE).withStyle(style -> style.withBold(false).withInsertion(ITEM + id)
+                                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_ITEM, new HoverEvent.ItemStackInfo(shown)))))
+                        .append(Component.empty().append(letter.gift().getHoverName()).append(" ×" + letter.gift().getCount())
+                                .withStyle(style -> style.withBold(false)))
+                        .append(Component.literal(" ").withStyle(style -> style.withBold(false)))
+                        .append(letter.taken() ? Component.translatable("livingcolonists.book.letters.taken")
+                                .withStyle(style -> style.withBold(false).withColor(ChatFormatting.DARK_GRAY))
+                                : Component.translatable("livingcolonists.book.letters.take").withStyle(style -> style.withBold(false)
+                                        .withColor(ChatFormatting.DARK_GREEN)
+                                        .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/lc letter take " + letter.id()))));
+            }
+            pager.add(block);
+        }
+        return pager.pages();
+    }
 
     /** Each colonist's friendship level and how many of their tastes are known: a milestone or a told favourite is news. */
     private static String relationNews(List<BondsService.PlayerRelation> relations) {
@@ -152,6 +195,11 @@ public final class Notebook {
                     allRelations.remove(context.getSource().getPlayerOrException().getUUID());
                     return 1;
                 }))));
+        dispatcher.register(net.minecraft.commands.Commands.literal("lc").then(net.minecraft.commands.Commands.literal("letter")
+                .then(net.minecraft.commands.Commands.literal("take").then(net.minecraft.commands.Commands.argument("id",
+                        com.mojang.brigadier.arguments.LongArgumentType.longArg(1)).executes(context ->
+                        letters.take(context.getSource().getPlayerOrException(),
+                                com.mojang.brigadier.arguments.LongArgumentType.getLong(context, "id")) ? 1 : 0)))));
     }
 
     /** Whether the player sees all relations or friends only. */

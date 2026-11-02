@@ -21,7 +21,7 @@ class NotebookRelationsTest {
     void setUp() throws Exception {
         stage = new Stage("Darcy Abbott", "Hunter Casey", "Ella Moss", "Owen Price", "Ruth Hale", "Ivan Cole", "Nina Shaw",
                 "Leo Grant", "Mara Quinn", "Tom Reed");
-        notebook = new Notebook(stage.bonds, stage.talk.errands(), stage.talk.moods(), stage.talk.calendar());
+        notebook = new Notebook(stage.bonds, stage.talk.errands(), stage.talk.moods(), stage.talk.calendar(), stage.talk.letters());
         for (int i = 0; i < stage.citizens.size(); i++) {
             // The first a friend, the rest only acquainted.
             stage.bonds.gift(stage.citizens.get(i), stage.player.getUUID(), "Alex", "Alex gave me bread", 1, List.of("Bread"),
