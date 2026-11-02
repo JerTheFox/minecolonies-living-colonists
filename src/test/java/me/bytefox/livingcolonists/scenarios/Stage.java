@@ -170,6 +170,7 @@ final class Stage implements AutoCloseable {
             me.bytefox.livingcolonists.mood.MoodTable.use(prompts.content(PromptLibrary.MOODS));
             me.bytefox.livingcolonists.talk.TalkShapes.use(prompts.content(PromptLibrary.TALK));
             me.bytefox.livingcolonists.talk.Catchphrases.use(prompts.content(PromptLibrary.CATCHPHRASES));
+            me.bytefox.livingcolonists.friendship.GiftTastes.use(prompts.content(PromptLibrary.GIFTS));
         });
         prompts.reload();
         ArchetypeLibrary archetypes = new ArchetypeLibrary(directory);

@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- Colonists have tastes in gifts. Everyone likes food and loves cake; a blacksmith loves ingots, a cook sugar, a researcher books. Each colonist also has one odd favourite of their own. An easygoing character takes a dull gift kindly, a grumbler is hard to please. A favourite warms them three times as much as an ordinary gift, and rotten flesh sets them back about as much as rudeness. They thank you to match. Two gifts a week count instead of one a day. The Colony Notebook shows what each colonist thought of your gifts. The tastes are in `config/livingcolonists/content/gifts.json`.
+
 ## [0.4.0] - 2026-11-02
 
 ### Added

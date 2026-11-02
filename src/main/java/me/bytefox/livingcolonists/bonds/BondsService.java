@@ -18,6 +18,7 @@ import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.requestsystem.token.IToken;
 import me.bytefox.livingcolonists.ModLog;
+import me.bytefox.livingcolonists.friendship.Taste;
 import me.bytefox.livingcolonists.Citizens;
 import me.bytefox.livingcolonists.memory.Digests;
 import me.bytefox.livingcolonists.memory.PlayerMarks;
@@ -381,7 +382,7 @@ public final class BondsService {
     }
 
     /** How a colonist feels about a player, for the notebook (#66): rapport and the happiness from it (1 is none). */
-    public record PlayerRelation(String colonist, String colony, int rapport, double mood) {
+    public record PlayerRelation(String colonist, String colony, int rapport, double mood, Map<Taste, List<String>> tastes) {
     }
 
     /** Every colonist with a relation to the player, warmest first. */
@@ -403,7 +404,8 @@ public final class BondsService {
             }
             Moods.Lasting mood = data.moods.get(parts[0] + ":" + parts[1]);
             double factor = mood == null || mood.until() <= now(colony) ? 1.0 : mood.factor();
-            out.add(new PlayerRelation(citizen.getName(), colony.getName(), entry.getValue().rapport(), factor));
+            out.add(new PlayerRelation(citizen.getName(), colony.getName(), entry.getValue().rapport(), factor,
+                    knownTastes(citizen, player.getUUID())));
         }
         out.sort(java.util.Comparator.comparingInt(PlayerRelation::rapport).reversed());
         return out;
@@ -653,14 +655,15 @@ public final class BondsService {
         }
     }
 
-    /** When each colonist last warmed to each player for a gift, game time; not saved. */
-    private final Map<String, Long> lastGift = new java.util.HashMap<>();
-
     /**
-     * A player gave the colonist something (#11): a kind act worth what the gift is worth, at most once a
-     * game day per colonist and player, so gifts of dirt can't be farmed. Whether it warmed them.
+     * A player gave the colonist something (#11, #67): it moves their rapport by what they think of it, for at most
+     * {@link Gifts#COUNTED_A_WEEK} gifts a week per colonist and player, so gifts can't be farmed. The colonist
+     * remembers what they thought of each item either way. Whether the gift counted.
+     *
+     * @param tastes item id to what the colonist thinks of it; {@code taste} is what the whole gift counts as
      */
-    public boolean gift(ICitizenData citizen, UUID player, String playerName, String text, int worth, List<String> items) {
+    public boolean gift(ICitizenData citizen, UUID player, String playerName, String text, int worth, List<String> items,
+            Taste taste, Map<String, Taste> tastes) {
         if (data == null) {
             return false;
         }
@@ -671,13 +674,28 @@ public final class BondsService {
             gifts.get(key).removeFirst();
         }
         keptByGift(citizen, player, now);
-        if (now - lastGift.getOrDefault(key, Long.MIN_VALUE / 2) < Gifts.WARMS_EVERY) {
+        Map<String, String> known = data.tastes.computeIfAbsent(key, k -> new HashMap<>());
+        tastes.forEach((item, what) -> known.put(item, what.name()));
+        data.setDirty();
+        List<Long> counted = data.gifted.computeIfAbsent(key, k -> new ArrayList<>());
+        counted.removeIf(at -> now - at >= Gifts.WEEK || at > now);
+        if (counted.size() >= Gifts.COUNTED_A_WEEK) {
             return false;
         }
-        lastGift.put(key, now);
+        counted.add(now);
         data.playerNames.put(player, playerName);
-        note(citizen, player, Gifts.warmth(worth), text, now);
+        note(citizen, player, taste.warmth(worth), text, now);
         return true;
+    }
+
+    /** What the colonist thought of the things the player gave them, item ids by taste, in no set order. */
+    public Map<Taste, List<String>> knownTastes(ICitizenData citizen, UUID player) {
+        Map<Taste, List<String>> out = new java.util.EnumMap<>(Taste.class);
+        Map<String, String> known = data == null ? null : data.tastes.get(key(citizen, player));
+        if (known != null) {
+            new java.util.TreeMap<>(known).forEach((item, taste) -> out.computeIfAbsent(Taste.valueOf(taste), t -> new ArrayList<>()).add(item));
+        }
+        return out;
     }
 
     public List<Promise> promises(ICitizenData citizen) {
@@ -715,6 +733,8 @@ public final class BondsService {
         moved |= me.bytefox.livingcolonists.Citizens.move(data.moods, from, to);
         moved |= me.bytefox.livingcolonists.Citizens.move(data.relations, from, to);
         moved |= me.bytefox.livingcolonists.Citizens.move(data.credited, from, to);
+        moved |= me.bytefox.livingcolonists.Citizens.move(data.gifted, from, to);
+        moved |= me.bytefox.livingcolonists.Citizens.move(data.tastes, from, to);
         if (moved) {
             data.setDirty();
         }
@@ -730,6 +750,8 @@ public final class BondsService {
         data.relations.keySet().removeIf(key);
         data.credited.keySet().removeIf(key);
         data.moods.keySet().removeIf(key);
+        data.gifted.keySet().removeIf(key);
+        data.tastes.keySet().removeIf(key);
         // A pair is dropped when either colonist matches.
         data.colonists.keySet().removeIf(pair -> {
             String[] parts = pair.split(":");

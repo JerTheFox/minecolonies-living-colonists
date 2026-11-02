@@ -8,6 +8,7 @@ import com.minecolonies.api.colony.IColony;
 import me.bytefox.livingcolonists.Citizens;
 import me.bytefox.livingcolonists.behaviour.ColonyAccess;
 import me.bytefox.livingcolonists.bonds.BondsService;
+import me.bytefox.livingcolonists.friendship.Taste;
 import me.bytefox.livingcolonists.colony.Colonies;
 import me.bytefox.livingcolonists.errands.Errands;
 import me.bytefox.livingcolonists.errands.NoteBook;
@@ -15,9 +16,11 @@ import me.bytefox.livingcolonists.errands.NotifyWhen;
 import me.bytefox.livingcolonists.network.NotebookPages;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -72,6 +75,9 @@ public final class Notebook {
 
     // ---- sections
 
+    /** Gifts shown per taste in a colonist's relation; a few are enough to pick the next gift. */
+    private static final int TASTES_SHOWN = 4;
+
     private List<Component> relations(ServerPlayer player, List<IColony> colonies) {
         Pager pager = new Pager(title("relations"));
         List<BondsService.PlayerRelation> relations = bonds.relationsOf(player);
@@ -88,6 +94,20 @@ public final class Notebook {
             } else if (relation.mood() < 0.98) {
                 block.append(Component.literal("\n")).append(Component.translatable("livingcolonists.book.mood.hurt")
                         .withStyle(style -> style.withBold(false).withColor(ChatFormatting.DARK_RED)));
+            }
+            // What they thought of the player's gifts (#67), so the next one can be picked well.
+            for (Taste taste : List.of(Taste.LOVE, Taste.LIKE, Taste.DISLIKE, Taste.HATE)) {
+                List<String> items = relation.tastes().getOrDefault(taste, List.of());
+                if (items.isEmpty()) {
+                    continue;
+                }
+                MutableComponent names = Component.empty();
+                for (int i = 0; i < Math.min(items.size(), TASTES_SHOWN); i++) {
+                    names.append(i == 0 ? Component.empty() : Component.literal(", "))
+                            .append(BuiltInRegistries.ITEM.get(ResourceLocation.parse(items.get(i))).getDescription());
+                }
+                block.append(Component.literal("\n")).append(Component.translatable("livingcolonists.book.tastes."
+                        + taste.name().toLowerCase(java.util.Locale.ROOT), names).withStyle(style -> style.withBold(false)));
             }
             if (colonies.size() > 1) {
                 block.append(Component.literal("\n" + relation.colony()).withStyle(style -> style.withBold(false)

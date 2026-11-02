@@ -8,8 +8,10 @@ import java.util.Map;
  * came in between opening and closing it, and how much it warms the colonist.
  */
 public final class Gifts {
-    /** One gift warms a colonist toward a player at most this often, in game ticks (a game day). */
-    public static final long WARMS_EVERY = 24000;
+    /** Gifts that count toward a colonist's rapport with a player in a {@link #WEEK} (#67), as in Stardew Valley. */
+    public static final int COUNTED_A_WEEK = 2;
+    /** Seven game days, in game ticks. */
+    public static final long WEEK = 7 * 24000L;
 
     private Gifts() {
     }

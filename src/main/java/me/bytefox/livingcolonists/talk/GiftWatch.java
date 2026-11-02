@@ -13,8 +13,12 @@ import me.bytefox.livingcolonists.ModLog;
 import me.bytefox.livingcolonists.bonds.BondsService;
 import me.bytefox.livingcolonists.bonds.Gifts;
 import me.bytefox.livingcolonists.debug.Counters;
+import me.bytefox.livingcolonists.friendship.GiftTastes;
+import me.bytefox.livingcolonists.friendship.Taste;
 import me.bytefox.livingcolonists.memory.MemoryService;
 import me.bytefox.livingcolonists.perception.ItemNames;
+import me.bytefox.livingcolonists.personality.Personality;
+import me.bytefox.livingcolonists.personality.PersonalityService;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -22,8 +26,8 @@ import net.minecraft.world.item.ItemStack;
 
 /**
  * Gifts (#11): what a player puts into a colonist's inventory through MineColonies' inventory window
- * is a gift. The colonist remembers it, warms to the player (at most once a game day) and thanks them
- * in a private line. Server thread only.
+ * is a gift. The colonist remembers it, takes it by their tastes (#67: two gifts a week count) and
+ * reacts in a private line. Server thread only.
  */
 public final class GiftWatch {
     private record Opened(ICitizenData citizen, Map<String, Integer> counts) {
@@ -32,12 +36,14 @@ public final class GiftWatch {
     private final TalkService talk;
     private final BondsService bonds;
     private final MemoryService memory;
+    private final PersonalityService personalities;
     private final Map<UUID, Opened> open = new HashMap<>();
 
-    GiftWatch(TalkService talk, BondsService bonds, MemoryService memory) {
+    GiftWatch(TalkService talk, BondsService bonds, MemoryService memory, PersonalityService personalities) {
         this.talk = talk;
         this.bonds = bonds;
         this.memory = memory;
+        this.personalities = personalities;
     }
 
     public void opened(ServerPlayer player, AbstractContainerMenu menu) {
@@ -58,6 +64,12 @@ public final class GiftWatch {
         }
         List<String> named = new ArrayList<>();
         List<String> english = new ArrayList<>();
+        List<ItemStack> stacks = new ArrayList<>();
+        Map<String, Taste> tastes = new HashMap<>();
+        String job = citizen.getJob() == null ? "" : citizen.getJob().getJobRegistryEntry().getKey().getPath();
+        Personality personality = personalities.get(citizen);
+        String archetype = personality == null ? "" : personality.archetype();
+        String citizenKey = citizen.getColony().getID() + ":" + citizen.getId();
         int worth = 1;
         for (Map.Entry<String, Integer> gift : added.entrySet()) {
             ItemStack stack = sample(citizen.getInventory(), gift.getKey());
@@ -65,19 +77,34 @@ public final class GiftWatch {
             if (!stack.isEmpty()) {
                 worth = Math.max(worth, BondsService.worthOf(stack, gift.getValue()));
                 english.add(stack.getItem().getDescription().getString());
+                stacks.add(stack);
+                tastes.put(gift.getKey(), GiftTastes.taste(job, archetype, citizenKey, stack));
             }
         }
+        Taste taste = GiftTastes.gift(job, archetype, citizenKey, stacks);
         String what = String.join(", ", named);
         String playerName = Audience.playerName(player);
         Counters.add("gifts");
         ModLog.action("{} gave {} {}", playerName, citizen.getName(), what);
-        boolean warmed = bonds.gift(citizen, player.getUUID(), playerName, playerName + " gave me " + what, worth, english);
+        boolean counted = bonds.gift(citizen, player.getUUID(), playerName, playerName + " gave me " + what, worth, english,
+                taste, tastes);
         memory.rememberSeen(citizen.getColony(), List.of(citizen.getId()), playerName,
                 playerName + " gave " + citizen.getName() + " " + what + ".", Math.min(5, 1 + worth));
-        if (warmed) {
-            talk.writeFirst(player, citizen, "to thank them, briefly and in your own way, for what they just put in your "
-                    + "bag: " + what + ".", false, null, false, Airtime.Kind.NOTE);
+        if (counted) {
+            talk.writeFirst(player, citizen, reaction(taste) + " what they just put in your bag: " + what + ".",
+                    false, null, false, Airtime.Kind.NOTE);
         }
+    }
+
+    /** How the colonist takes the gift (#67), decided by code from their tastes. */
+    private static String reaction(Taste taste) {
+        return switch (taste) {
+            case LOVE -> "to thank them warmly, in your own way: it is one of your favourite things, and you are delighted with";
+            case LIKE -> "to thank them, briefly and in your own way, glad of";
+            case NEUTRAL -> "to thank them, briefly and politely, for";
+            case DISLIKE -> "to thank them politely but plainly without enthusiasm, as you don't care for";
+            case HATE -> "to tell them, in your own way and without cruelty, that you can't stand";
+        };
     }
 
     void clear() {

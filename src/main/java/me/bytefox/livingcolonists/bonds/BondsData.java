@@ -36,6 +36,10 @@ public final class BondsData extends SavedData {
     final Map<String, Moods.Lasting> moods = new HashMap<>();
     /** Players a colonist already gave a promise notebook to; a lost one is crafted again. */
     final java.util.Set<UUID> bookGiven = new java.util.HashSet<>();
+    /** When gifts last counted (#67), game time, oldest first; key as {@link #relations}. */
+    final Map<String, List<Long>> gifted = new HashMap<>();
+    /** What a colonist thought of each thing a player gave them: item id to taste; key as {@link #relations}. */
+    final Map<String, Map<String, String>> tastes = new HashMap<>();
     long nextId = 1;
 
     public static SavedData.Factory<BondsData> factory() {
@@ -76,6 +80,21 @@ public final class BondsData extends SavedData {
         ListTag books = tag.getList("bookGiven", Tag.TAG_STRING);
         for (int i = 0; i < books.size(); i++) {
             data.bookGiven.add(UUID.fromString(books.getString(i)));
+        }
+        CompoundTag gifted = tag.getCompound("gifted");
+        for (String key : gifted.getAllKeys()) {
+            List<Long> times = new ArrayList<>();
+            for (long time : gifted.getLongArray(key)) {
+                times.add(time);
+            }
+            data.gifted.put(key, times);
+        }
+        CompoundTag tastes = tag.getCompound("tastes");
+        for (String key : tastes.getAllKeys()) {
+            CompoundTag one = tastes.getCompound(key);
+            Map<String, String> items = new HashMap<>();
+            one.getAllKeys().forEach(item -> items.put(item, one.getString(item)));
+            data.tastes.put(key, items);
         }
         return data;
     }
@@ -160,6 +179,16 @@ public final class BondsData extends SavedData {
         ListTag books = new ListTag();
         bookGiven.forEach(uuid -> books.add(net.minecraft.nbt.StringTag.valueOf(uuid.toString())));
         tag.put("bookGiven", books);
+        CompoundTag giftedTag = new CompoundTag();
+        gifted.forEach((key, times) -> giftedTag.putLongArray(key, times.stream().mapToLong(Long::longValue).toArray()));
+        tag.put("gifted", giftedTag);
+        CompoundTag tasteTag = new CompoundTag();
+        tastes.forEach((key, items) -> {
+            CompoundTag one = new CompoundTag();
+            items.forEach(one::putString);
+            tasteTag.put(key, one);
+        });
+        tag.put("tastes", tasteTag);
         return tag;
     }
 

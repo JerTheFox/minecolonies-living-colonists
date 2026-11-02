@@ -141,7 +141,7 @@ public final class TalkService {
         LifeNews news = new LifeNews(memory, events);
         ModEvents.BUS.on(GameEvents.JobChanged.class, news::jobChanged);
         ModEvents.BUS.on(GameEvents.FellIll.class, news::fellIll);
-        this.gifts = new GiftWatch(this, bonds, memory);
+        this.gifts = new GiftWatch(this, bonds, memory, personalities);
         this.deeds = new PlayerDeeds(events);
         this.drift = new RelationsDrift(this, threads, bonds, memory);
     }

@@ -99,6 +99,16 @@ class NotebookScenariosTest {
     }
 
     @Test
+    void relationsShowWhatAColonistThoughtOfTheGifts() {
+        stage.bonds.gift(darcy, stage.player.getUUID(), "Alex", "Alex gave me a cake", 2, List.of("Cake"),
+                me.bytefox.livingcolonists.friendship.Taste.LOVE, java.util.Map.of("minecraft:cake",
+                        me.bytefox.livingcolonists.friendship.Taste.LOVE));
+        String relations = text(section("relations"));
+        assertTrue(relations.contains("livingcolonists.book.tastes.love"), "the loved gift isn't shown: " + relations);
+        assertTrue(relations.contains("block.minecraft.cake"), "the cake isn't named: " + relations);
+    }
+
+    @Test
     void ordersShowWhatWaitsForAYesAndTheLastOneWithUndo() throws Exception {
         stage.building("baker", 1, new BlockPos(20, 64, 20));
         JsonObject arguments = new JsonObject();
