@@ -166,6 +166,7 @@ public final class ColonyThreads {
      * Only with players around and nothing going on in the chat. Returns whether it started.
      */
     private final Catchphrases catchphrases = new Catchphrases();
+    static final String ASKED_BY_NAME = "The last line asked you something by name: answer it first, in your own way.";
 
     /** Below this energy a talk is winding down: one with an ending gets it now. */
     private static final double ENDING_ENERGY = 1.5;
@@ -482,7 +483,9 @@ public final class ColonyThreads {
         Optional<Fact> rumor = Optional.empty();
         if (!answeringPlayer && opening == null && chatter == null) {
             values.put("initiative", Prompts.chatInitiative(random));
-            String stance = Prompts.stance(Bonds.contrarinessWith(contrariness(citizen),
+            // Asked something by name, a colonist answers it first: the dice once told one to change the subject instead.
+            String stance = thread.questionTo == citizen.getId() ? ASKED_BY_NAME
+                    : Prompts.stance(Bonds.contrarinessWith(contrariness(citizen),
                     bonds.colonists().rapport(colony, citizen.getId(), thread.lastSpeaker)), thread.colonistTurns, random, thread.topics);
             String topic = Prompts.topicOf(stance);
             if (topic != null) {
@@ -510,7 +513,7 @@ public final class ColonyThreads {
             rumor.ifPresent(fact -> values.put("initiative", values.get("initiative") + " " + Prompts.gossip(fact.text())));
         }
         // Nobody opens a talk with a bare reaction or a bare question: the dice shape only the lines after.
-        if (opening == null && chatter == null) {
+        if (opening == null && chatter == null && thread.questionTo != citizen.getId()) {
             String form = Prompts.form(random, answeringPlayer);
             if (!form.isEmpty()) {
                 values.put("turn", values.get("turn") + " " + form);

@@ -1,5 +1,6 @@
 package me.bytefox.livingcolonists.scenarios;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -44,6 +45,24 @@ class TalkScenariosTest {
         stage.model.saysWhenAsked("food_items_in_warehouses", "На складе пусто.");
         stage.playerWritesTo("Darcy Abbott", "сколько у нас еды?");
         assertTrue(stage.runUntil(() -> saw("На складе пусто."), WAIT), "the look-up's result never reached the answer: " + stage.chat);
+    }
+
+    @Test
+    void theSameLookUpLaterLooksAgain() throws Exception {
+        // 0.4.0: a build_status from before an order was answered from a ten-minute cache, so a colonist denied a
+        // building the builder was already digging out.
+        stage.model.callsWhenOffered("food_status", new JsonObject());
+        stage.model.saysWhenAsked("food_items_in_warehouses", "Еды хватает.");
+        java.util.Map<String, Long> before = me.bytefox.livingcolonists.debug.Counters.snapshot();
+        stage.playerWritesTo("Darcy Abbott", "сколько у нас еды?");
+        assertTrue(stage.runUntil(() -> saw("Еды хватает."), WAIT), "no first answer: " + stage.chat);
+        stage.chat.clear();
+        stage.model.callsWhenOffered("food_status", new JsonObject());
+        stage.model.saysWhenAsked("food_items_in_warehouses", "Еды хватает.");
+        stage.playerWritesTo("Darcy Abbott", "а теперь сколько еды?");
+        assertTrue(stage.runUntil(() -> saw("Еды хватает."), WAIT), "no second answer: " + stage.chat);
+        java.util.Map<String, Long> after = me.bytefox.livingcolonists.debug.Counters.snapshot();
+        assertEquals(2L, after.getOrDefault("lookups", 0L) - before.getOrDefault("lookups", 0L), "the colony wasn't looked at twice");
     }
 
     @Test

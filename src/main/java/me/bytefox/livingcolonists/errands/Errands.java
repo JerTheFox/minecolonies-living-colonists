@@ -79,20 +79,20 @@ public final class Errands {
     /** Game time of the latest look-up or order in each colony. */
     private final Map<Integer, Long> lastErrand = new HashMap<>();
 
-    /** A look-up's reply as it came, kept {@link #CACHE_TICKS} per colony (#56). */
-    private record Cached(String reply, long gameTime) {
-    }
+    /**
+     * How long a look-up's result is shared with the whole colony, with its age, in game ticks (ten minutes). Every
+     * look-up itself reads the colony afresh: 0.4.0 answered them from a ten-minute cache, and a colonist denied an
+     * order the builder was already working on.
+     */
+    public static final long SHARED_TICKS = 10 * 60 * 20;
 
-    /** How long a look-up's result stands for everyone, in game ticks (ten minutes): stock moves. */
-    public static final long CACHE_TICKS = 10 * 60 * 20;
-    private final Map<Integer, Map<String, Cached>> cache = new HashMap<>();
-
-    private record Lookup(long gameTime, String text, boolean fast) {
+    /** @param key the call and its arguments: a newer look-up of the same replaces it */
+    private record Lookup(long gameTime, String key, String text, boolean fast) {
     }
 
     /**
-     * Look-ups of what changes within a minute (where enemies or a colonist are): never answered from the cache, and
-     * shared with the colony only for {@link #FAST_TICKS}, with their age, or colonists tell of enemies long dead.
+     * Look-ups of what changes within a minute (where enemies or a colonist are): shared with the colony only for
+     * {@link #FAST_TICKS}, or colonists tell of enemies long dead.
      */
     private static final java.util.Set<String> FAST = java.util.Set.of("where_enemies", "where_is");
     /** How long a fast look-up stays in everyone's situation: thirty seconds. */
@@ -185,17 +185,7 @@ public final class Errands {
                 return refusal.get().toString();
             }
         }
-        String cacheKey = call.name() + arguments.toString().toLowerCase(java.util.Locale.ROOT);
-        long gameTime = context.colony().getWorld().getGameTime();
-        if (!errand.isOrder() && !FAST.contains(call.name())) {
-            // The same look-up within a few minutes is answered from what was found (#56): one result for everyone.
-            Cached cached = cache.computeIfAbsent(context.colony().getID(), id -> new HashMap<>()).get(cacheKey);
-            if (cached != null && gameTime - cached.gameTime() < CACHE_TICKS) {
-                Counters.add("lookups.cached");
-                ModLog.action("Look-up by {} from the cache: {}{}", context.citizen().getName(), call.name(), call.arguments());
-                return cached.reply();
-            }
-        }
+        String lookupKey = call.name() + arguments.toString().toLowerCase(java.util.Locale.ROOT);
         Errand.Result result;
         try {
             result = errand.run(context, arguments);
@@ -213,16 +203,12 @@ public final class Errands {
         if (result instanceof Errand.Result.Answer answer && !errand.isOrder()) {
             String text = context.citizen().getName() + " looked up " + call.name() + call.arguments() + ": " + answer.reply();
             Deque<Lookup> colony = lookups.computeIfAbsent(context.colony().getID(), id -> new ArrayDeque<>());
-            colony.addLast(new Lookup(context.colony().getWorld().getGameTime(),
+            colony.removeIf(old -> old.key().equals(lookupKey));
+            colony.addLast(new Lookup(context.colony().getWorld().getGameTime(), lookupKey,
                     text.length() > MAX_LOOKUP_TEXT ? text.substring(0, MAX_LOOKUP_TEXT) + "…" : text, FAST.contains(call.name())));
             while (colony.size() > KEPT_LOOKUPS) {
                 colony.removeFirst();
             }
-        }
-        if (result instanceof Errand.Result.Answer answer && !errand.isOrder()) {
-            Map<String, Cached> colonyCache = cache.computeIfAbsent(context.colony().getID(), id -> new HashMap<>());
-            colonyCache.values().removeIf(old -> gameTime - old.gameTime() >= CACHE_TICKS);
-            colonyCache.put(cacheKey, new Cached(answer.reply().toString(), gameTime));
         }
         return switch (result) {
             case Errand.Result.Answer answer -> answer.reply().toString();
@@ -318,6 +304,7 @@ public final class Errands {
         }
         if (outcome.done()) {
             book.done(player.getUUID(), ticket.get(), outcome.undo());
+            changed(ticket.get().where().getID());
             ICitizenData citizen = ticket.get().where().getCitizenManager().getCivilian(ticket.get().citizenId());
             if (citizen != null) {
                 deeds.remember(citizen, "On " + Audience.playerName(player) + "'s order I saw to it: " + order.summary() + ".");
@@ -385,10 +372,18 @@ public final class Errands {
     /** What was looked up in the colony lately, as of game time {@code now}: fast look-ups only for a short while. */
     public List<String> lookups(int colonyId, long now) {
         return lookups.getOrDefault(colonyId, new ArrayDeque<>()).stream()
-                .filter(lookup -> now - lookup.gameTime() < (lookup.fast() ? FAST_TICKS : CACHE_TICKS))
-                .map(lookup -> lookup.fast() ? lookup.text() + " (" + (now - lookup.gameTime()) / 20 + " s ago; may have changed)"
-                        : lookup.text())
+                .filter(lookup -> now - lookup.gameTime() < (lookup.fast() ? FAST_TICKS : SHARED_TICKS))
+                .map(lookup -> lookup.text() + " (" + age(now - lookup.gameTime()) + " ago; may have changed)")
                 .toList();
+    }
+
+    private static String age(long ticks) {
+        return ticks < 60 * 20 ? ticks / 20 + " s" : ticks / (60 * 20) + " min";
+    }
+
+    /** An order was carried out: what was looked up before it may no longer be so. */
+    public void changed(int colonyId) {
+        lookups.remove(colonyId);
     }
 
     /** {@code /lcdebug orders}: what was ordered lately, newest last. */
@@ -466,7 +461,6 @@ public final class Errands {
         guards.clear();
         book.clear();
         lookups.clear();
-        cache.clear();
         lastErrand.clear();
     }
 

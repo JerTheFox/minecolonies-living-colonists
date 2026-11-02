@@ -19,6 +19,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Colony Notebook: the page arrows sit higher with the page numbers beside them in the outer corners, relations between colonists start on a page of their own, and pages fill up better.
 - Colonists have tastes in gifts. Everyone likes food and loves cake; a blacksmith loves ingots, a cook sugar, a researcher books. Each colonist also has one odd favourite of their own. An easygoing character takes a dull gift kindly, a grumbler is hard to please. A favourite warms them three times as much as an ordinary gift, and rotten flesh sets them back about as much as rudeness. They thank you to match. Two gifts a week count instead of one a day. The Colony Notebook shows what each colonist thought of your gifts. The tastes are in `config/livingcolonists/content/gifts.json`.
 
+### Fixed
+
+- Look-ups are no longer answered from a ten-minute cache. A colonist kept saying a building had no order while the builder was already digging its foundation. What colonists looked up is still shared with the colony, now with how long ago it was, and it is dropped once an order is carried out.
+- A colonist asked something by name in the colony chat answers it instead of changing the subject.
+
 ## [0.4.0] - 2026-11-02
 
 ### Added

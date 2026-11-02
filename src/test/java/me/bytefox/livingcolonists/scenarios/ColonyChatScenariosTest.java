@@ -24,6 +24,18 @@ class ColonyChatScenariosTest {
     }
 
     @Test
+    void aColonistAskedByNameAnswersInsteadOfChangingTheSubject() throws Exception {
+        // 0.4.0: asked about a zombie by name, a colonist was told to change the subject and said "Not a tanner, for sure."
+        stage.model.saysWhenAsked("Дарси, как дела", "Нормально. Хантер, а ты сегодня ел?");
+        stage.playerWritesToColony("Дарси, как дела?");
+        assertTrue(stage.runUntil(() -> stage.replies().stream().anyMatch(r -> r.toString().contains("You are Hunter Casey")),
+                Duration.ofSeconds(20)), "Hunter never got the turn; the player saw: " + stage.chat);
+        String hunter = stage.replies().stream().map(Object::toString).filter(r -> r.contains("You are Hunter Casey")).findFirst().orElseThrow();
+        assertTrue(hunter.contains("asked you something by name"), "not told to answer the question");
+        assertTrue(!hunter.contains("Change the subject"), "told to change the subject");
+    }
+
+    @Test
     void aColonistAnswersThePlayerInTheColonyChat() throws Exception {
         stage.model.saysWhenAsked("сколько у нас еды", "Еды на пару дней.");
         stage.playerWritesToColony("сколько у нас еды?");
