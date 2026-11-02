@@ -165,6 +165,8 @@ public final class ColonyThreads {
      * A colonist starts a conversation in the colony chat on their own (#5), about {@code about}.
      * Only with players around and nothing going on in the chat. Returns whether it started.
      */
+    private final Catchphrases catchphrases = new Catchphrases();
+
     /** Below this energy a talk is winding down: one with an ending gets it now. */
     private static final double ENDING_ENERGY = 1.5;
 
@@ -427,6 +429,10 @@ public final class ColonyThreads {
         // Not only the first: "the unemployed, come to me" is for each of them, and each needs the functions to come.
         boolean answeringPlayer = opening == null && chatter == null
                 && (thread.askedByPlayer.remove(next) | thread.colonistTurns == 0);
+        // Catchphrases (#65): a set reply waiting for its turn, or now and then a set phrase, both without the model.
+        if (!answeringPlayer && opening == null && chatter == null && setLine(server, colony, thread, version, citizen)) {
+            return;
+        }
         ServerPlayer player = thread.lastPlayer == null ? null : server.getPlayerList().getPlayer(thread.lastPlayer);
         Map<String, String> values = talk.promptValues(citizen, player);
         // A colonist starting a chat of their own starts fresh: lines of an old talk only pull them back to it.
@@ -561,6 +567,55 @@ public final class ColonyThreads {
                 scheduled.add(new Scheduled(at, () -> say(server, colony, thread, version, speaker, text.get(), answeringPlayer)));
             });
         });
+    }
+
+    /**
+     * Says a catchphrase's set reply, or now and then a catchphrase (#65), as written in the content file: never while the
+     * colony panics or grieves. Returns whether the colonist said one, so the model isn't asked for a line.
+     */
+    private boolean setLine(MinecraftServer server, IColony colony, ChatThread thread, long version, ICitizenData citizen) {
+        String text = thread.setReply;
+        thread.setReply = null;
+        if (text == null) {
+            me.bytefox.livingcolonists.mood.Mood mood = talk.moods().leading(colony.getID(), server.getTickCount()).mood();
+            if (mood == me.bytefox.livingcolonists.mood.Mood.PANIC || mood == me.bytefox.livingcolonists.mood.Mood.GRIEF) {
+                return false;
+            }
+            String friend = null;
+            String enemy = null;
+            for (ICitizenData other : colony.getCitizenManager().getCitizens()) {
+                if (other.getId() == citizen.getId() || other.isChild()) {
+                    continue;
+                }
+                int rapport = bonds.colonists().rapport(colony, citizen.getId(), other.getId());
+                friend = friend == null && rapport >= Storylines.STRONG ? other.getName() : friend;
+                enemy = enemy == null && rapport <= -Storylines.STRONG ? other.getName() : enemy;
+            }
+            String language = thread.language == null ? "English" : thread.language;
+            Optional<Catchphrases.Said> said = catchphrases.maybe(colony.getID(), colony.getID() + ":" + citizen.getId(),
+                    language, friend, enemy, server.getTickCount(), colony.getWorld().getGameTime(), random);
+            if (said.isEmpty()) {
+                return false;
+            }
+            text = said.get().line();
+            Counters.add("catchphrases.said");
+            ModLog.action("{} says a catchphrase: {}", citizen.getName(), text);
+            Optional<String> answer = Catchphrases.answer(said.get(), language, random);
+            if (answer.isPresent()) {
+                thread.setReply = answer.get();
+                String replier = said.get().replier();
+                colony.getCitizenManager().getCitizens().stream()
+                        .filter(c -> c.getId() != citizen.getId() && !c.isChild() && (replier == null || c.getName().equals(replier)))
+                        .map(ICitizenData::getId).findFirst().ifPresent(id -> thread.asked = id);
+            }
+        }
+        Speaker speaker = Audience.speakerOf(citizen);
+        String line = text;
+        long at = server.getTickCount() + Math.round(CHATTER_PACE * LinePacing.typingTicks(line.length()));
+        thread.lastLineTick = at;
+        thread.disagreed = false;
+        scheduled.add(new Scheduled(at, () -> say(server, colony, thread, version, speaker, line, false)));
+        return true;
     }
 
     private void say(MinecraftServer server, IColony colony, ChatThread thread, long version, Speaker speaker, String text,

@@ -233,6 +233,12 @@ final class Initiative {
         List<InitiativePolicy.Topic> topics = new ArrayList<>(topics(speaker, player, now).stream()
                 .filter(t -> t.kind() == InitiativePolicy.Kind.SMALL_TALK || t.kind() == InitiativePolicy.Kind.NEWS).toList());
         stake(colony, speaker, player).ifPresent(topics::add);
+        // Their running story with someone, carried on from where it was (#65).
+        String prefix = colonistKey(speaker, player) + ":";
+        Storylines.story(talk.bonds().colonists().colonistRelations(speaker))
+                .filter(story -> fresh(prefix + "story:" + story.other(), colony.getWorld().getGameTime()))
+                .ifPresent(story -> topics.add(0, new InitiativePolicy.Topic(InitiativePolicy.Kind.SMALL_TALK,
+                        "story:" + story.other(), story.topic(), 0)));
         Optional<InitiativePolicy.Topic> topic = InitiativePolicy.pick(topics, rapport, random);
         if (topic.isEmpty()) {
             return Optional.empty();
@@ -249,7 +255,12 @@ final class Initiative {
             interest = me.bytefox.livingcolonists.mood.MoodTable.row(mood.occasion()).interest();
         }
         int asked = -1;
-        if (random.nextDouble() < ASK_SOMEONE) {
+        if (topic.get().key().startsWith("story:")) {
+            // A running story is carried on with the one it is about.
+            String other = topic.get().key().substring("story:".length());
+            asked = colony.getCitizenManager().getCitizens().stream().filter(c -> c.getName().equals(other))
+                    .map(ICitizenData::getId).findFirst().orElse(-1);
+        } else if (random.nextDouble() < ASK_SOMEONE) {
             Optional<ICitizenData> other = threads.pickAddressee(colony, speaker);
             if (other.isPresent()) {
                 about += " Turn to " + other.get().getName() + " by name with it. Don't make up anything that passed between you"

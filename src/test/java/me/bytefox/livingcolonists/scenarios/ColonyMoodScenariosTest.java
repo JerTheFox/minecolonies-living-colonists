@@ -76,6 +76,14 @@ class ColonyMoodScenariosTest {
     }
 
     @Test
+    void nowAndThenAColonistSaysACatchphraseAndAnotherAnswersIt() throws Exception {
+        // Every roll comes out: the first follower's turn is a catchphrase, the next its set reply.
+        assertTrue(stage.runUntil(() -> me.bytefox.livingcolonists.debug.Counters.snapshot().getOrDefault("catchphrases.said", 0L) > 0
+                && stage.chat.stream().anyMatch(line -> line.contains("И позавчера тоже.") || line.contains("And the day before.")),
+                Duration.ofSeconds(40)), "no catchphrase and reply: " + stage.chat);
+    }
+
+    @Test
     void aCalmColonySaysNothingOfMoods() throws Exception {
         stage.playerWritesTo("Darcy Abbott", "как дела?");
         assertTrue(stage.runUntil(() -> !stage.replies().isEmpty(), WAIT), "no answer");

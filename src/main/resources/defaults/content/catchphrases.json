@@ -1,0 +1,486 @@
+{
+  "chance": 0.03,
+  "colonyCooldownMinutes": 20,
+  "colonistCooldownDays": 3,
+  "phraseCooldownDays": 7,
+  "replyChance": 0.6,
+  "heardChance": 0.25,
+  "languages": {
+    "Russian": {
+      "pairs": [
+        {
+          "line": "Опять работать? Мы же вчера работали!",
+          "reply": "И позавчера тоже."
+        },
+        {
+          "line": "Я бы помог, да у меня обед.",
+          "reply": "У тебя всегда обед."
+        },
+        {
+          "line": "Кто взял мою кружку — верни, я всё прощу.",
+          "reply": "Никто не брал, она за бочкой."
+        },
+        {
+          "line": "Раньше и трава была зеленее.",
+          "reply": "Трава и сейчас зелёная."
+        },
+        {
+          "line": "Всё, ухожу на пенсию. Шучу. Наверное.",
+          "reply": "Третий раз за неделю."
+        },
+        {
+          "line": "Ещё день — и построю себе дом сам.",
+          "reply": "Ты это каждый день говоришь."
+        },
+        {
+          "line": "Если кто спросит — меня тут не было.",
+          "reply": "Тебя тут никогда нет."
+        },
+        {
+          "line": "Кто-нибудь видел мои рукавицы?",
+          "reply": "Они у тебя на поясе."
+        },
+        {
+          "line": "Это не я. Ну, почти не я.",
+          "reply": "Значит, ты."
+        },
+        {
+          "line": "Пять минут посижу и пойду.",
+          "reply": "Это было полчаса назад."
+        },
+        {
+          "line": "Надо было в пекари идти, а не сюда.",
+          "reply": "Пекари тоже жалуются."
+        },
+        {
+          "line": "Кто опять оставил лопату посреди дороги?",
+          "reply": "Она сама туда легла."
+        },
+        {
+          "line": "Спокойно, у меня всё под контролем.",
+          "reply": "Вот это и пугает."
+        },
+        {
+          "line": "Сегодня точно ничего не случится.",
+          "reply": "Зачем ты это сказал?"
+        },
+        {
+          "line": "Кто последний — тот моет котёл.",
+          "reply": "Опять я последний."
+        },
+        {
+          "line": "Вот закончу — и сразу отдыхать.",
+          "reply": "Ты ещё не начинал."
+        },
+        {
+          "line": "Не шуми, я думаю.",
+          "reply": "Первый раз слышу."
+        },
+        {
+          "line": "Кто-нибудь знает, какой сегодня день?",
+          "reply": "Рабочий, как всегда."
+        },
+        {
+          "line": "А пирожки сегодня будут?",
+          "reply": "Будут, если муку не съели."
+        },
+        {
+          "line": "Скоро зима, а у меня ещё ничего не готово.",
+          "reply": "У тебя и летом ничего не готово."
+        },
+        {
+          "line": "Кто храпел ночью — признавайтесь.",
+          "reply": "Это ветер был."
+        },
+        {
+          "line": "Дайте мне хоть день тишины.",
+          "reply": "Мечтай."
+        },
+        {
+          "line": "Я не опоздал, это вы рано пришли.",
+          "reply": "Конечно-конечно."
+        },
+        {
+          "line": "Где моя кирка? Вчера же тут лежала.",
+          "reply": "Там же, где вчерашний день."
+        },
+        {
+          "line": "Работа не волк, в лес не убежит.",
+          "reply": "Но и сама не сделается."
+        },
+        {
+          "line": "Ох, спина моя, спина.",
+          "reply": "Меньше сиди — меньше болит."
+        },
+        {
+          "line": "{enemy}, если что пропадёт — я первым делом на тебя подумаю.",
+          "reply": "Взаимно."
+        },
+        {
+          "line": "{enemy}, ты опять за своё?",
+          "reply": "А ты опять за своё."
+        },
+        {
+          "line": "{friend}, прикроешь, если что?",
+          "reply": "Как всегда."
+        },
+        {
+          "line": "{friend}, вот скажи мне честно: я сегодня молодец?",
+          "reply": "Почти."
+        }
+      ],
+      "heard": [
+        "Знакомая песня.",
+        "Опять двадцать пять.",
+        "Ну-ну.",
+        "Слышали уже.",
+        "Каждый день одно и то же.",
+        "Началось."
+      ],
+      "references": [
+        {
+          "line": "Раньше я тоже был искателем приключений, но потом мне прострелили колено.",
+          "reply": ""
+        },
+        {
+          "line": "Война... Война никогда не меняется.",
+          "reply": ""
+        },
+        {
+          "line": "Работа-работа.",
+          "reply": ""
+        },
+        {
+          "line": "Чего надобно?",
+          "reply": ""
+        },
+        {
+          "line": "Нам нужно больше золота.",
+          "reply": ""
+        },
+        {
+          "line": "Зараза.",
+          "reply": ""
+        },
+        {
+          "line": "Ты не пройдёшь!",
+          "reply": ""
+        },
+        {
+          "line": "Моя прелесть.",
+          "reply": ""
+        },
+        {
+          "line": "Да пребудет с тобой Сила.",
+          "reply": ""
+        },
+        {
+          "line": "Я твой отец.",
+          "reply": "Нет! Этого не может быть!"
+        },
+        {
+          "line": "Зима близко.",
+          "reply": ""
+        },
+        {
+          "line": "Хьюстон, у нас проблемы.",
+          "reply": ""
+        },
+        {
+          "line": "Я вернусь.",
+          "reply": ""
+        },
+        {
+          "line": "Это Спарта!",
+          "reply": ""
+        },
+        {
+          "line": "Красота-то какая! Лепота!",
+          "reply": ""
+        },
+        {
+          "line": "Я требую продолжения банкета!",
+          "reply": ""
+        },
+        {
+          "line": "Меня терзают смутные сомнения.",
+          "reply": ""
+        },
+        {
+          "line": "Огласите весь список, пожалуйста.",
+          "reply": ""
+        },
+        {
+          "line": "Надо, Федя, надо.",
+          "reply": ""
+        },
+        {
+          "line": "Шеф, всё пропало!",
+          "reply": ""
+        },
+        {
+          "line": "Птичку жалко.",
+          "reply": ""
+        },
+        {
+          "line": "Восток — дело тонкое.",
+          "reply": ""
+        },
+        {
+          "line": "Таможня даёт добро.",
+          "reply": ""
+        },
+        {
+          "line": "Кто ж его посадит? Он же памятник!",
+          "reply": ""
+        },
+        {
+          "line": "Ребята, давайте жить дружно.",
+          "reply": ""
+        },
+        {
+          "line": "Ты заходи, если что.",
+          "reply": ""
+        },
+        {
+          "line": "Щас спою!",
+          "reply": ""
+        }
+      ]
+    },
+    "English": {
+      "pairs": [
+        {
+          "line": "Work again? We worked yesterday!",
+          "reply": "And the day before."
+        },
+        {
+          "line": "I'd help, but it's my lunch break.",
+          "reply": "It's always your lunch break."
+        },
+        {
+          "line": "Whoever took my mug, give it back and all is forgiven.",
+          "reply": "Nobody took it, it's behind the barrel."
+        },
+        {
+          "line": "The grass used to be greener.",
+          "reply": "The grass is green now."
+        },
+        {
+          "line": "That's it, I'm retiring. Joking. Probably.",
+          "reply": "Third time this week."
+        },
+        {
+          "line": "One more day and I'll build myself a house.",
+          "reply": "You say that every day."
+        },
+        {
+          "line": "If anyone asks, I was never here.",
+          "reply": "You're never here."
+        },
+        {
+          "line": "Has anyone seen my gloves?",
+          "reply": "They're on your belt."
+        },
+        {
+          "line": "It wasn't me. Well, mostly not me.",
+          "reply": "So it was you."
+        },
+        {
+          "line": "Five more minutes and I'll go.",
+          "reply": "That was half an hour ago."
+        },
+        {
+          "line": "Should have been a baker, not this.",
+          "reply": "Bakers complain too."
+        },
+        {
+          "line": "Who left a shovel in the middle of the road again?",
+          "reply": "It lay down there by itself."
+        },
+        {
+          "line": "Relax, I've got it all under control.",
+          "reply": "That's what worries me."
+        },
+        {
+          "line": "Nothing's going to happen today, for sure.",
+          "reply": "Why would you say that?"
+        },
+        {
+          "line": "Last one in washes the pot.",
+          "reply": "Last again. Of course."
+        },
+        {
+          "line": "Once I'm done, I'm resting.",
+          "reply": "You haven't started."
+        },
+        {
+          "line": "Quiet, I'm thinking.",
+          "reply": "That's a first."
+        },
+        {
+          "line": "Does anyone know what day it is?",
+          "reply": "A working one, as always."
+        },
+        {
+          "line": "Are there pies today?",
+          "reply": "If nobody ate the flour."
+        },
+        {
+          "line": "Winter's coming and nothing's ready.",
+          "reply": "Nothing's ready in summer either."
+        },
+        {
+          "line": "Who was snoring last night? Own up.",
+          "reply": "That was the wind."
+        },
+        {
+          "line": "Just one quiet day, that's all I ask.",
+          "reply": "Dream on."
+        },
+        {
+          "line": "I'm not late, you're all early.",
+          "reply": "Sure, sure."
+        },
+        {
+          "line": "Where's my pickaxe? It was right here yesterday.",
+          "reply": "Same place as yesterday."
+        },
+        {
+          "line": "The work isn't going anywhere.",
+          "reply": "It isn't doing itself either."
+        },
+        {
+          "line": "Oh, my back.",
+          "reply": "Sit less, ache less."
+        },
+        {
+          "line": "{enemy}, if anything goes missing, you're the first I'll suspect.",
+          "reply": "Likewise."
+        },
+        {
+          "line": "{enemy}, at it again?",
+          "reply": "Look who's talking."
+        },
+        {
+          "line": "{friend}, you've got my back, right?",
+          "reply": "As always."
+        },
+        {
+          "line": "{friend}, be honest: did I do well today?",
+          "reply": "Almost."
+        }
+      ],
+      "heard": [
+        "Heard that one before.",
+        "Here we go again.",
+        "Sure, sure.",
+        "Every single day.",
+        "And off we go.",
+        "Not this again."
+      ],
+      "references": [
+        {
+          "line": "I used to be an adventurer like you, then I took an arrow in the knee.",
+          "reply": ""
+        },
+        {
+          "line": "War. War never changes.",
+          "reply": ""
+        },
+        {
+          "line": "Work, work.",
+          "reply": ""
+        },
+        {
+          "line": "More work?",
+          "reply": ""
+        },
+        {
+          "line": "We require more gold.",
+          "reply": ""
+        },
+        {
+          "line": "You shall not pass!",
+          "reply": ""
+        },
+        {
+          "line": "My precious.",
+          "reply": ""
+        },
+        {
+          "line": "May the Force be with you.",
+          "reply": ""
+        },
+        {
+          "line": "I am your father.",
+          "reply": "No... That's not true!"
+        },
+        {
+          "line": "Winter is coming.",
+          "reply": ""
+        },
+        {
+          "line": "Houston, we have a problem.",
+          "reply": ""
+        },
+        {
+          "line": "I'll be back.",
+          "reply": ""
+        },
+        {
+          "line": "This is Sparta!",
+          "reply": ""
+        },
+        {
+          "line": "It's dangerous to go alone!",
+          "reply": ""
+        },
+        {
+          "line": "The cake is a lie.",
+          "reply": ""
+        },
+        {
+          "line": "Stay a while and listen.",
+          "reply": ""
+        },
+        {
+          "line": "Hey, listen!",
+          "reply": ""
+        },
+        {
+          "line": "Do a barrel roll!",
+          "reply": ""
+        },
+        {
+          "line": "Get over here!",
+          "reply": ""
+        },
+        {
+          "line": "Hasta la vista, baby.",
+          "reply": ""
+        },
+        {
+          "line": "Elementary, my dear Watson.",
+          "reply": ""
+        },
+        {
+          "line": "I'm the king of the world!",
+          "reply": ""
+        },
+        {
+          "line": "Here's Johnny!",
+          "reply": ""
+        },
+        {
+          "line": "Why so serious?",
+          "reply": ""
+        },
+        {
+          "line": "To infinity and beyond!",
+          "reply": ""
+        }
+      ]
+    }
+  }
+}

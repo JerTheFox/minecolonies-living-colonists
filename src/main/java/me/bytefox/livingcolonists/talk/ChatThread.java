@@ -28,6 +28,8 @@ final class ChatThread {
     String chatter;
     /** The shape of a talk colonists started themselves (#65); null for news and for talk with a player. */
     TalkShapes.Shape shape;
+    /** A catchphrase's set reply waiting for its turn (#65), said as it is; null when there is none. */
+    String setReply;
     /** How it is to end, for the few talks that come to an ending; null when it just fades or it already ended. */
     String ending;
     /** Whether the last line's stance was to disagree, which livens a talk. */
