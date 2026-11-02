@@ -98,6 +98,20 @@ public final class GuardTally {
         return reply;
     }
 
+    /** The guard with the most kills in the colony, as "name: kills"; empty before any. */
+    public java.util.Optional<String> best(IColony colony) {
+        if (data == null) {
+            return java.util.Optional.empty();
+        }
+        String prefix = colony.getID() + ":";
+        return data.kills.entrySet().stream().filter(e -> e.getKey().startsWith(prefix))
+                .sorted(Map.Entry.<String, Integer>comparingByValue(Comparator.reverseOrder()))
+                .map(e -> {
+                    ICitizenData guard = colony.getCitizenManager().getCivilian(Integer.parseInt(e.getKey().substring(prefix.length())));
+                    return guard == null ? null : guard.getName() + ": " + e.getValue();
+                }).filter(java.util.Objects::nonNull).findFirst();
+    }
+
     /** Drops gone colonists' counts. */
     public void forget(Predicate<String> key) {
         if (data != null && data.kills.keySet().removeIf(key)) {

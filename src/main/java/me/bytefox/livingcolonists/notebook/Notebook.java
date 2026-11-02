@@ -46,11 +46,16 @@ public final class Notebook {
     private final BondsService bonds;
     private final Errands errands;
     private final me.bytefox.livingcolonists.mood.ColonyMoods moods;
+    private final me.bytefox.livingcolonists.friendship.Calendar calendar;
+    /** Holidays and birthdays shown this many calendar days ahead. */
+    private static final int SOON_DAYS = 7;
 
-    public Notebook(BondsService bonds, Errands errands, me.bytefox.livingcolonists.mood.ColonyMoods moods) {
+    public Notebook(BondsService bonds, Errands errands, me.bytefox.livingcolonists.mood.ColonyMoods moods,
+                    me.bytefox.livingcolonists.friendship.Calendar calendar) {
         this.bonds = bonds;
         this.errands = errands;
         this.moods = moods;
+        this.calendar = calendar;
     }
 
     /** Opens the notebook for the player, or refreshes it if it is open. */
@@ -109,6 +114,11 @@ public final class Notebook {
                 block.append(Component.literal("\n")).append(Component.translatable("livingcolonists.book.tastes."
                         + taste.name().toLowerCase(java.util.Locale.ROOT), names).withStyle(style -> style.withBold(false)));
             }
+            calendar.birthday(relation.citizen()).ifPresent(day -> {
+                var date = new me.bytefox.livingcolonists.friendship.CalendarDate(day);
+                block.append(Component.literal("\n")).append(Component.translatable("livingcolonists.book.birthday",
+                        season(date.season()), date.dayOfSeason()).withStyle(style -> style.withBold(false)));
+            });
             if (colonies.size() > 1) {
                 block.append(Component.literal("\n" + relation.colony()).withStyle(style -> style.withBold(false)
                         .withColor(ChatFormatting.DARK_GRAY)));
@@ -182,6 +192,7 @@ public final class Notebook {
             // The colony's mood (#65): calm most of the time.
             pager.add(Component.translatable("livingcolonists.book.colony.mood."
                     + moods.leading(colony.getID(), now).mood().name().toLowerCase(java.util.Locale.ROOT)).withStyle(ChatFormatting.ITALIC));
+            calendar(pager, colony);
             int before = pager.size();
             for (ICitizenData citizen : colony.getCitizenManager().getCitizens()) {
                 try {
@@ -210,6 +221,46 @@ public final class Notebook {
             pager.add(Component.translatable("livingcolonists.book.colony.none"));
         }
         return pager.pages();
+    }
+
+    /** The colony's calendar (#67): today, its holiday and birthdays, and what is coming in the next days. */
+    private void calendar(Pager pager, IColony colony) {
+        var today = calendar.date(colony);
+        if (today.isEmpty()) {
+            pager.add(Component.translatable("livingcolonists.book.calendar.not_yet").withStyle(ChatFormatting.DARK_GRAY));
+            return;
+        }
+        pager.add(Component.translatable("livingcolonists.book.calendar.today", season(today.get().season()),
+                today.get().dayOfSeason(), today.get().year()));
+        calendar.holiday(colony).ifPresent(holiday -> pager.add(Component.translatable(
+                "livingcolonists.book.calendar.holiday_today", holidayName(holiday)).withStyle(ChatFormatting.DARK_GREEN)));
+        for (ICitizenData citizen : colony.getCitizenManager().getCitizens()) {
+            if (calendar.isBirthday(citizen)) {
+                pager.add(Component.translatable("livingcolonists.book.calendar.birthday_today", citizen.getName())
+                        .withStyle(ChatFormatting.DARK_GREEN));
+            }
+        }
+        List<me.bytefox.livingcolonists.friendship.Calendar.Upcoming> soon = calendar.upcoming(colony, SOON_DAYS);
+        if (!soon.isEmpty()) {
+            MutableComponent block = Component.translatable("livingcolonists.book.calendar.soon").withStyle(ChatFormatting.BOLD);
+            for (var next : soon) {
+                String when = next.inDays() == 1 ? "tomorrow" : "soon";
+                Component line = next.holiday() != null
+                        ? Component.translatable("livingcolonists.book.calendar." + when + "_holiday", holidayName(next.holiday()), next.inDays())
+                        : Component.translatable("livingcolonists.book.calendar." + when + "_birthday", next.colonist(), next.inDays());
+                block.append(Component.literal("\n")).append(line.copy().withStyle(style -> style.withBold(false)));
+            }
+            pager.add(block);
+        }
+    }
+
+    private static Component season(int season) {
+        return Component.translatable("livingcolonists.calendar.season." + me.bytefox.livingcolonists.friendship.CalendarDate.SEASONS[season]);
+    }
+
+    /** A holiday's name in the player's language; one a server added itself is shown as written. */
+    private static Component holidayName(me.bytefox.livingcolonists.friendship.Holiday holiday) {
+        return Component.translatableWithFallback("livingcolonists.calendar.holiday." + holiday.id(), holiday.name());
     }
 
     private static List<Component> help(ServerPlayer player, List<IColony> colonies) {

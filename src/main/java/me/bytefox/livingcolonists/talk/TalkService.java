@@ -144,6 +144,8 @@ public final class TalkService {
         this.gifts = new GiftWatch(this, bonds, memory, personalities);
         this.deeds = new PlayerDeeds(events);
         this.drift = new RelationsDrift(this, threads, bonds, memory);
+        CalendarNews calendarNews = new CalendarNews(events, errands.tally(), calendar);
+        ModEvents.BUS.on(GameEvents.CalendarDay.class, calendarNews::newDay);
     }
 
     Replies replies() {
@@ -180,6 +182,13 @@ public final class TalkService {
                 // A colony MineColonies can't tell about now is looked at next time.
             }
         }
+    }
+
+    private final me.bytefox.livingcolonists.friendship.Calendar calendar = new me.bytefox.livingcolonists.friendship.Calendar();
+
+    /** The colony calendars (#67). */
+    public me.bytefox.livingcolonists.friendship.Calendar calendar() {
+        return calendar;
     }
 
     /** The colonies' moods (#65). */
@@ -294,6 +303,7 @@ public final class TalkService {
                 memory.rememberPrivate(citizen, player.getUUID(), line.speaker().name(), line.text());
             }
         }
+        calendar.tick(server);
         threads.tick(server);
         errands.tick(server);
         initiative.tick(server);
@@ -537,6 +547,7 @@ public final class TalkService {
             moods.tone(citizen.getColony().getID(), citizen.getId(), citizen.getColony().getWorld().getServer().getTickCount())
                     .ifPresent(tone -> values.put("situation", values.get("situation") + "\n" + tone));
         }
+        CalendarNews.situation(calendar, citizen).ifPresent(line -> values.put("situation", values.get("situation") + "\n" + line));
         List<String> lately = errands.lookups(citizen.getColony().getID(), citizen.getColony().getWorld().getGameTime());
         if (!lately.isEmpty()) {
             // What anyone in the colony looked up lately is known to all (#56).

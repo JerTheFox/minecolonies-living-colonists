@@ -43,6 +43,10 @@
     "illness":           {"mood": "WORRY",     "strength": 2, "fadeMinutes": 15, "cooldownMinutes": 10, "interest": 1},
     "hunger":            {"mood": "GLOOM",     "strength": 2, "fadeMinutes": 20, "cooldownMinutes": 15, "interest": 1},
     "homeless":          {"mood": "GLOOM",     "strength": 2, "fadeMinutes": 20, "cooldownMinutes": 15, "interest": 1},
-    "unhappy":           {"mood": "GLOOM",     "strength": 2, "fadeMinutes": 20, "cooldownMinutes": 15, "interest": 1}
+    "unhappy":           {"mood": "GLOOM",     "strength": 2, "fadeMinutes": 20, "cooldownMinutes": 15, "interest": 1},
+    "birthday":          {"mood": "FESTIVE",   "strength": 2, "fadeMinutes": 15, "cooldownMinutes": 0,  "interest": 1},
+    "holiday":           {"mood": "FESTIVE",   "strength": 3, "fadeMinutes": 20, "cooldownMinutes": 0,  "interest": 2},
+    "holiday_pride":     {"mood": "PRIDE",     "strength": 3, "fadeMinutes": 20, "cooldownMinutes": 0,  "interest": 2},
+    "remembrance":       {"mood": "GRIEF",     "strength": 2, "fadeMinutes": 20, "cooldownMinutes": 0,  "interest": 2}
   }
 }

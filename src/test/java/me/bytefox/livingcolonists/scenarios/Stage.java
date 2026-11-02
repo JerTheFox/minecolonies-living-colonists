@@ -171,6 +171,7 @@ final class Stage implements AutoCloseable {
             me.bytefox.livingcolonists.talk.TalkShapes.use(prompts.content(PromptLibrary.TALK));
             me.bytefox.livingcolonists.talk.Catchphrases.use(prompts.content(PromptLibrary.CATCHPHRASES));
             me.bytefox.livingcolonists.friendship.GiftTastes.use(prompts.content(PromptLibrary.GIFTS));
+            me.bytefox.livingcolonists.friendship.CalendarTable.use(prompts.content(PromptLibrary.CALENDAR));
         });
         prompts.reload();
         ArchetypeLibrary archetypes = new ArchetypeLibrary(directory);
@@ -185,6 +186,7 @@ final class Stage implements AutoCloseable {
         talk.attachInitiative(InitiativeData.factory().constructor().get());
         // Wired as LivingColonists does.
         bonds.setReminder(talk::remindPromise);
+        talk.calendar().attach(me.bytefox.livingcolonists.friendship.CalendarData.factory().constructor().get());
     }
 
     /** A colonist who just came to live in the colony, with the id given (a dead colonist's id goes to the next one). */

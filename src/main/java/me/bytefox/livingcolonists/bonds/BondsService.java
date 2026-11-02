@@ -382,7 +382,8 @@ public final class BondsService {
     }
 
     /** How a colonist feels about a player, for the notebook (#66): rapport and the happiness from it (1 is none). */
-    public record PlayerRelation(String colonist, String colony, int rapport, double mood, Map<Taste, List<String>> tastes) {
+    public record PlayerRelation(String colonist, String colony, int rapport, double mood, Map<Taste, List<String>> tastes,
+                                 ICitizenData citizen) {
     }
 
     /** Every colonist with a relation to the player, warmest first. */
@@ -405,7 +406,7 @@ public final class BondsService {
             Moods.Lasting mood = data.moods.get(parts[0] + ":" + parts[1]);
             double factor = mood == null || mood.until() <= now(colony) ? 1.0 : mood.factor();
             out.add(new PlayerRelation(citizen.getName(), colony.getName(), entry.getValue().rapport(), factor,
-                    knownTastes(citizen, player.getUUID())));
+                    knownTastes(citizen, player.getUUID()), citizen));
         }
         out.sort(java.util.Comparator.comparingInt(PlayerRelation::rapport).reversed());
         return out;
@@ -661,9 +662,10 @@ public final class BondsService {
      * remembers what they thought of each item either way. Whether the gift counted.
      *
      * @param tastes item id to what the colonist thinks of it; {@code taste} is what the whole gift counts as
+     * @param times  more than 1 for a birthday gift (#67): it counts that many times and outside the weekly limit
      */
     public boolean gift(ICitizenData citizen, UUID player, String playerName, String text, int worth, List<String> items,
-            Taste taste, Map<String, Taste> tastes) {
+            Taste taste, Map<String, Taste> tastes, int times) {
         if (data == null) {
             return false;
         }
@@ -679,12 +681,15 @@ public final class BondsService {
         data.setDirty();
         List<Long> counted = data.gifted.computeIfAbsent(key, k -> new ArrayList<>());
         counted.removeIf(at -> now - at >= Gifts.WEEK || at > now);
-        if (counted.size() >= Gifts.COUNTED_A_WEEK) {
-            return false;
+        if (times <= 1) {
+            if (counted.size() >= Gifts.COUNTED_A_WEEK) {
+                return false;
+            }
+            counted.add(now);
         }
-        counted.add(now);
         data.playerNames.put(player, playerName);
-        note(citizen, player, taste.warmth(worth), text, now);
+        int warmth = taste.warmth(worth);
+        note(citizen, player, warmth > 0 ? warmth * Math.max(1, times) : warmth, text, now);
         return true;
     }
 

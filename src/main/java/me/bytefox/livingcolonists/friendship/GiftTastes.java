@@ -66,6 +66,12 @@ public final class GiftTastes {
         return new Rules(entries);
     }
 
+    /** Whether the item fits any of the entries (an item id, "food" or "~word"). */
+    public static boolean matches(List<String> entries, ItemStack stack) {
+        String id = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+        return entries.stream().anyMatch(entry -> fits(entry, id, stack));
+    }
+
     private static boolean fits(String entry, String id, ItemStack stack) {
         if (entry.equals("food")) {
             return stack.has(DataComponents.FOOD);

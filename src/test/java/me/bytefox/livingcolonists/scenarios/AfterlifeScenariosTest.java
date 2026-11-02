@@ -22,7 +22,7 @@ class AfterlifeScenariosTest {
     void setUp() throws Exception {
         stage = new Stage("Darcy Abbott", "Hunter Casey");
         darcy = stage.citizens.get(0);
-        afterlife = new Afterlife(stage.personalities, stage.memory, stage.bonds);
+        afterlife = new Afterlife(stage.personalities, stage.memory, stage.bonds, stage.talk.calendar());
         stage.model.remembersWhen("принесу тебе изумруд", "promise | 1 | supply | 3 | Alex promised to bring Darcy Abbott an emerald\n"
                 + "4 | Alex | Alex loves fishing.");
         stage.playerWritesTo("Darcy Abbott", "принесу тебе изумруд");

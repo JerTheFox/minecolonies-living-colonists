@@ -41,4 +41,22 @@ public final class GameEvents {
      */
     public record ColonyHappened(IColony colony, String what, boolean building, boolean urgent) {
     }
+
+    /** A baby was born in the colony. */
+    public record CitizenBorn(ICitizenData citizen) {
+    }
+
+    /** A colonist died; {@code name} as MineColonies' event log has it. */
+    public record CitizenDied(IColony colony, String name) {
+    }
+
+    /**
+     * A calendar day began in the colony (#67): members have been around long enough today.
+     *
+     * @param birthdays colonists whose birthday it is
+     */
+    public record CalendarDay(IColony colony, me.bytefox.livingcolonists.friendship.CalendarDate date,
+                              java.util.Optional<me.bytefox.livingcolonists.friendship.Holiday> holiday,
+                              java.util.List<ICitizenData> birthdays) {
+    }
 }

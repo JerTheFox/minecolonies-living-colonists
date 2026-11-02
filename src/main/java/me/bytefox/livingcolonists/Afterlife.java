@@ -23,11 +23,14 @@ public final class Afterlife {
     private final PersonalityService personalities;
     private final MemoryService memory;
     private final BondsService bonds;
+    private final me.bytefox.livingcolonists.friendship.Calendar calendar;
 
-    public Afterlife(PersonalityService personalities, MemoryService memory, BondsService bonds) {
+    public Afterlife(PersonalityService personalities, MemoryService memory, BondsService bonds,
+                     me.bytefox.livingcolonists.friendship.Calendar calendar) {
         this.personalities = personalities;
         this.memory = memory;
         this.bonds = bonds;
+        this.calendar = calendar;
     }
 
     /** A colonist died: their memories wait for them. */
@@ -62,6 +65,7 @@ public final class Afterlife {
         personalities.move(old, now);
         memory.move(old, now);
         bonds.move(old, now);
+        calendar.move(old, now);
         memory.graves().remove(old);
         memory.gravesChanged();
         memory.rememberDeed(citizen, CAME_BACK);

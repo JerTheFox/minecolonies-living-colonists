@@ -78,20 +78,30 @@ public final class GiftWatch {
                 worth = Math.max(worth, BondsService.worthOf(stack, gift.getValue()));
                 english.add(stack.getItem().getDescription().getString());
                 stacks.add(stack);
-                tastes.put(gift.getKey(), GiftTastes.taste(job, archetype, citizenKey, stack));
+                Taste taste = GiftTastes.taste(job, archetype, citizenKey, stack);
+                // On a holiday its gifts are loved by everyone who doesn't mind them (#67): flowers in spring.
+                if ((taste == Taste.LIKE || taste == Taste.NEUTRAL) && talk.calendar().favoured(citizen.getColony(), stack)) {
+                    taste = Taste.LOVE;
+                }
+                tastes.put(gift.getKey(), taste);
             }
         }
         Taste taste = GiftTastes.gift(job, archetype, citizenKey, stacks);
+        if (tastes.containsValue(Taste.LOVE)) {
+            taste = Taste.LOVE;
+        }
+        boolean birthday = talk.calendar().isBirthday(citizen);
         String what = String.join(", ", named);
         String playerName = Audience.playerName(player);
         Counters.add("gifts");
         ModLog.action("{} gave {} {}", playerName, citizen.getName(), what);
         boolean counted = bonds.gift(citizen, player.getUUID(), playerName, playerName + " gave me " + what, worth, english,
-                taste, tastes);
+                taste, tastes, birthday ? me.bytefox.livingcolonists.friendship.CalendarTable.birthdayGift() : 1);
         memory.rememberSeen(citizen.getColony(), List.of(citizen.getId()), playerName,
                 playerName + " gave " + citizen.getName() + " " + what + ".", Math.min(5, 1 + worth));
         if (counted) {
-            talk.writeFirst(player, citizen, reaction(taste) + " what they just put in your bag: " + what + ".",
+            talk.writeFirst(player, citizen, reaction(taste) + " what they just put in your bag: " + what + "."
+                    + (birthday ? " It is your birthday today, and they remembered." : ""),
                     false, null, false, Airtime.Kind.NOTE);
         }
     }

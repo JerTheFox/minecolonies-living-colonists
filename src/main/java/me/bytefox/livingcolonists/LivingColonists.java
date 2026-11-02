@@ -99,9 +99,9 @@ public final class LivingColonists {
             HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).connectTimeout(Duration.ofSeconds(5)).build(), usage),
             prompts, bonds);
     private final TalkService talk = new TalkService(client, prompts, personalities, perception, memory, bonds);
-    private final Afterlife afterlife = new Afterlife(personalities, memory, bonds);
+    private final Afterlife afterlife = new Afterlife(personalities, memory, bonds, talk.calendar());
     private final me.bytefox.livingcolonists.notebook.Notebook notebook =
-            new me.bytefox.livingcolonists.notebook.Notebook(bonds, talk.errands(), talk.moods());
+            new me.bytefox.livingcolonists.notebook.Notebook(bonds, talk.errands(), talk.moods(), talk.calendar());
     private UsageData usageData;
     private final Conversations conversations = new Conversations(talk);
     private final SettingsHandler settings = new SettingsHandler(new SettingsService(client, usage));
@@ -117,6 +117,7 @@ public final class LivingColonists {
                 me.bytefox.livingcolonists.talk.TalkShapes.use(prompts.content(PromptLibrary.TALK));
                 me.bytefox.livingcolonists.talk.Catchphrases.use(prompts.content(PromptLibrary.CATCHPHRASES));
                 me.bytefox.livingcolonists.friendship.GiftTastes.use(prompts.content(PromptLibrary.GIFTS));
+                me.bytefox.livingcolonists.friendship.CalendarTable.use(prompts.content(PromptLibrary.CALENDAR));
             } catch (RuntimeException e) {
                 ModLog.warn("A content file in config/livingcolonists/content is broken, fix or delete it", e);
             }
@@ -210,6 +211,9 @@ public final class LivingColonists {
                     .computeIfAbsent(MemoryData.factory(), MemoryData.NAME));
             bonds.attach(event.getServer().overworld().getDataStorage()
                     .computeIfAbsent(BondsData.factory(), BondsData.NAME));
+            talk.calendar().attach(event.getServer().overworld().getDataStorage()
+                    .computeIfAbsent(me.bytefox.livingcolonists.friendship.CalendarData.factory(),
+                            me.bytefox.livingcolonists.friendship.CalendarData.NAME));
             talk.errands().notes().attach(event.getServer().overworld().getDataStorage()
                     .computeIfAbsent(NotesData.factory(), NotesData.NAME));
             talk.errands().warmUp();

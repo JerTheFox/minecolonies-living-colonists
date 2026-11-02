@@ -34,7 +34,7 @@ class NotebookScenariosTest {
     void setUp() throws Exception {
         stage = new Stage("Darcy Abbott", "Hunter Casey");
         darcy = stage.citizens.get(0);
-        notebook = new Notebook(stage.bonds, stage.talk.errands(), stage.talk.moods());
+        notebook = new Notebook(stage.bonds, stage.talk.errands(), stage.talk.moods(), stage.talk.calendar());
     }
 
     @AfterEach
@@ -99,10 +99,20 @@ class NotebookScenariosTest {
     }
 
     @Test
+    void theColonyPageShowsTheCalendar() {
+        String before = text(section("colony"));
+        assertTrue(before.contains("livingcolonists.book.calendar.not_yet"), before);
+        stage.talk.calendar().setDay(stage.colony, 9);
+        String colony = text(section("colony"));
+        assertTrue(colony.contains("livingcolonists.book.calendar.today"), colony);
+        assertTrue(colony.contains("livingcolonists.calendar.holiday.flowers"), "the coming festival isn't shown: " + colony);
+    }
+
+    @Test
     void relationsShowWhatAColonistThoughtOfTheGifts() {
         stage.bonds.gift(darcy, stage.player.getUUID(), "Alex", "Alex gave me a cake", 2, List.of("Cake"),
                 me.bytefox.livingcolonists.friendship.Taste.LOVE, java.util.Map.of("minecraft:cake",
-                        me.bytefox.livingcolonists.friendship.Taste.LOVE));
+                        me.bytefox.livingcolonists.friendship.Taste.LOVE), 1);
         String relations = text(section("relations"));
         assertTrue(relations.contains("livingcolonists.book.tastes.love"), "the loved gift isn't shown: " + relations);
         assertTrue(relations.contains("block.minecraft.cake"), "the cake isn't named: " + relations);

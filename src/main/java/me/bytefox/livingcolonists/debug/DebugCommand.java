@@ -70,6 +70,11 @@ public final class DebugCommand {
                 .requires(source -> source.hasPermission(PERMISSION_LEVEL))
                 .then(Commands.literal("stats").executes(context -> showStats(context.getSource(), stats)))
                 .then(Commands.literal("mood").executes(context -> showMood(context.getSource(), talk)))
+                .then(Commands.literal("calendar").executes(context -> showCalendar(context.getSource(), talk))
+                        .then(Commands.literal("set").then(Commands.argument("day",
+                                com.mojang.brigadier.arguments.IntegerArgumentType.integer(0))
+                                .executes(context -> setCalendar(context.getSource(), talk,
+                                        com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "day"))))))
                 .then(profileCommand())
                 .then(withColonist(Commands.literal("colonist"),
                         (context, citizen) -> showColonist(context.getSource(), personalities, citizen)))
@@ -343,6 +348,41 @@ public final class DebugCommand {
                 + String.format(java.util.Locale.ROOT, " (%.1f)", leading.intensity())), false);
         talk.moods().describe(colony.getID(), now).forEach(line -> source.sendSuccess(() -> Component.literal("  " + line), false));
         return 1;
+    }
+
+    /** The colony's calendar (#67): today, its holiday, birthdays and what is coming in the next two weeks. */
+    private static int showCalendar(CommandSourceStack source, TalkService talk) throws CommandSyntaxException {
+        IColony colony = colonyHere(source);
+        var calendar = talk.calendar();
+        source.sendSuccess(() -> Component.literal(colony.getName() + ": " + calendar.date(colony)
+                .map(date -> "day " + date.day() + ", " + date.english()).orElse("not started")
+                + calendar.holiday(colony).map(h -> ", " + h.name()).orElse("")), false);
+        for (ICitizenData citizen : colony.getCitizenManager().getCitizens()) {
+            calendar.birthday(citizen).ifPresent(day -> {
+                var date = new me.bytefox.livingcolonists.friendship.CalendarDate(day);
+                source.sendSuccess(() -> Component.literal("  " + citizen.getName() + ": " + date.english().replaceFirst(" of year \\d+", "")
+                        + (calendar.isBirthday(citizen) ? " (today)" : "")), false);
+            });
+        }
+        calendar.upcoming(colony, 14).forEach(next -> source.sendSuccess(() -> Component.literal("  in " + next.inDays() + ": "
+                + (next.holiday() != null ? next.holiday().name() : next.colonist() + "'s birthday")), false));
+        return 1;
+    }
+
+    /** Today becomes that calendar day, with its holiday and birthdays; for trying them out. */
+    private static int setCalendar(CommandSourceStack source, TalkService talk, int day) throws CommandSyntaxException {
+        IColony colony = colonyHere(source);
+        talk.calendar().setDay(colony, day);
+        return showCalendar(source, talk);
+    }
+
+    private static IColony colonyHere(CommandSourceStack source) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        IColony colony = IColonyManager.getInstance().getColonyByPosFromWorld(player.level(), player.blockPosition());
+        if (colony == null) {
+            throw failure("livingcolonists.colony.outside");
+        }
+        return colony;
     }
 
     private static int showThread(CommandSourceStack source, TalkService talk) throws CommandSyntaxException {

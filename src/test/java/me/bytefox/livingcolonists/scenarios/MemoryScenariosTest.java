@@ -48,7 +48,7 @@ class MemoryScenariosTest {
         stage.playerWritesTo("Darcy Abbott", "принесу тебе изумруд");
         assertTrue(stage.runUntil(() -> !stage.bonds.promises(darcy).isEmpty(), WAIT), "the promise was not written down");
         stage.bonds.gift(darcy, stage.player.getUUID(), "Alex", "gave Darcy Abbott an emerald", 3, List.of("Emerald"),
-                me.bytefox.livingcolonists.friendship.Taste.LIKE, java.util.Map.of());
+                me.bytefox.livingcolonists.friendship.Taste.LIKE, java.util.Map.of(), 1);
         assertEquals(Promise.Status.KEPT, stage.bonds.promises(darcy).get(0).status());
     }
 

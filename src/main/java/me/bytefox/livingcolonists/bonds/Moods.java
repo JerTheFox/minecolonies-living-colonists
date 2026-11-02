@@ -21,6 +21,9 @@ public final class Moods {
     public static final String PLAYERS = "livingcolonists_players";
     /** Friends and quarrels at home and at work. */
     public static final String NEIGHBOURS = "livingcolonists_neighbours";
+    /** A birthday (#67), for the day. */
+    public static final String BIRTHDAY = "livingcolonists_birthday";
+    static final double BIRTHDAY_FACTOR = 1.2;
     public static final double MAX = 1.3;
     public static final double MIN = 0.6;
     /** Against MineColonies' own weights: security 4, food 3, housing 3, social 2. */
@@ -54,6 +57,15 @@ public final class Moods {
                 ModLog.warn("Couldn't change {}'s happiness", citizen.getName(), e);
             }
         });
+    }
+
+    /** A colonist's birthday lifts them for the day (#67). */
+    public static void birthday(ICitizenData citizen) {
+        try {
+            set(citizen, BIRTHDAY, BIRTHDAY_FACTOR, 1);
+        } catch (RuntimeException | LinkageError e) {
+            ModLog.warn("Couldn't change {}'s happiness", citizen.getName(), e);
+        }
     }
 
     /**

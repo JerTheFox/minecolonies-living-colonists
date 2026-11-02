@@ -1,0 +1,28 @@
+{
+  "_comment": "The colony calendar (#67). A calendar day passes only on a game day when a colony member spent nearMinutes inside the colony, so a server running with nobody on doesn't burn through holidays. Holidays: season 0-3 (spring, summer, autumn, winter), day 1-seasonDays; occasion is a row of moods.json; text is what the colony is told (for the model, in English); favours are gifts that count as loved that day (an item id, 'food' or '~word', as in gifts.json); special is code's part: fair, tournament, remembrance (skipped while nobody has died), gift_exchange, year_end.",
+  "seasonDays": 24,
+  "nearMinutes": 5,
+  "birthdayGift": 2,
+  "holidays": [
+    {"id": "founding",      "name": "Founding Day",       "season": 0, "day": 1,  "fromYear": 2, "occasion": "holiday_pride",
+     "text": "Today is Founding Day, the anniversary of the colony: people remember how it all began and how far it has come."},
+    {"id": "flowers",       "name": "Flower Festival",    "season": 0, "day": 13, "occasion": "holiday",
+     "text": "Today is the Flower Festival: spring is here, people wear flowers and give them to each other.",
+     "favours": ["~flower", "~tulip", "minecraft:poppy", "minecraft:dandelion", "minecraft:cornflower", "minecraft:allium", "minecraft:oxeye_daisy", "minecraft:azure_bluet", "minecraft:blue_orchid", "minecraft:lily_of_the_valley"]},
+    {"id": "fair",          "name": "Summer Fair",        "season": 1, "day": 7,  "occasion": "holiday",
+     "text": "Today is the Summer Fair: everyone shows off their work and argues over whose is best.", "special": "fair"},
+    {"id": "tournament",    "name": "Guards' Tournament", "season": 1, "day": 19, "occasion": "holiday",
+     "text": "Today is the Guards' Tournament: the guards compete, everyone else cheers and bets.", "special": "tournament"},
+    {"id": "harvest",       "name": "Harvest Festival",   "season": 2, "day": 7,  "occasion": "holiday",
+     "text": "Today is the Harvest Festival: the colony gives thanks for the harvest, to the farmers and the cooks above all.",
+     "favours": ["food"]},
+    {"id": "remembrance",   "name": "Night of Remembrance", "season": 2, "day": 19, "occasion": "remembrance",
+     "text": "Tonight is the Night of Remembrance: the colony quietly remembers those who are gone.", "special": "remembrance"},
+    {"id": "gift_exchange", "name": "Gift Exchange",      "season": 3, "day": 13, "occasion": "holiday",
+     "text": "Today is the Gift Exchange: everyone secretly gives someone a small present and tries to guess who gave theirs.",
+     "special": "gift_exchange"},
+    {"id": "year_end",      "name": "Year's End",         "season": 3, "day": 24, "occasion": "holiday",
+     "text": "Today is Year's End, the last day of the year: people look back on it and wish each other a better one.",
+     "special": "year_end"}
+  ]
+}

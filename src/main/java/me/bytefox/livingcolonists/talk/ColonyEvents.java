@@ -279,6 +279,7 @@ public final class ColonyEvents {
         }
         for (IColonyEventDescription entry : log) {
             if (!before.contains(entry)) {
+                lifeAndDeath(colony, entry);
                 Event event = describe(colony, entry);
                 if (event != null) {
                     events.add(event);
@@ -286,6 +287,24 @@ public final class ColonyEvents {
             }
         }
         return events;
+    }
+
+    /** Births and deaths for those keeping count, like the calendar (#67). */
+    private static void lifeAndDeath(IColony colony, IColonyEventDescription entry) {
+        if (!(entry instanceof ICitizenEventDescription citizenEvent)) {
+            return;
+        }
+        String type = entry.getEventTypeId().getPath();
+        if (type.contains("died")) {
+            ModEvents.BUS.post(new GameEvents.CitizenDied(colony, citizenEvent.getCitizenName()));
+        } else if (type.contains("born")) {
+            for (int id : named(colony, citizenEvent.getCitizenName())) {
+                ICitizenData born = colony.getCitizenManager().getCivilian(id);
+                if (born != null) {
+                    ModEvents.BUS.post(new GameEvents.CitizenBorn(born));
+                }
+            }
+        }
     }
 
     private static Event describe(IColony colony, IColonyEventDescription entry) {
@@ -403,7 +422,7 @@ public final class ColonyEvents {
         }
     }
 
-    private static List<Integer> guards(IColony colony) {
+    static List<Integer> guards(IColony colony) {
         return colony.getCitizenManager().getCitizens().stream()
                 .filter(c -> c.getJob() != null && c.getJob().isGuard())
                 .map(ICitizenData::getId).toList();

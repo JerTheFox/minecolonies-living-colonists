@@ -5,6 +5,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- Each colony has its own calendar: four seasons of 24 days, 96 days a year. A calendar day passes only on a game day when a member of the colony spent five minutes inside it, so a server running with nobody on doesn't use up holidays.
+- Eight holidays a year, two each season. Founding Day, from the second year. The Flower Festival, when flowers are loved gifts. The Summer Fair, where the colony picks its best worker. The Guards' Tournament, with the guard who has beaten the most enemies as the favourite. The Harvest Festival, when food is a loved gift. The Night of Remembrance, which names the colonists who died and is skipped while nobody has. The Gift Exchange, and Year's End with the year's births, deaths and buildings. On a holiday the colony is festive and talks about it. The dates, texts and favoured gifts are in `config/livingcolonists/content/calendar.json`.
+- Colonists have birthdays spread over the year; a baby born in the colony has its birthday on the day it was born. On their birthday the colony talks about it, the colonist is happier for the day, and a gift counts twice and outside the weekly limit.
+- The Colony Notebook shows today's date, a holiday or birthdays today and what is coming in the next week; each colonist's birthday is in the relations section. `/lcdebug calendar` shows the calendar, `/lcdebug calendar set <day>` jumps to a day.
+
 ### Changed
 
 - Colonists have tastes in gifts. Everyone likes food and loves cake; a blacksmith loves ingots, a cook sugar, a researcher books. Each colonist also has one odd favourite of their own. An easygoing character takes a dull gift kindly, a grumbler is hard to please. A favourite warms them three times as much as an ordinary gift, and rotten flesh sets them back about as much as rudeness. They thank you to match. Two gifts a week count instead of one a day. The Colony Notebook shows what each colonist thought of your gifts. The tastes are in `config/livingcolonists/content/gifts.json`.
