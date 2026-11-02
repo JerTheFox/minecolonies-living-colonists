@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-02
+
+The last version for now: development moves to a new mod built around the colony's social life and a town hall panel, with AI as an optional add-on later.
+
 ### Added
 
 - The mod works without a language model, as a game of its own. With no API key, or with `useModel` turned off in `[llm]`, U at a colonist (or a click on their name) opens a talk menu instead of free typing: ask how they are, how work is going, what they like (one thing a day, and it goes into the notebook), when their birthday is, or pay them a compliment. Answers come from what is really so (their happiness, hunger, illness, mourning, what their workplace waits for), in set lines, warmer or colder by friendship. The first talk of the day and a compliment bring a little friendship. Colonists bring up their real troubles (no home, hunger, illness, missing materials) in set lines, the colony talks about its events with a second colonist answering, and now and then someone says a catchphrase. There is no Players | Colony switch then, and Y only says that the colony tells its news by itself. The notebook leaves out Orders and explains the talk menu, `/lc help` and the settings screen say the model is off. The notebook, promises from MineColonies' windows, gifts, letters, help in trouble, the calendar, happiness and the work bonus work as usual. Look-ups and orders in your own words, memory and life stories need the model, and nothing is sent anywhere without it.
@@ -390,7 +394,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A colony conversation that ended while a reply was still on its way no longer comes back to life.
 - Old conversations that are fully written down no longer pile up in the world's data.
 
-[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.5...v0.4.0
