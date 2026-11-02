@@ -48,7 +48,7 @@ public final class LiveRunsClient {
 
     @SubscribeEvent
     public static void chat(ClientChatReceivedEvent event) {
-        if (!"promise".equals(LiveRuns.run()) && !"happiness".equals(LiveRuns.run())) {
+        if (!"promise".equals(LiveRuns.run()) && !"happiness".equals(LiveRuns.run()) && !"nomodel".equals(LiveRuns.run())) {
             return;
         }
         Component message = event.getMessage();
@@ -111,6 +111,10 @@ public final class LiveRunsClient {
         Minecraft minecraft = Minecraft.getInstance();
         if ("happiness".equals(LiveRuns.run()) && minecraft.player != null) {
             happiness(minecraft);
+            return;
+        }
+        if ("nomodel".equals(LiveRuns.run()) && minecraft.player != null) {
+            noModel(minecraft);
             return;
         }
         if (!"promise".equals(LiveRuns.run()) || step == Step.DONE || minecraft.player == null || minecraft.getConnection() == null) {
@@ -237,6 +241,52 @@ public final class LiveRunsClient {
         ModLog.info("Live run promise: {} -> {}", step, to);
         step = to;
         stepTicks = 0;
+    }
+
+    private static int noModelTicks = -1;
+
+    /**
+     * {@code nomodel}: the colony without a language model (#68). The chat has no Players | Colony switch, U at a
+     * colonist opens the talk menu, and a question there gets an answer from code. Screenshots of each.
+     */
+    private static void noModel(Minecraft minecraft) {
+        if (colonist == null || noModelTicks == Integer.MAX_VALUE) {
+            return;
+        }
+        noModelTicks++;
+        switch (noModelTicks) {
+            case 40 -> minecraft.setScreen(new ChatScreen(""));
+            case 70 -> shot(minecraft, "live-nomodel-chat");
+            case 80 -> {
+                minecraft.setScreen(null);
+                PacketDistributor.sendToServer(new ConversationAction(ConversationAction.Action.TALK));
+            }
+            case 140 -> {
+                if (!(minecraft.screen instanceof me.bytefox.livingcolonists.client.TalkMenuScreen menu)) {
+                    ModLog.info("Live run nomodel: FAIL, U opened {} instead of the talk menu", minecraft.screen);
+                    noModelTicks = Integer.MAX_VALUE;
+                    return;
+                }
+                shot(minecraft, "live-nomodel-menu");
+                try {
+                    var colony = menu.getClass().getDeclaredField("colonyId");
+                    var citizen = menu.getClass().getDeclaredField("citizenId");
+                    colony.setAccessible(true);
+                    citizen.setAccessible(true);
+                    minecraft.getConnection().sendCommand("lc menu " + colony.getInt(menu) + " " + citizen.getInt(menu) + " how");
+                } catch (ReflectiveOperationException e) {
+                    ModLog.warn("Live run nomodel: couldn't ask", e);
+                }
+            }
+            case 200 -> {
+                shot(minecraft, "live-nomodel-answer");
+                boolean menu = minecraft.screen instanceof me.bytefox.livingcolonists.client.TalkMenuScreen;
+                ModLog.info("Live run nomodel: {}", menu ? "PASS" : "FAIL, the menu closed");
+                noModelTicks = Integer.MAX_VALUE;
+            }
+            default -> {
+            }
+        }
     }
 
     private static void finish(String result) {

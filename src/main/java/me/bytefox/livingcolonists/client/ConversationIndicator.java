@@ -49,7 +49,7 @@ final class ConversationIndicator {
         int bottom = top + font.lineHeight + 2 * PADDING - 1;
         GuiGraphics graphics = event.getGuiGraphics();
         int right = 2 - GAP;
-        if (ClientConversation.state().member()) {
+        if (ClientConversation.state().member() && ClientConversation.state().model()) {
             for (Button button : layout(font, ClientConversation.state())) {
                 boolean hovered = button.contains(event.getMouseX(), event.getMouseY(), top, bottom);
                 int background = button.active() ? ACTIVE_BACKGROUND : hovered ? HOVER_BACKGROUND : IDLE_BACKGROUND;
@@ -63,7 +63,7 @@ final class ConversationIndicator {
 
     static void click(ScreenEvent.MouseButtonPressed.Pre event) {
         if (!(event.getScreen() instanceof ChatScreen screen) || event.getButton() != 0
-                || !ClientConversation.state().member()) {
+                || !ClientConversation.state().member() || !ClientConversation.state().model()) {
             return;
         }
         Font font = Minecraft.getInstance().font;

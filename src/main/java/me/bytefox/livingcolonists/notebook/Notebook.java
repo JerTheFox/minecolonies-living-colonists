@@ -80,14 +80,15 @@ public final class Notebook {
         List<IColony> colonies = Colonies.all().stream()
                 .filter(colony -> Colonies.role(player, colony) != ColonyAccess.Role.OTHER).toList();
         List<BondsService.PlayerRelation> relations = bonds.relationsOf(player);
-        return List.of(
+        return java.util.stream.Stream.of(
                 new Section("promises", title("promises"), bonds.notebook(player), bonds.promiseNews(player)),
                 new Section("letters", title("letters"), letters(player), letterNews(player)),
                 new Section("relations", title("relations"), relations(player, colonies, relations), relationNews(relations)),
-                new Section("orders", title("orders"), orders(player), orderNews(player)),
+                // Orders come only through the model (#68).
+                me.bytefox.livingcolonists.Config.modelOn() ? new Section("orders", title("orders"), orders(player), orderNews(player)) : null,
                 new Section("colony", title("colony"), colony(colonies, player.server.getTickCount()), colonyNews(colonies)),
                 new Section("settings", title("settings"), settings(player, colonies), ""),
-                new Section("help", title("help"), help(), ""));
+                new Section("help", title("help"), help(), "")).filter(java.util.Objects::nonNull).toList();
     }
 
     // ---- what is new
@@ -414,9 +415,12 @@ public final class Notebook {
     private static final List<String> HELP = List.of("talk", "who", "ask", "orders", "promises", "gifts", "friendship",
             "calendar", "mood");
 
+    /** Without a model the help starts with the talk menu and leaves out what needs the model. */
+    private static final List<String> HELP_NO_MODEL = List.of("menu", "gifts", "friendship", "calendar", "mood");
+
     private static List<Component> help() {
         Pager pager = new Pager(title("help"));
-        for (String topic : HELP) {
+        for (String topic : me.bytefox.livingcolonists.Config.modelOn() ? HELP : HELP_NO_MODEL) {
             pager.add(Component.translatable("livingcolonists.book.help." + topic + ".title").withStyle(ChatFormatting.BOLD)
                     .append(Component.literal("\n")).append(Component.translatable("livingcolonists.book.help." + topic)
                             .withStyle(style -> style.withBold(false))));

@@ -148,6 +148,7 @@ public final class TalkService {
         this.letters = new me.bytefox.livingcolonists.friendship.Letters(bonds, calendar);
         this.help = new me.bytefox.livingcolonists.friendship.Help(bonds);
         this.workBoost = new me.bytefox.livingcolonists.friendship.WorkBoost(bonds);
+        this.menu = new TalkMenu(bonds, calendar, perception, personalities);
         FriendshipNews friendshipNews = new FriendshipNews(this, bonds, memory);
         ModEvents.BUS.on(GameEvents.FriendshipMilestone.class, friendshipNews::milestone);
         CalendarNews calendarNews = new CalendarNews(events, errands.tally(), calendar);
@@ -196,6 +197,13 @@ public final class TalkService {
     private final me.bytefox.livingcolonists.friendship.Letters letters;
     private final me.bytefox.livingcolonists.friendship.Help help;
     private final me.bytefox.livingcolonists.friendship.WorkBoost workBoost;
+
+    private final TalkMenu menu;
+
+    /** The talk menu without a model (#68). */
+    public TalkMenu menu() {
+        return menu;
+    }
 
     /** Letters from colonists (#67). */
     public me.bytefox.livingcolonists.friendship.Letters letters() {

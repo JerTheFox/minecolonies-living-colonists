@@ -735,6 +735,15 @@ public final class BondsService {
         return out;
     }
 
+    /** A little friendship from talking (#68): the first talk of the day, a compliment. */
+    public void friendly(ICitizenData citizen, UUID player, String playerName, int delta, String text) {
+        if (data == null) {
+            return;
+        }
+        data.playerNames.put(player, playerName);
+        note(citizen, player, delta, text, now(citizen.getColony()));
+    }
+
     /** The warmest friendship level the colonist reached with the player, by rank; -1 for none yet (#67). */
     public int reached(ICitizenData citizen, UUID player) {
         return data == null ? -1 : data.reached.getOrDefault(key(citizen, player), -1);

@@ -43,6 +43,10 @@ public final class LiveRuns {
     @SubscribeEvent
     public static void started(ServerStartedEvent event) {
         ModLog.info("Live run: dev hooks loaded{}", run().isEmpty() ? "" : ", run " + run());
+        if (run().equals("nomodel")) {
+            // The colony without a language model (#68).
+            me.bytefox.livingcolonists.Config.USE_MODEL.set(false);
+        }
     }
 
     @SubscribeEvent

@@ -125,7 +125,10 @@ public final class SettingsScreen extends Screen {
         }
         List<String> models = newState.models().isEmpty() && state != null ? state.models() : newState.models();
         state = new SettingsState(newState.canEdit(), newState.values(), newState.usage(), newState.message(), models);
-        status = newState.message().isEmpty() ? (newState.canEdit()
+        boolean noModel = "false".equals(newState.values().get("useModel"))
+                || minecraft != null && minecraft.player != null && !me.bytefox.livingcolonists.client.ClientConversation.state().model();
+        status = newState.message().isEmpty() ? noModel
+                ? Component.translatable("livingcolonists.settings.no_model").withStyle(ChatFormatting.GOLD) : (newState.canEdit()
                 ? Component.translatable("livingcolonists.settings.hint").withStyle(ChatFormatting.GRAY)
                 : Component.translatable("livingcolonists.settings.read_only").withStyle(ChatFormatting.YELLOW))
                 : message(newState.message(), models.size());

@@ -624,7 +624,23 @@ public final class ColonyThreads {
         long at = server.getTickCount() + Math.round(CHATTER_PACE * LinePacing.typingTicks(line.length()));
         thread.lastLineTick = at;
         scheduled.add(new Scheduled(at, () -> say(server, colony, thread, version, speaker, line, false)));
+        if (event) {
+            // Someone else answers it in a word, so the news isn't a monologue.
+            List<ICitizenData> others = colony.getCitizenManager().getCitizens().stream()
+                    .filter(c -> c.getId() != citizen.getId() && !c.isChild()).toList();
+            Optional<String> reaction = SetLines.pick(SAD.contains(thread.occasion) ? "react.sad" : "react.glad", locale, random);
+            if (!others.isEmpty() && reaction.isPresent()) {
+                Speaker other = Audience.speakerOf(others.get(random.nextInt(others.size())));
+                long then = at + Math.round(CHATTER_PACE * LinePacing.typingTicks(reaction.get().length()));
+                thread.lastLineTick = then;
+                scheduled.add(new Scheduled(then, () -> say(server, colony, thread, version, other, reaction.get(), false)));
+            }
+        }
     }
+
+    /** Occasions answered with a sad word rather than a glad one. */
+    private static final java.util.Set<String> SAD = java.util.Set.of("death", "raid", "enemies", "illness", "killed_by_player",
+            "player_died", "remembrance", "hunger", "homeless", "unhappy");
 
     /**
      * Says a catchphrase's set reply, or now and then a catchphrase (#65), as written in the content file: never while the

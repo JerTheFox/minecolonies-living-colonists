@@ -10,7 +10,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 /** The client's copy of its conversation state, and the way to ask the server to change it. */
 public final class ClientConversation {
-    private static final ConversationState NONE = new ConversationState(ChatMode.PLAYERS, "", "", false, false);
+    private static final ConversationState NONE = new ConversationState(ChatMode.PLAYERS, "", "", false, false, true);
 
     private static volatile ConversationState state = NONE;
 

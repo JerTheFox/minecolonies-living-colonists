@@ -214,7 +214,10 @@ final class Initiative {
         }
         String purpose = purpose(topic.get(), longApart(speaker, player)) + " Keep it short, one or two lines, and don't repeat anything you "
                 + "already said to them. If they don't seem to want to talk, that's fine.";
-        if (talk.writeFirst(player, speaker, purpose, true, null, true) != Notes.Delivery.SENT) {
+        // Without a model, only a real trouble is brought up, in a set line (#68).
+        TalkService.SetLine fallback = topic.get().key().startsWith("need:")
+                ? new TalkService.SetLine("need." + topic.get().key().substring("need:".length())) : null;
+        if (talk.writeFirst(player, speaker, purpose, true, null, true, Airtime.Kind.FIRST_LINE, fallback) != Notes.Delivery.SENT) {
             return Optional.empty();
         }
         note(speaker, player, topic.get(), now);

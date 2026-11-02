@@ -15,9 +15,10 @@ import net.minecraft.resources.ResourceLocation;
  * @param partnerJobKey  translation key of the partner's profession, empty if unemployed or no partner
  * @param openChat       open the chat input, because the player just picked a partner with the key
  * @param member         the player belongs to some colony (owner, officer or friend), so the switch is shown
+ * @param model          colonists talk through a language model; without one there is no colony chat to write to (#68)
  */
 public record ConversationState(ChatMode mode, String partnerName, String partnerJobKey, boolean openChat,
-                                boolean member)
+                                boolean member, boolean model)
         implements CustomPacketPayload {
 
     public static final Type<ConversationState> TYPE =
@@ -30,6 +31,7 @@ public record ConversationState(ChatMode mode, String partnerName, String partne
             ByteBufCodecs.STRING_UTF8, ConversationState::partnerJobKey,
             ByteBufCodecs.BOOL, ConversationState::openChat,
             ByteBufCodecs.BOOL, ConversationState::member,
+            ByteBufCodecs.BOOL, ConversationState::model,
             ConversationState::new);
 
     public boolean hasPartner() {

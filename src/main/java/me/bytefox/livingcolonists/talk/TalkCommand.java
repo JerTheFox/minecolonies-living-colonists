@@ -12,6 +12,7 @@ import net.minecraft.commands.Commands;
  */
 public final class TalkCommand {
     private static final int HELP_LINES = 5;
+    private static final int HELP_LINES_NO_MODEL = 4;
 
     private TalkCommand() {
     }
@@ -39,6 +40,10 @@ public final class TalkCommand {
                 .then(Commands.literal("undo").executes(context ->
                         talk.errands().undo(context.getSource().getPlayerOrException())))
                 .then(Commands.literal("help").executes(context -> help(context.getSource())))
+                .then(Commands.literal("menu").then(Commands.argument("colony", IntegerArgumentType.integer(0))
+                        .then(Commands.argument("citizen", IntegerArgumentType.integer(0))
+                                .then(Commands.argument("option", com.mojang.brigadier.arguments.StringArgumentType.word())
+                                        .executes(context -> menu(context, talk))))))
                 .then(Commands.literal("promises").executes(context -> {
                     net.minecraft.server.level.ServerPlayer player = context.getSource().getPlayerOrException();
                     com.minecolonies.api.colony.IColony colony = me.bytefox.livingcolonists.colony.Colonies.at(player);
@@ -82,11 +87,25 @@ public final class TalkCommand {
     }
 
     /** What players can do with colonists, in a few lines (#48). */
+    /** A choice in the talk menu (#68): the colonist must still be there and the player inside the colony. */
+    private static int menu(com.mojang.brigadier.context.CommandContext<CommandSourceStack> context, TalkService talk)
+            throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        var player = context.getSource().getPlayerOrException();
+        var citizen = Audience.resolve(player.level().dimension(), IntegerArgumentType.getInteger(context, "colony"),
+                IntegerArgumentType.getInteger(context, "citizen"));
+        if (citizen == null || !Audience.isInside(player, citizen.getColony()) || !Audience.mayTalk(player, citizen.getColony())) {
+            return 0;
+        }
+        talk.menu().choose(player, citizen, com.mojang.brigadier.arguments.StringArgumentType.getString(context, "option"));
+        return 1;
+    }
+
     private static int help(net.minecraft.commands.CommandSourceStack source) {
-        for (int i = 1; i <= HELP_LINES; i++) {
-            String key = "livingcolonists.help." + i;
+        boolean model = me.bytefox.livingcolonists.Config.modelOn();
+        for (int i = 1; i <= (model ? HELP_LINES : HELP_LINES_NO_MODEL); i++) {
+            String key = (model ? "livingcolonists.help." : "livingcolonists.help.no_model.") + i;
             source.sendSuccess(() -> net.minecraft.network.chat.Component.translatable(key), false);
         }
-        return HELP_LINES;
+        return 1;
     }
 }

@@ -85,6 +85,69 @@ class NoModelScenariosTest {
         assertTrue(stage.model.requests.isEmpty(), "the model was asked: " + stage.model.requests);
     }
 
+    /** What the server sent the player of a kind, in order. */
+    private <T> List<T> sent(Class<T> type) {
+        org.mockito.ArgumentCaptor<net.minecraft.network.protocol.Packet<?>> packets =
+                org.mockito.ArgumentCaptor.forClass(net.minecraft.network.protocol.Packet.class);
+        org.mockito.Mockito.verify(stage.player.connection, org.mockito.Mockito.atLeast(0)).send(packets.capture());
+        return packets.getAllValues().stream()
+                .filter(p -> p instanceof net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket custom
+                        && type.isInstance(custom.payload()))
+                .map(p -> type.cast(((net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket) p).payload())).toList();
+    }
+
+    @Test
+    void turningToAColonistOpensTheTalkMenuNotTheChat() {
+        var conversations = new me.bytefox.livingcolonists.talk.Conversations(stage.talk);
+        conversations.lock(stage.player, darcy, true);
+        var menus = sent(me.bytefox.livingcolonists.network.TalkMenuState.class);
+        assertEquals(1, menus.size(), "no talk menu");
+        assertTrue(menus.get(0).open());
+        assertTrue(conversations.partner(stage.player).isEmpty(), "a free talk was started without a model");
+    }
+
+    @Test
+    void writingToTheColonyIsntOfferedWithoutAModel() {
+        var conversations = new me.bytefox.livingcolonists.talk.Conversations(stage.talk);
+        conversations.chatToColony(stage.player);
+        assertTrue(!conversations.wantsChat(stage.player), "the chat went to the colony");
+    }
+
+    @Test
+    void aTalkADayAndACompliment() {
+        stage.talk.menu().open(stage.player, darcy);
+        int afterTalk = stage.bonds.playerRapport(darcy, stage.player.getUUID());
+        assertTrue(afterTalk > 0, "the first talk of the day brought nothing");
+        stage.talk.menu().choose(stage.player, darcy, "compliment");
+        int afterCompliment = stage.bonds.playerRapport(darcy, stage.player.getUUID());
+        assertTrue(afterCompliment > afterTalk, "the compliment brought nothing");
+        stage.talk.menu().choose(stage.player, darcy, "compliment");
+        stage.talk.menu().choose(stage.player, darcy, "how");
+        assertEquals(afterCompliment, stage.bonds.playerRapport(darcy, stage.player.getUUID()), "friendship farmed in a day");
+        stage.passDays(1);
+        stage.talk.menu().choose(stage.player, darcy, "how");
+        assertTrue(stage.bonds.playerRapport(darcy, stage.player.getUUID()) > afterCompliment, "a new day's talk brought nothing");
+    }
+
+    @Test
+    void aColonistTellsOneThingTheyLikeADay() {
+        stage.talk.menu().choose(stage.player, darcy, "likes");
+        var known = stage.bonds.knownTastes(darcy, stage.player.getUUID());
+        assertEquals(1, known.values().stream().mapToInt(List::size).sum(), "no taste told: " + known);
+        stage.talk.menu().choose(stage.player, darcy, "likes");
+        assertEquals(1, stage.bonds.knownTastes(darcy, stage.player.getUUID()).values().stream().mapToInt(List::size).sum(),
+                "two tastes in a day");
+        var last = sent(me.bytefox.livingcolonists.network.TalkMenuState.class);
+        assertTrue(last.get(last.size() - 1).line().toString().contains("menu.likes.again"), last.toString());
+    }
+
+    @Test
+    void theNotebookHasNoOrdersWithoutAModel() {
+        var notebook = new me.bytefox.livingcolonists.notebook.Notebook(stage.bonds, stage.talk.errands(), stage.talk.moods(),
+                stage.talk.calendar(), stage.talk.letters());
+        assertTrue(notebook.sections(stage.player).stream().noneMatch(s -> s.key().equals("orders")));
+    }
+
     @Test
     void friendshipWorksWithoutAModel() {
         stage.bonds.gift(darcy, stage.player.getUUID(), "Alex", "Alex gave me cake", 3, List.of("Cake"), Taste.LOVE, Map.of(), 2);

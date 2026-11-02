@@ -122,6 +122,19 @@ public final class GiftTastes {
         return tastes.contains(Taste.DISLIKE) ? Taste.DISLIKE : Taste.NEUTRAL;
     }
 
+    /** The items named in the job's and everyone's loves and likes (not "food" or "~word"), for the talk menu (#68). */
+    public static List<String> namedItems(String job) {
+        List<String> out = new java.util.ArrayList<>();
+        Rules forJob = jobs.get(job);
+        for (Rules rules : forJob == null ? List.of(everyone) : List.of(forJob, everyone)) {
+            for (Taste taste : List.of(Taste.LOVE, Taste.LIKE)) {
+                rules.entries().getOrDefault(taste, List.of()).stream()
+                        .filter(entry -> entry.contains(":") && !out.contains(entry)).forEach(out::add);
+            }
+        }
+        return out;
+    }
+
     /** The one thing this colonist loves more than anyone would guess. */
     public static ItemStack oddLove(String citizenKey) {
         List<String> list = oddLoves;

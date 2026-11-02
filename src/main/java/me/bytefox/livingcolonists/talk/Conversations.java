@@ -42,6 +42,8 @@ public final class Conversations {
         volatile Partner partner;
         /** Last membership sent to the client, so it is only resent when it changes. */
         volatile Boolean member;
+        /** Whether the client was last told the model is on. */
+        volatile Boolean model;
     }
 
     private record Partner(ResourceKey<Level> dimension, int colonyId, int citizenId, String name, String jobKey) {
@@ -136,6 +138,11 @@ public final class Conversations {
         if (!Audience.mayTalk(player, colony)) {
             return;
         }
+        if (!me.bytefox.livingcolonists.Config.modelOn()) {
+            // Without a model the colonist gets a talk menu instead of free typing (#68).
+            talk.menu().open(player, citizen);
+            return;
+        }
         Entry entry = entry(player);
         Speaker speaker = Audience.speakerOf(citizen);
         entry.partner = new Partner(colony.getDimension(), colony.getID(), citizen.getId(), speaker.name(),
@@ -160,6 +167,10 @@ public final class Conversations {
     /** Choosing a mode also ends a private talk. */
     /** The "Write to the colony" key: works inside a colony's borders, and opens the chat there. */
     public void chatToColony(ServerPlayer player) {
+        if (!me.bytefox.livingcolonists.Config.modelOn()) {
+            player.displayClientMessage(Component.translatable("livingcolonists.colony.no_model"), true);
+            return;
+        }
         IColony colony = Audience.chatColony(player);
         if (colony == null) {
             player.displayClientMessage(Component.translatable("livingcolonists.colony.outside"), true);
@@ -172,6 +183,10 @@ public final class Conversations {
     }
 
     public void setMode(ServerPlayer player, ChatMode mode) {
+        if (mode == ChatMode.COLONY && !me.bytefox.livingcolonists.Config.modelOn()) {
+            player.displayClientMessage(Component.translatable("livingcolonists.colony.no_model"), true);
+            return;
+        }
         Entry entry = entry(player);
         entry.partner = null;
         entry.mode = mode;
@@ -187,11 +202,18 @@ public final class Conversations {
         if (server.getTickCount() % CHECK_INTERVAL != 0) {
             return;
         }
+        boolean model = me.bytefox.livingcolonists.Config.modelOn();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             Entry entry = entry(player);
             boolean member = isMember(player);
-            if (!Boolean.valueOf(member).equals(entry.member)) {
+            if (!Boolean.valueOf(member).equals(entry.member) || !Boolean.valueOf(model).equals(entry.model)) {
                 entry.member = member;
+                entry.model = model;
+                if (!model) {
+                    // Without a model there is no colony chat to write to and no free talk (#68).
+                    entry.mode = ChatMode.PLAYERS;
+                    entry.partner = null;
+                }
                 sync(player, entry, false);
             }
         }
@@ -242,6 +264,6 @@ public final class Conversations {
         Partner partner = entry.partner;
         PacketDistributor.sendToPlayer(player, new ConversationState(entry.mode,
                 partner == null ? "" : partner.name(), partner == null ? "" : partner.jobKey(), openChat,
-                Boolean.TRUE.equals(entry.member)));
+                Boolean.TRUE.equals(entry.member), me.bytefox.livingcolonists.Config.modelOn()));
     }
 }

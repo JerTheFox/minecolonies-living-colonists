@@ -331,7 +331,10 @@ public final class LivingColonists {
      * what is missing. The client-bound handlers are lambdas so client classes load only on the client.
      */
     private void registerPayloads(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar("5");
+        PayloadRegistrar registrar = event.registrar("6");
+        registrar.playToClient(me.bytefox.livingcolonists.network.TalkMenuState.TYPE,
+                me.bytefox.livingcolonists.network.TalkMenuState.STREAM_CODEC,
+                (payload, context) -> me.bytefox.livingcolonists.client.TalkMenuScreen.apply(payload));
         registrar.playToClient(me.bytefox.livingcolonists.network.NotebookPages.TYPE,
                 me.bytefox.livingcolonists.network.NotebookPages.STREAM_CODEC,
                 (payload, context) -> me.bytefox.livingcolonists.client.NotebookScreen.apply(payload));

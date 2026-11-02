@@ -44,6 +44,12 @@ public final class SetLines {
         }
     }
 
+    /** The translation key of one of the occasion's lines, picked by the dice: for a line each player reads in their language. */
+    public static Optional<String> key(String occasion, Random random) {
+        int count = count(lines("en_us"), occasion);
+        return count == 0 ? Optional.empty() : Optional.of(PREFIX + occasion + "." + (1 + random.nextInt(count)));
+    }
+
     public static boolean has(String occasion) {
         return count(lines("en_us"), occasion) > 0;
     }
