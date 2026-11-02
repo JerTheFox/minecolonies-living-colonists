@@ -165,6 +165,9 @@ public final class ColonyThreads {
      * A colonist starts a conversation in the colony chat on their own (#5), about {@code about}.
      * Only with players around and nothing going on in the chat. Returns whether it started.
      */
+    /** Below this energy a talk is winding down: one with an ending gets it now. */
+    private static final double ENDING_ENERGY = 1.5;
+
     boolean startChatter(MinecraftServer server, IColony colony, int speakerId, String about, int askedId,
                          Airtime.Kind kind) {
         return startChatter(server, colony, speakerId, about, askedId, kind, 0);
@@ -207,6 +210,12 @@ public final class ColonyThreads {
         thread.opening = null;
         thread.chatter = about;
         thread.energy = ThreadPolicy.startEnergy(level, random) + ThreadPolicy.interestEnergy(interest);
+        // A shape by weighted dice, an ordinary chat most of the time; now and then an ending (#65).
+        thread.shape = interest > 0 ? null : TalkShapes.pick(random);
+        thread.ending = TalkShapes.ending(random);
+        if (thread.shape != null) {
+            Counters.add("talk.shape." + thread.shape.key());
+        }
         thread.language = Languages.ofLocale(Audience.language(audience));
         thread.addressed.add(speakerId);
         thread.asked = askedId;
@@ -278,6 +287,8 @@ public final class ColonyThreads {
         thread.lastEventTick = now;
         thread.opening = what;
         thread.chatter = null;
+        thread.shape = null;
+        thread.ending = null;
         thread.lines.clear();
         // What matters to the colony is talked about longer: a raid or a death, not a new site (#65).
         thread.energy = 1 + ThreadPolicy.startEnergy(Config.level(Module.CONVERSATION), random) + ThreadPolicy.interestEnergy(interest);
@@ -458,7 +469,8 @@ public final class ColonyThreads {
         }
         if (chatter != null) {
             values.put("turn", "You start a conversation in the colony chat on your own, " + chatter + " Keep it light "
-                    + "and short; it's fine if nobody answers. Write in " + thread.language + ".");
+                    + "and short; it's fine if nobody answers. Write in " + thread.language + "."
+                    + (thread.shape == null ? "" : " " + thread.shape.opening()));
         }
         thread.disagreed = false;
         Optional<Fact> rumor = Optional.empty();
@@ -480,6 +492,14 @@ public final class ColonyThreads {
             }
             thread.disagreed = stance.contains("don't agree");
             values.put("turn", values.get("turn") + " " + stance);
+            if (thread.shape != null) {
+                values.put("turn", values.get("turn") + " " + thread.shape.others());
+            }
+            // The few talks that come to an ending get it as they wind down (#65).
+            if (thread.ending != null && thread.energy < ENDING_ENERGY && thread.colonistTurns >= 2) {
+                values.put("turn", values.get("turn") + " " + thread.ending);
+                thread.ending = null;
+            }
             rumor = memory.rumor(citizen, null, random);
             rumor.ifPresent(fact -> values.put("initiative", values.get("initiative") + " " + Prompts.gossip(fact.text())));
         }

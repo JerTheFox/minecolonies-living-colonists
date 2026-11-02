@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * A week of colony life on fast-forward (#64): colonists talk while the player is around, and don't flood the chat.
- * About two minutes: run with {@code ./gradlew slowTest}.
+ * About two minutes: run with {@code ./gradlew test -PwithSlow --tests '*ColonyWeekTest'}.
  */
 @Tag("slow")
 class ColonyWeekTest {

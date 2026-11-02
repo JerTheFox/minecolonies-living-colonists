@@ -1,0 +1,50 @@
+{
+  "shapes": [
+    {"key": "ordinary", "weight": 40,
+     "opening": "It's an ordinary chat: nothing big, just talk.",
+     "others": "It's an ordinary chat."},
+    {"key": "teasing", "weight": 9,
+     "opening": "Tease someone a little, good-naturedly: a joke at their expense they can take.",
+     "others": "Someone is being teased good-naturedly: play along, tease back or laugh it off."},
+    {"key": "complaint", "weight": 8,
+     "opening": "Grumble about something that bothers you in the colony or at work.",
+     "others": "Someone is grumbling: commiserate, disagree or grumble about something of your own."},
+    {"key": "gossip", "weight": 8,
+     "opening": "Gossip a little about someone in the colony: what they did or how they've been lately, nothing cruel.",
+     "others": "It's gossip: add what you know or think, or say it's none of your business."},
+    {"key": "argument", "weight": 7,
+     "opening": "Say something you feel strongly about, where people could disagree.",
+     "others": "It's turning into an argument: take the side your character would take; if someone already took it, you may take the other."},
+    {"key": "yarn", "weight": 6,
+     "opening": "Tell a short story from your past or something that happened to you, a little embellished.",
+     "others": "Someone is telling a story: react, doubt it, or top it with one of your own."},
+    {"key": "plan", "weight": 6,
+     "opening": "Suggest something the colonists could do together, or something you mean to do.",
+     "others": "Someone is making a plan: say what your character thinks of it, add to it or point out a problem."},
+    {"key": "memory", "weight": 5,
+     "opening": "Remember something from the colony's past or your own, out loud.",
+     "others": "Someone is reminiscing: remember along, or remember it differently."},
+    {"key": "advice", "weight": 5,
+     "opening": "Ask the others for advice about something small in your life or work.",
+     "others": "Someone asked for advice: give it in your own way, or admit you don't know."},
+    {"key": "dream", "weight": 3,
+     "opening": "Say out loud something you wish for, big or small.",
+     "others": "Someone shared a wish: say what you make of it, or what you'd wish for."},
+    {"key": "secret", "weight": 1.5,
+     "opening": "Half-share something you've kept to yourself: hint at it, don't tell it all.",
+     "others": "Someone hinted at a secret: be curious, tactful or teasing about it."},
+    {"key": "confession", "weight": 0.5,
+     "opening": "Admit something you did or feel that you're a little ashamed of.",
+     "others": "Someone admitted something: react as your character would, kindly or not."}
+  ],
+  "ending": {
+    "chance": 0.25,
+    "texts": [
+      "Bring the talk to a close with a small decision about it.",
+      "Bring the talk to a close with a laugh.",
+      "Bring the talk to a close by agreeing to disagree.",
+      "Bring the talk to a close by changing your mind a little.",
+      "Bring the talk to a close by getting back to work."
+    ]
+  }
+}

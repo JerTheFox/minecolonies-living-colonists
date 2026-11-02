@@ -114,6 +114,7 @@ public final class LivingColonists {
                 Rumours.use(prompts.content(PromptLibrary.RUMOURS));
                 Prompts.useTopics(prompts.content(PromptLibrary.TOPICS));
                 me.bytefox.livingcolonists.mood.MoodTable.use(prompts.content(PromptLibrary.MOODS));
+                me.bytefox.livingcolonists.talk.TalkShapes.use(prompts.content(PromptLibrary.TALK));
             } catch (RuntimeException e) {
                 ModLog.warn("A content file in config/livingcolonists/content is broken, fix or delete it", e);
             }

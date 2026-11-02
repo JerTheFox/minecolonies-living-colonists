@@ -39,7 +39,8 @@ public final class PromptLibrary {
     public static final String RUMOURS = "rumours.json";
     public static final String TOPICS = "topics.txt";
     public static final String MOODS = "moods.json";
-    public static final List<String> CONTENT = List.of(HANDBOOK, RUMOURS, TOPICS, MOODS);
+    public static final String TALK = "talk.json";
+    public static final List<String> CONTENT = List.of(HANDBOOK, RUMOURS, TOPICS, MOODS, TALK);
 
     private final Path directory;
     private final Path contentDirectory;

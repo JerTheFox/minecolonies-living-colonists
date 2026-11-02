@@ -230,8 +230,9 @@ final class Initiative {
      */
     private Optional<InitiativePolicy.Topic> chatter(ServerPlayer player, IColony colony, ICitizenData speaker,
                                                      int rapport, long now) {
-        List<InitiativePolicy.Topic> topics = topics(speaker, player, now).stream()
-                .filter(t -> t.kind() == InitiativePolicy.Kind.SMALL_TALK || t.kind() == InitiativePolicy.Kind.NEWS).toList();
+        List<InitiativePolicy.Topic> topics = new ArrayList<>(topics(speaker, player, now).stream()
+                .filter(t -> t.kind() == InitiativePolicy.Kind.SMALL_TALK || t.kind() == InitiativePolicy.Kind.NEWS).toList());
+        stake(colony, speaker, player).ifPresent(topics::add);
         Optional<InitiativePolicy.Topic> topic = InitiativePolicy.pick(topics, rapport, random);
         if (topic.isEmpty()) {
             return Optional.empty();
@@ -328,6 +329,39 @@ final class Initiative {
             topics.add(new InitiativePolicy.Topic(InitiativePolicy.Kind.SMALL_TALK, "topic:" + chosen, chosen, 0));
         }
         return topics;
+    }
+
+    /**
+     * One topic with something at stake, from the colony's life (#65): a quarrel, a friendship, someone unhappy. Beside
+     * the neutral topics, not instead of them.
+     */
+    private java.util.Optional<InitiativePolicy.Topic> stake(IColony colony, ICitizenData speaker, ServerPlayer player) {
+        try {
+            List<ICitizenData> adults = colony.getCitizenManager().getCitizens().stream().filter(c -> !c.isChild()).toList();
+            List<Stakes.Pair> pairs = new ArrayList<>();
+            for (int i = 0; i < adults.size(); i++) {
+                for (int j = i + 1; j < adults.size(); j++) {
+                    int rapport = talk.bonds().colonists().rapport(colony, adults.get(i).getId(), adults.get(j).getId());
+                    if (Math.abs(rapport) >= Stakes.NOTABLE) {
+                        pairs.add(new Stakes.Pair(adults.get(i).getName(), adults.get(j).getName(), rapport));
+                    }
+                }
+            }
+            List<String> unhappy = adults.stream().filter(c -> c.getCitizenHappinessHandler().getHappiness(colony, c)
+                    < me.bytefox.livingcolonists.mood.Conditions.UNHAPPY).map(ICitizenData::getName).toList();
+            long gameTime = colony.getWorld().getGameTime();
+            String prefix = colonistKey(speaker, player) + ":";
+            List<String> fresh = Stakes.topics(speaker.getName(), pairs, unhappy).stream()
+                    .filter(text -> fresh(prefix + "stake:" + Integer.toHexString(text.hashCode()), gameTime)).toList();
+            if (fresh.isEmpty()) {
+                return java.util.Optional.empty();
+            }
+            String text = fresh.get(random.nextInt(fresh.size()));
+            return java.util.Optional.of(new InitiativePolicy.Topic(InitiativePolicy.Kind.SMALL_TALK,
+                    "stake:" + Integer.toHexString(text.hashCode()), text, 0));
+        } catch (RuntimeException | LinkageError e) {
+            return java.util.Optional.empty();
+        }
     }
 
     private boolean fresh(String key, long gameTime) {

@@ -127,19 +127,14 @@ dependencies {
 tasks.named('test', Test) {
     // Scenario tests hold Minecraft, MineColonies and many mocks at once.
     maxHeapSize = '2g'
-    // Long simulations (a week of colony life) run apart: ./gradlew slowTest.
+    // Long simulations (a week of colony life) and probes on the real model run only on purpose:
+    // ./gradlew test -PwithSlow --tests '*ColonyWeekTest'. A separate Test task lacks the game's launch files.
     useJUnitPlatform {
-        excludeTags 'slow'
-    }
-}
-
-tasks.register('slowTest', Test) {
-    description = 'Runs the long simulations tagged slow.'
-    group = 'verification'
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    useJUnitPlatform {
-        includeTags 'slow'
+        if (project.hasProperty('withSlow')) {
+            includeTags 'slow'
+        } else {
+            excludeTags 'slow'
+        }
     }
 }
 

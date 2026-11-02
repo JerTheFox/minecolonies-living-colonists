@@ -60,6 +60,22 @@ class ColonyMoodScenariosTest {
     }
 
     @Test
+    void aTalkColonistsStartThemselvesHasAShape() throws Exception {
+        assertTrue(stage.runUntil(() -> stage.replies().stream().anyMatch(r -> r.toString().contains("on your own")
+                && r.toString().contains("It's an ordinary chat")), Duration.ofSeconds(40)), "no shape given to the talk");
+        assertTrue(me.bytefox.livingcolonists.debug.Counters.snapshot().getOrDefault("talk.shape.ordinary", 0L) > 0);
+    }
+
+    @Test
+    void aQuarrelBetweenColonistsIsSomethingToTalkAbout() throws Exception {
+        stage.bonds.colonists().nudge(stage.colony, 1, 2, -50);
+        // Ordinary dice: a topic with something at stake sits beside the neutral ones and comes up now and then.
+        me.bytefox.livingcolonists.Dice.use(new java.util.Random(11));
+        assertTrue(stage.runUntil(() -> stage.replies().stream().anyMatch(r -> r.toString().contains("can't stand each other")
+                || r.toString().contains("gets on your nerves")), Duration.ofSeconds(60)), "the quarrel never came up");
+    }
+
+    @Test
     void aCalmColonySaysNothingOfMoods() throws Exception {
         stage.playerWritesTo("Darcy Abbott", "как дела?");
         assertTrue(stage.runUntil(() -> !stage.replies().isEmpty(), WAIT), "no answer");

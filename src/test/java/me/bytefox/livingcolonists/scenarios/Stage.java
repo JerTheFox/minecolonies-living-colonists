@@ -168,6 +168,7 @@ final class Stage implements AutoCloseable {
             me.bytefox.livingcolonists.talk.Rumours.use(prompts.content(PromptLibrary.RUMOURS));
             me.bytefox.livingcolonists.talk.Prompts.useTopics(prompts.content(PromptLibrary.TOPICS));
             me.bytefox.livingcolonists.mood.MoodTable.use(prompts.content(PromptLibrary.MOODS));
+            me.bytefox.livingcolonists.talk.TalkShapes.use(prompts.content(PromptLibrary.TALK));
         });
         prompts.reload();
         ArchetypeLibrary archetypes = new ArchetypeLibrary(directory);
@@ -408,8 +409,11 @@ final class Stage implements AutoCloseable {
      * One millisecond between ticks, whatever the system timer: on Windows {@code Thread.sleep(1)} lasts 1 to 16 ms
      * depending on what else runs, so a minute of game time took from 1 to 19 seconds and tests failed by chance.
      */
-    private static void tickPause() throws InterruptedException {
-        long until = System.nanoTime() + 1_000_000;
+    /** Real time per tick: 1 ms for tests; a probe on the real model needs about real speed, or replies come too late. */
+    long tickNanos = 1_000_000;
+
+    private void tickPause() throws InterruptedException {
+        long until = System.nanoTime() + tickNanos;
         while (System.nanoTime() < until) {
             if (Thread.interrupted()) {
                 throw new InterruptedException();
