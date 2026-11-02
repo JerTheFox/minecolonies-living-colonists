@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-02
+
 ### Added
 
 - The Colony Notebook, the mod's first item and its own window next to MineColonies' books. The colonist you make your first real promise to hands it over: "Write it down, or you'll forget." Right-click opens it on MineColonies' town hall book, with tabs for five sections: promises (to whom, what, when it's due, with buttons to confirm a vague one or give one up), relations (how each colonist feels about you and whether how you treat them lifts or weighs on their mood, and who is friends or at odds), orders (what waits for your yes, your last order with a button to take it back, what colonists watch for, messages and reminders), the colony (who is mourning, ill or unhappy) and help (the keys, what to ask, and the owner's switch to silence the colony). The pages update as soon as a button is used. A lost notebook is crafted again from a book, a feather and paper.
@@ -15,6 +17,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Now and then, rarely, a colonist says a catchphrase and another may answer it: everyday sayings ("Work again? We worked yesterday!" "And the day before.") and short nods to well-known games and films. Never in a panic or in mourning, with cooldowns per colony, colonist and phrase. The lines and how often they come are in `config/livingcolonists/content/catchphrases.json`, so a server can put in its own.
 - How players treat colonists shows in their happiness, through MineColonies' own happiness factors: kind words, gifts and kept promises lift it for a few days, rudeness drags it down and a broken promise more so. A friend at home or at work lifts it a little, someone they are at odds with drags it. The weights are small, so food, housing and safety still matter most, and the factors run out by themselves. MineColonies doesn't list factors from other mods in its happiness window, so they show in the Colony Notebook.
 - Colonists in mourning know it: asked why they aren't working, they say they're mourning, and for whom. The handbook of the colony's mechanics explains mourning, graves, the graveyard and resurrection.
+
+### Changed
+
+- The server and every player need this version together: the mod's network messages changed for the Colony Notebook, and an older client can't join a newer server.
 
 ### Fixed
 
@@ -335,7 +341,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A colony conversation that ended while a reply was still on its way no longer comes back to life.
 - Old conversations that are fully written down no longer pile up in the world's data.
 
-[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.5...HEAD
+[Unreleased]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.5...v0.4.0
 [0.3.5]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/JerTheFox/minecolonies-living-colonists/compare/v0.3.2...v0.3.3
